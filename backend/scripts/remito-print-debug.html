@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>REMITO 0001-00000001</title>
+    <style>
+      @page {
+        size: 80mm auto;
+        margin: 4mm;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        width: 100%;
+        min-height: 0;
+        margin: 0;
+        font-family: Arial, sans-serif;
+        font-size: 10px;
+        color: #000;
+        display: flex;
+        flex-direction: column;
+      }
+
+      main {
+        max-width: 72mm;
+        margin: auto;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+      }
+
+      .header {
+        border: 1px solid #000;
+        display: grid;
+        grid-template-columns: 1fr;
+        min-height: auto;
+      }
+
+      .header-left,
+      .header-right {
+        padding: 8px;
+      }
+
+      .header-right {
+        border-left: 1px solid #000;
+      }
+
+      .logo {
+        max-width: 160px;
+        max-height: 50px;
+        object-fit: contain;
+        margin-bottom: 5px;
+      }
+
+      .company-name {
+        font-size: 15px;
+        font-weight: bold;
+        margin-bottom: 4px;
+      }
+
+      .document-title {
+        font-size: 20px;
+        font-weight: bold;
+        text-align: center;
+        margin: 4px 0;
+      }
+
+      .document-number {
+        font-size: 14px;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 6px;
+      }
+
+      .client {
+        border: 1px solid #000;
+        border-top: 0;
+        padding: 7px;
+        line-height: 1.6;
+      }
+
+      .client-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 3px 12px;
+      }
+
+      .detail {
+        flex: 1;
+        border-left: 1px solid #000;
+        border-right: 1px solid #000;
+        padding-top: 5px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th {
+        padding: 4px;
+        border: 1px solid #000;
+        background: #e5e5e5;
+        font-size: 0.9em;
+        text-align: left;
+      }
+
+      td {
+        padding: 4px;
+        border-left: 1px solid #000;
+        border-right: 1px solid #000;
+        vertical-align: top;
+      }
+
+      th:last-child,
+      td:last-child,
+      th:nth-last-child(2),
+      td:nth-last-child(2) {
+        text-align: right;
+      }
+
+      .footer {
+        margin-top: auto;
+        border: 1px solid #000;
+        display: grid;
+        grid-template-columns: 1fr;
+        min-height: auto;
+      }
+
+      .observations {
+        padding: 8px;
+        min-width: 0;
+      }
+
+      .totals {
+        width: 100%;
+        border-left: 1px solid #000;
+        padding: 8px 8px 4px 10px;
+      }
+
+      .grand-total-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        align-items: baseline;
+      }
+
+      .grand-total {
+        font-size: 17px;
+        font-weight: bold;
+        white-space: nowrap;
+      }
+
+      .legend {
+        margin-top: 6px;
+        font-size: 0.85em;
+        font-weight: bold;
+      }
+
+      .declared-value {
+        display: inline-block;
+        margin-top: 6px;
+        padding: 3px 6px;
+        border: 1px solid #999;
+        font-size: 0.85em;
+      }
+
+      .signature {
+        margin-top: 16px;
+        display: flex;
+        justify-content: space-between;
+        gap: 15px;
+      }
+
+      .signature-line {
+        width: 48%;
+        border-top: 1px solid #000;
+        padding-top: 4px;
+        text-align: center;
+        font-size: 0.85em;
+      }
+
+      .qr-block {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 6px;
+      }
+
+      .qr-block img {
+        width: 24mm;
+        height: 24mm;
+      }
+
+      .qr-text {
+        font-size: 0.85em;
+      }
+
+      .footer-text {
+        margin-top: 8px;
+        font-size: 0.8em;
+        white-space: pre-line;
+      }
+
+      .actions {
+        text-align: center;
+        margin: 10px 0 0;
+      }
+
+      @media print {
+        .actions {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="header">
+        <div class="header-left">
+          
+          <div class="company-name">Empresa Demo S.R.L.</div>
+          <div>CUIT: 20939802593</div>
+          <div>Concordia, Entre Ríos</div>
+        </div>
+        <div class="header-right">
+          <div class="document-title">REMITO</div>
+          <div class="document-number">0001-00000001</div>
+          <div><strong>Fecha:</strong> 11/8/2026, 05:12:59</div>
+          <div><strong>Condición:</strong> RESERVA_MONTO</div>
+        </div>
+      </section>
+
+      <section class="client">
+        <div class="client-grid">
+          <div><strong>Cliente:</strong> Distribuidora Norte S.A.</div>
+          <div><strong>Documento:</strong> 30711111118</div>
+        </div>
+      </section>
+
+      <section class="detail">
+        <table>
+          <thead>
+            <tr>
+              <th>Cant.</th><th>Código</th><th>Producto</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+          <tr>
+            <td>1,000</td>
+            <td>CEM25</td>
+            <td>CEMENTO PORTLAND X 25 KG</td>
+            
+          </tr>
+        
+          </tbody>
+        </table>
+      </section>
+
+      <footer class="footer">
+        <div class="observations">
+          
+          <div class="legend">Retiro de reserva por monto · Documento no fiscal</div>
+          <div class="footer-text"></div>
+          
+        <div class="signature">
+          <div class="signature-line">Entregué conforme</div>
+          <div class="signature-line">Recibí conforme</div>
+        </div>
+      
+        </div>
+        <div class="totals">
+          <div class="declared-value">Valor declarado: $ 7.830,01</div>
+        </div>
+      </footer>
+
+      <div class="actions"><button onclick="window.print()">Imprimir</button></div>
+    </main>
+    <script>
+      setTimeout(() => window.print(), 300);
+    </script>
+  </body>
+</html>

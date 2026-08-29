@@ -1,0 +1,12 @@
+import { useState } from "react";
+import { ChevronRight, Search } from "lucide-react";
+import { useServerRows } from "../../hooks/useServerStorage";
+import { Product } from "../../types";
+
+export function SearchableProductSelect({products,value,onChange}:{products:Product[];value:string;onChange:(id:string)=>void}) {
+  const [open,setOpen]=useState(false); const [query,setQuery]=useState(""); const [rubro,setRubro]=useState(""); const [subrubro,setSubrubro]=useState(""); const [marca,setMarca]=useState("");
+  const [catalogs]=useServerRows('afip_catalogs_v34',[]);
+  const selected=products.find(p=>String(p.id)===String(value));
+  const filtered=products.filter(p=>`${p.codigo||""} ${p.codigoBarra||""} ${p.descripcion}`.toLowerCase().includes(query.toLowerCase())&&(!rubro||String(p.rubroId||p.rubro)===rubro)&&(!subrubro||String(p.subrubroId||p.subrubro)===subrubro)&&(!marca||String(p.marcaId||p.marca)===marca)).slice(0,100);
+  return <div className="searchable-select"><button type="button" onClick={()=>setOpen(!open)}>{selected?`${selected.codigo||"S/C"} · ${selected.descripcion}`:"Buscar por código, barras o descripción..."}<ChevronRight size={16}/></button>{open&&<div className="searchable-options searchable-options-wide"><div><Search size={16}/><input autoFocus value={query} onChange={e=>setQuery(e.target.value)} placeholder="Escribí para buscar..."/></div><div className="selector-filters"><select value={rubro} onChange={e=>{setRubro(e.target.value);setSubrubro('')}}><option value="">Todos los rubros</option>{catalogs.filter((c:any)=>c.tipo==='RUBRO').map((c:any)=><option key={c.id} value={String(c.id)}>{c.nombre}</option>)}</select><select value={subrubro} onChange={e=>setSubrubro(e.target.value)}><option value="">Todos los subrubros</option>{catalogs.filter((c:any)=>c.tipo==='SUBRUBRO'&&(!rubro||String(c.rubroId)===rubro)).map((c:any)=><option key={c.id} value={String(c.id)}>{c.nombre}</option>)}</select><select value={marca} onChange={e=>setMarca(e.target.value)}><option value="">Todas las marcas</option>{catalogs.filter((c:any)=>c.tipo==='MARCA').map((c:any)=><option key={c.id} value={String(c.id)}>{c.nombre}</option>)}</select></div>{filtered.map(p=><button type="button" key={p.id} onClick={()=>{onChange(String(p.id));setOpen(false);setQuery("")}}><strong>{p.codigo||"S/C"} · {p.descripcion}</strong><span>{p.codigoBarra||"Sin código de barras"} · {p.rubro||'Sin rubro'} · {p.marca||'Sin marca'}</span></button>)}{!filtered.length&&<p>No se encontraron productos.</p>}</div>}</div>
+}

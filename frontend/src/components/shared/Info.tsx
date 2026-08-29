@@ -1,0 +1,1 @@
+export function Info({icon,label,value}:{icon:any,label:string,value:string}) { return <div className="info-row"><div className="info-icon">{icon}</div><div><span>{label}</span><strong>{value}</strong></div></div> }

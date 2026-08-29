@@ -1,0 +1,3088 @@
+DICCIONARIO ARGENTINO PARA PEDIDOS POR WHATSAPP - ERP
+=====================================================
+Objetivo:
+Este archivo reúne palabras, expresiones, abreviaturas, variantes coloquiales y frases
+habituales en Argentina que un cliente puede usar al realizar pedidos por WhatsApp.
+
+IMPORTANTE:
+No conviene usar este archivo como una lista rígida de coincidencias exactas.
+Debe usarse como apoyo para detección de intención, normalización, búsqueda semántica
+y extracción de datos del mensaje.
+
+=====================================================
+1. SALUDOS / INICIO DE CONVERSACIÓN
+=====================================================
+
+hola
+holaa
+holaaa
+buen día
+buen dia
+buen día!
+buenas
+buenas!
+buenas tardes
+buenas noches
+cómo va
+como va
+cómo andás
+como andas
+cómo estás
+como estas
+todo bien
+qué tal
+que tal
+qué hacés
+que haces
+hola gente
+hola chicos
+hola muchachos
+hola maestro
+hola capo
+hola genio
+hola amigo
+hola che
+buen día gente
+buenas gente
+que onda
+qué onda
+
+INTENCIÓN NORMALIZADA:
+SALUDO
+
+=====================================================
+2. QUIERO HACER UN PEDIDO
+=====================================================
+
+quiero hacer un pedido
+quiero pedir
+quiero comprar
+te quiero pedir
+te quería pedir
+te queria pedir
+necesito hacer un pedido
+necesito pedir
+necesito comprar
+necesito mercadería
+necesito mercaderia
+necesito unas cosas
+necesito algunos productos
+necesito materiales
+necesito reponer
+quiero reponer
+mandame
+mandáme
+mándame
+mandame esto
+mandame unas cosas
+mandame mercadería
+mandame mercaderia
+pasame
+pasáme
+dame
+dáme
+poneme
+ponéme
+cargame
+cargáme
+cargá
+anotame
+anotáme
+tomame el pedido
+tomáme el pedido
+armame un pedido
+armáme un pedido
+haceme un pedido
+haceme el pedido
+hacéme el pedido
+quiero encargar
+te encargo
+encargame
+reservame
+separame
+guardame
+preparame
+preparáme
+
+INTENCIÓN NORMALIZADA:
+CREAR_PEDIDO
+
+=====================================================
+3. AGREGAR PRODUCTOS
+=====================================================
+
+agregame
+agregáme
+agrega
+agregá
+sumame
+sumáme
+sumá
+añadime
+añadí
+poneme
+ponéme
+poné
+cargame
+cargáme
+cargá
+meteme
+meté
+incluí
+incluime
+incluí esto
+también
+tambien
+y también
+y tambien
+además
+ademas
+de paso
+aprovechá y agregame
+sumale
+sumále
+sumale también
+sumale tambien
+poneme también
+poneme tambien
+agregá también
+agrega tambien
+quiero también
+quiero tambien
+dame también
+dame tambien
+mandame también
+mandame tambien
+llevame
+lleváme
+
+INTENCIÓN NORMALIZADA:
+AGREGAR_ITEM
+
+=====================================================
+4. QUITAR PRODUCTOS
+=====================================================
+
+sacame
+sacáme
+sacá
+saca
+quitame
+quitáme
+quitá
+borra
+borrá
+elimina
+eliminá
+no lo quiero
+no quiero eso
+ese no
+esa no
+eso no
+dejalo afuera
+dejála afuera
+sacalo del pedido
+sacála del pedido
+borralo
+borrálo
+eliminalo
+eliminálo
+no me lo mandes
+no me mandes eso
+cancelá ese
+cancelame ese
+cancelame ese producto
+anulá ese
+anulame ese
+sacá ese
+saca ese
+
+INTENCIÓN NORMALIZADA:
+QUITAR_ITEM
+
+=====================================================
+5. MODIFICAR CANTIDADES
+=====================================================
+
+cambiame la cantidad
+cambiá la cantidad
+poneme más
+poneme mas
+poneme menos
+agregame más
+agregame mas
+sacame algunos
+sumame
+restame
+dejame
+dejáme
+dejá
+deja
+dejame 2
+dejame dos
+dejame solamente
+dejame nomás
+dejame nomas
+dejame nada más
+dejame nada mas
+poneme 5 más
+poneme 5 mas
+sumale 2
+sacale 1
+sacále 1
+bajalo a
+bajá a
+subilo a
+subí a
+cambialo a
+cambiálo a
+mejor poneme
+mejor dejame
+en vez de 5 poneme 10
+no eran 5 eran 10
+quise decir
+me equivoqué
+me equivoque
+corregí
+corregi
+corregime
+ajustame
+
+INTENCIÓN NORMALIZADA:
+MODIFICAR_CANTIDAD
+
+=====================================================
+6. CAMBIAR PRODUCTO / MARCA / PRESENTACIÓN
+=====================================================
+
+cambiame ese
+cambiá ese
+cambialo
+cambiálo
+cambiame la marca
+otra marca
+esa marca no
+esa no
+ese no
+la otra
+el otro
+otra opción
+otra opcion
+mostrame otro
+mostrame otra
+tenés otro
+tenes otro
+no quiero ese
+prefiero otro
+poneme el otro
+mandame el otro
+el más barato
+el mas barato
+uno más barato
+uno mas barato
+el mejor
+el de mejor calidad
+el más grande
+el mas grande
+el más chico
+el mas chico
+otra medida
+otro tamaño
+otra presentación
+otra presentacion
+en caja
+en bolsa
+en pack
+por unidad
+suelto
+la presentación grande
+la presentacion grande
+la presentación chica
+la presentacion chica
+
+INTENCIÓN NORMALIZADA:
+CAMBIAR_PRODUCTO
+
+=====================================================
+7. CONSULTAR PRODUCTO
+=====================================================
+
+tenés
+tenes
+hay
+hay stock
+te queda
+te quedan
+tenés disponible
+tenes disponible
+conseguís
+conseguis
+trabajás
+trabajas
+vendés
+vendes
+manejás
+manejas
+tenés de
+tenes de
+qué tenés
+que tenes
+qué hay
+que hay
+qué marcas tenés
+que marcas tenes
+qué medidas tenés
+que medidas tenes
+qué tamaños tenés
+que tamaños tenes
+qué presentaciones tenés
+que presentaciones tenes
+mostrame
+pasame opciones
+pasame modelos
+pasame marcas
+qué opciones hay
+que opciones hay
+
+INTENCIÓN NORMALIZADA:
+CONSULTAR_PRODUCTO
+
+=====================================================
+8. CONSULTAR STOCK
+=====================================================
+
+hay stock
+tenés stock
+tenes stock
+te queda
+te quedan
+cuánto stock hay
+cuanto stock hay
+cuántos te quedan
+cuantos te quedan
+hay disponible
+tenés disponible
+tenes disponible
+hay existencia
+queda mercadería
+queda mercaderia
+llegó
+llego
+entró
+entro
+ya entró
+ya entro
+recibiste
+repusiste
+hay para entregar
+hay para hoy
+hay suficiente
+hay cantidad
+
+INTENCIÓN NORMALIZADA:
+CONSULTAR_STOCK
+
+=====================================================
+9. SIN STOCK / ALTERNATIVAS
+=====================================================
+
+si no hay
+si no tenés
+si no tenes
+si no queda
+si no hay de esa
+si no tenés esa marca
+si no tenes esa marca
+mandame otra
+poneme otra
+reemplazala
+reemplazalo
+sustituila
+sustituilo
+dame algo parecido
+dame uno similar
+dame equivalente
+dame otra marca
+poneme la que tengas
+mandame la que tengas
+cualquiera
+lo que haya
+lo que tengas
+la más parecida
+la mas parecida
+una alternativa
+
+INTENCIÓN NORMALIZADA:
+BUSCAR_ALTERNATIVA
+
+=====================================================
+10. CONSULTAR PRECIO
+=====================================================
+
+cuánto sale
+cuanto sale
+cuánto cuesta
+cuanto cuesta
+qué precio tiene
+que precio tiene
+precio
+precio?
+pasame precio
+pasáme precio
+decime el precio
+a cuánto
+a cuanto
+a cuánto está
+a cuanto esta
+cuánto está
+cuanto esta
+cuánto vale
+cuanto vale
+valor
+qué valor tiene
+que valor tiene
+precio unitario
+precio por unidad
+precio por caja
+precio por bolsa
+precio por pack
+precio por kilo
+precio por metro
+precio por litro
+precio por rollo
+precio final
+precio con iva
+precio sin iva
+
+INTENCIÓN NORMALIZADA:
+CONSULTAR_PRECIO
+
+=====================================================
+11. CONSULTAR TOTAL / SUBTOTAL
+=====================================================
+
+cuánto llevo
+cuanto llevo
+cuánto va
+cuanto va
+cuánto suma
+cuanto suma
+cuánto tengo
+cuanto tengo
+cuánto es
+cuanto es
+total
+subtotal
+total hasta ahora
+cuánto me queda
+cuanto me queda
+cuánto sería
+cuanto seria
+haceme la cuenta
+pasame el total
+decime el total
+cómo voy
+como voy
+qué importe llevo
+que importe llevo
+
+INTENCIÓN NORMALIZADA:
+CONSULTAR_TOTAL
+
+=====================================================
+12. DESCUENTO / BONIFICACIÓN
+=====================================================
+
+hay descuento
+tenés descuento
+tenes descuento
+me hacés descuento
+me haces descuento
+qué descuento tengo
+que descuento tengo
+haceme precio
+haceme un precio
+mejorame el precio
+mejoráme el precio
+precio especial
+precio de contado
+precio mayorista
+precio distribuidor
+precio revendedor
+precio por cantidad
+descuento por cantidad
+bonificación
+bonificacion
+bonificame
+bonificáme
+haceme una atención
+haceme una atencion
+tirame un número
+tirame un numero
+haceme precio amigo
+qué promo hay
+que promo hay
+hay promo
+hay promoción
+hay promocion
+qué oferta hay
+que oferta hay
+
+INTENCIÓN NORMALIZADA:
+CONSULTAR_DESCUENTO
+
+=====================================================
+13. PROMOCIONES
+=====================================================
+
+promo
+promoción
+promocion
+oferta
+ofertas
+combo
+combos
+bonificado
+bonificación
+bonificacion
+lleva
+llevando
+comprando
+por cantidad
+segunda unidad
+2x1
+3x2
+4x3
+pack promo
+precio promo
+precio promocional
+qué promociones tenés
+que promociones tenes
+qué promos hay
+que promos hay
+hay ofertas
+tenés alguna oferta
+tenes alguna oferta
+
+INTENCIÓN NORMALIZADA:
+CONSULTAR_PROMOCION
+
+=====================================================
+14. CANTIDADES - NÚMEROS ESCRITOS
+=====================================================
+
+uno
+una
+un
+dos
+tres
+cuatro
+cinco
+seis
+siete
+ocho
+nueve
+diez
+once
+doce
+trece
+catorce
+quince
+dieciséis
+dieciseis
+diecisiete
+dieciocho
+diecinueve
+veinte
+veinticinco
+treinta
+cuarenta
+cincuenta
+sesenta
+setenta
+ochenta
+noventa
+cien
+ciento
+doscientos
+quinientos
+mil
+
+=====================================================
+15. CANTIDADES COLOQUIALES
+=====================================================
+
+un par
+un par de
+dos o tres
+algunos
+algunas
+varios
+varias
+unos cuantos
+unas cuantas
+media docena
+una docena
+dos docenas
+media caja
+una caja
+dos cajas
+medio pack
+un pack
+un paquete
+un bulto
+un pallet
+un palet
+una tira
+un rollo
+una bobina
+un juego
+un juego completo
+
+NOTA:
+Expresiones vagas como "algunos", "varios", "un par" deberían confirmarse
+si pueden generar ambigüedad comercial.
+
+=====================================================
+16. UNIDADES DE MEDIDA / PRESENTACIÓN
+=====================================================
+
+unidad
+unidades
+u
+un
+uni
+pieza
+piezas
+pz
+caja
+cajas
+cj
+pack
+packs
+paquete
+paquetes
+paq
+bolsa
+bolsas
+bulto
+bultos
+pallet
+palet
+pallets
+rollo
+rollos
+bobina
+bobinas
+bidón
+bidon
+bidones
+botella
+botellas
+lata
+latas
+frasco
+frascos
+balde
+baldes
+tambor
+tambores
+tacho
+tachos
+saco
+sacos
+sobre
+sobres
+tira
+tiras
+blister
+blíster
+docena
+docenas
+par
+pares
+juego
+juegos
+kit
+kits
+metro
+metros
+m
+centímetro
+centimetro
+cm
+milímetro
+milimetro
+mm
+metro cuadrado
+metros cuadrados
+m2
+m²
+metro cúbico
+metro cubico
+m3
+m³
+litro
+litros
+lt
+lts
+l
+mililitro
+mililitros
+ml
+kilo
+kilos
+kg
+kilogramo
+kilogramos
+gramo
+gramos
+gr
+g
+tonelada
+toneladas
+tn
+
+=====================================================
+17. FRASES DE CANTIDAD + PRODUCTO
+=====================================================
+
+dame 5
+mandame 5
+poneme 5
+agregame 5
+cargame 5
+necesito 5
+quiero 5
+te pido 5
+serían 5
+serian 5
+son 5
+5 de
+cinco de
+5 unidades de
+5 cajas de
+5 bolsas de
+5 paquetes de
+5 kg de
+5 litros de
+
+=====================================================
+18. CONFIRMACIONES
+=====================================================
+
+sí
+si
+sí dale
+si dale
+dale
+dale nomás
+dale nomas
+listo
+listo dale
+ok
+okay
+oki
+okey
+perfecto
+perfecto dale
+bueno
+bueno dale
+de una
+de una dale
+mandale
+mandále
+hacelo
+hacélo
+confirmo
+confirmado
+confirmá
+confirma
+correcto
+está bien
+esta bien
+así está bien
+asi esta bien
+joya
+genial
+bárbaro
+barbaro
+buenísimo
+buenisimo
+vamos con eso
+mandá
+manda
+metele
+metéle
+
+INTENCIÓN NORMALIZADA:
+CONFIRMAR
+
+=====================================================
+19. NEGACIONES / RECHAZOS
+=====================================================
+
+no
+nop
+nope
+no gracias
+así no
+asi no
+ese no
+esa no
+eso no
+no quiero
+no me sirve
+no me interesa
+no lo pongas
+no lo agregues
+no lo mandes
+sacalo
+dejalo
+cancelá
+cancela
+pará
+para
+esperá
+espera
+todavía no
+todavia no
+no confirmo
+mejor no
+dejá
+deja
+
+INTENCIÓN NORMALIZADA:
+NEGAR
+
+=====================================================
+20. TERMINAR DE AGREGAR PRODUCTOS
+=====================================================
+
+nada más
+nada mas
+eso es todo
+listo
+ya está
+ya esta
+no quiero nada más
+no quiero nada mas
+no agrego más
+no agrego mas
+terminamos
+cerralo
+cerrálo
+cerrá
+cerra
+cerrame el pedido
+cerráme el pedido
+finalizalo
+finalizá
+confirmemos
+hacelo
+mandalo
+procesalo
+cargalo
+pasalo
+pasálo
+
+INTENCIÓN NORMALIZADA:
+FINALIZAR_CARGA
+
+=====================================================
+21. CANCELAR PEDIDO COMPLETO
+=====================================================
+
+cancelá el pedido
+cancela el pedido
+cancelame el pedido
+anulá el pedido
+anula el pedido
+anulame el pedido
+borra todo
+borrá todo
+sacá todo
+saca todo
+dejá sin efecto
+deja sin efecto
+no quiero nada
+mejor cancelalo
+mejor no lo hagas
+olvidate del pedido
+no mandes nada
+no prepares nada
+cancelamos
+anulamos
+
+INTENCIÓN NORMALIZADA:
+CANCELAR_PEDIDO
+
+=====================================================
+22. DIRECCIÓN / ENTREGA
+=====================================================
+
+dirección
+direccion
+domicilio
+entrega
+envío
+envio
+mandalo a
+mandála a
+mandame a
+entregalo en
+entregá en
+llevalo a
+lleválo a
+despachalo a
+despachá a
+a la dirección de siempre
+a la direccion de siempre
+al domicilio de siempre
+al local
+al negocio
+a la obra
+al depósito
+al deposito
+a casa
+a mi casa
+a la sucursal
+a la fábrica
+a la fabrica
+a planta
+al taller
+al galpón
+al galpon
+a lo de
+retira
+retiro
+paso a buscar
+lo busco
+lo retiro
+mandá transporte
+manda transporte
+
+INTENCIÓN NORMALIZADA:
+DEFINIR_ENTREGA
+
+=====================================================
+23. REFERENCIAS A DIRECCIONES HABITUALES
+=====================================================
+
+de siempre
+la de siempre
+donde siempre
+al mismo lugar
+a la misma dirección
+a la misma direccion
+al domicilio habitual
+a mi dirección
+a mi direccion
+al local de siempre
+a la obra de siempre
+a la otra obra
+al otro local
+a la sucursal
+a casa
+a depósito
+a deposito
+
+=====================================================
+24. FECHA DE ENTREGA
+=====================================================
+
+hoy
+para hoy
+ahora
+ya
+urgente
+cuanto antes
+lo antes posible
+esta mañana
+esta tarde
+esta noche
+mañana
+para mañana
+mañana temprano
+mañana a la mañana
+mañana a la tarde
+pasado mañana
+el lunes
+el martes
+el miércoles
+el miercoles
+el jueves
+el viernes
+el sábado
+el sabado
+la semana que viene
+esta semana
+fin de semana
+para el finde
+antes del mediodía
+antes del mediodia
+después del mediodía
+despues del mediodia
+a primera hora
+a última hora
+a ultima hora
+
+INTENCIÓN NORMALIZADA:
+DEFINIR_FECHA_ENTREGA
+
+=====================================================
+25. HORARIOS
+=====================================================
+
+a la mañana
+por la mañana
+temprano
+a primera hora
+antes de las 8
+antes de las 9
+antes de las 10
+antes del mediodía
+al mediodía
+a la tarde
+por la tarde
+después de las 14
+despues de las 14
+después de las 15
+despues de las 15
+a última hora
+a ultima hora
+antes de cerrar
+después de
+despues de
+entre las
+a partir de las
+antes de
+a las 8
+a las 9
+a las 10
+
+=====================================================
+26. RETIRO EN LOCAL / DEPÓSITO
+=====================================================
+
+retiro
+lo retiro
+paso a buscar
+lo paso a buscar
+voy a buscar
+manda a retirar
+mandá a retirar
+retira mi gente
+retira un empleado
+retira el fletero
+retira transporte
+lo buscamos
+lo levantamos
+dejalo preparado
+dejámelo preparado
+preparalo
+preparálo
+tenelo listo
+dejalo listo
+lo retiro por depósito
+lo retiro por deposito
+retiro en sucursal
+retiro en local
+
+INTENCIÓN NORMALIZADA:
+RETIRO
+
+=====================================================
+27. FORMAS DE PAGO
+=====================================================
+
+efectivo
+contado
+de contado
+cash
+transferencia
+transfer
+te transfiero
+te hago transferencia
+deposito
+depósito
+te deposito
+mercado pago
+mp
+qr
+pago con qr
+tarjeta
+débito
+debito
+crédito
+credito
+tarjeta de débito
+tarjeta de debito
+tarjeta de crédito
+tarjeta de credito
+visa
+mastercard
+master
+amex
+american express
+cheque
+cheques
+echeq
+e-cheq
+e cheq
+cuenta corriente
+cta cte
+cta. cte.
+cc
+a cuenta corriente
+dejalo en cuenta
+cargalo a cuenta
+a la cuenta
+contra entrega
+pago al recibir
+pago cuando llegue
+pago al retirar
+
+INTENCIÓN NORMALIZADA:
+FORMA_PAGO
+
+=====================================================
+28. CUENTA CORRIENTE
+=====================================================
+
+cuenta corriente
+cta corriente
+cta cte
+cta. cte.
+cc
+dejalo en cuenta
+dejámelo en cuenta
+cargalo a cuenta
+cargamelo a cuenta
+anotalo en cuenta
+anotámelo
+a mi cuenta
+a la cuenta de la empresa
+queda pendiente
+lo pago después
+lo pago despues
+dejalo pendiente
+saldo
+saldo pendiente
+deuda
+cuánto debo
+cuanto debo
+qué debo
+que debo
+cuánto tengo de saldo
+cuanto tengo de saldo
+cuánto tengo disponible
+cuanto tengo disponible
+límite de crédito
+limite de credito
+
+INTENCIÓN NORMALIZADA:
+CUENTA_CORRIENTE
+
+=====================================================
+29. FACTURACIÓN
+=====================================================
+
+factura
+facturame
+facturáme
+haceme factura
+necesito factura
+con factura
+sin factura
+factura A
+factura a
+A
+factura B
+factura b
+B
+factura C
+factura c
+C
+consumidor final
+responsable inscripto
+monotributo
+monotributista
+exento
+iva
+con iva
+sin iva
+precio final
+más iva
+mas iva
+iva incluido
+factura electrónica
+factura electronica
+CAE
+cuit
+CUIT
+razón social
+razon social
+nombre fiscal
+datos fiscales
+condición fiscal
+condicion fiscal
+
+INTENCIÓN NORMALIZADA:
+FACTURAR
+
+=====================================================
+30. REMITO
+=====================================================
+
+remito
+remitame
+haceme remito
+mandame remito
+con remito
+sin factura
+remito solamente
+remito X
+remito R
+remito de entrega
+remito valorizado
+remito sin precio
+comprobante de entrega
+
+INTENCIÓN NORMALIZADA:
+GENERAR_REMITO
+
+=====================================================
+31. PRESUPUESTO
+=====================================================
+
+presupuesto
+cotización
+cotizacion
+cotizame
+cotizáme
+pasame presupuesto
+pasáme presupuesto
+haceme presupuesto
+armame presupuesto
+armáme presupuesto
+pasame una cotización
+pasame una cotizacion
+precio estimado
+quiero saber cuánto sale
+quiero saber cuanto sale
+solo presupuesto
+no lo confirmes
+no lo cargues todavía
+no lo cargues todavia
+mandame precios primero
+
+INTENCIÓN NORMALIZADA:
+PRESUPUESTAR
+
+=====================================================
+32. NOTA DE PEDIDO
+=====================================================
+
+pedido
+nota de pedido
+orden de pedido
+orden
+orden de compra
+oc
+O.C.
+pedido interno
+pedido cliente
+reserva
+reservá
+reservame
+separame
+dejame reservado
+guardame
+guardámelo
+
+INTENCIÓN NORMALIZADA:
+NOTA_PEDIDO
+
+=====================================================
+33. PEDIDOS ANTERIORES
+=====================================================
+
+lo mismo que la otra vez
+lo de la otra vez
+lo mismo del último pedido
+lo mismo del ultimo pedido
+repetí el pedido
+repeti el pedido
+repetíme el pedido
+repetilo
+copiame el pedido anterior
+copiame el último pedido
+haceme el mismo pedido
+mandame lo de siempre
+lo habitual
+lo mismo de siempre
+reponeme lo mismo
+reposición
+reposicion
+como la semana pasada
+igual que la semana pasada
+igual que ayer
+igual que el mes pasado
+lo que compré la última vez
+lo que compre la ultima vez
+el producto que llevé la otra vez
+el producto que lleve la otra vez
+
+INTENCIÓN NORMALIZADA:
+REPETIR_PEDIDO
+
+=====================================================
+34. CONSULTAR PEDIDOS
+=====================================================
+
+cómo está mi pedido
+como esta mi pedido
+estado del pedido
+qué pasó con mi pedido
+que paso con mi pedido
+ya salió
+ya salio
+ya lo mandaron
+está preparado
+esta preparado
+está listo
+esta listo
+cuándo llega
+cuando llega
+a qué hora llega
+a que hora llega
+dónde está
+donde esta
+seguimiento
+tracking
+número de pedido
+numero de pedido
+mi último pedido
+mi ultimo pedido
+
+INTENCIÓN NORMALIZADA:
+CONSULTAR_PEDIDO
+
+=====================================================
+35. CAMBIAR PEDIDO YA CREADO
+=====================================================
+
+quiero modificar el pedido
+cambiame el pedido
+agregame algo al pedido
+sacame algo del pedido
+sumame algo al pedido
+me olvidé de agregar
+me olvide de agregar
+agregá esto al pedido
+agrega esto al pedido
+cambiame la cantidad
+cambiame la dirección
+cambiame la direccion
+cambiame la entrega
+cambiame el pago
+todavía se puede cambiar
+todavia se puede cambiar
+
+INTENCIÓN NORMALIZADA:
+MODIFICAR_PEDIDO_EXISTENTE
+
+=====================================================
+36. CONSULTAR DEUDA / SALDO
+=====================================================
+
+cuánto debo
+cuanto debo
+qué saldo tengo
+que saldo tengo
+saldo
+deuda
+cuenta
+estado de cuenta
+cuenta corriente
+qué facturas debo
+que facturas debo
+facturas pendientes
+comprobantes pendientes
+vencimientos
+qué venció
+que vencio
+cuánto tengo vencido
+cuanto tengo vencido
+me queda crédito
+me queda credito
+cuánto crédito tengo
+cuanto credito tengo
+
+INTENCIÓN NORMALIZADA:
+CONSULTAR_CUENTA_CORRIENTE
+
+=====================================================
+37. COMPROBANTES / DOCUMENTOS
+=====================================================
+
+factura
+remito
+presupuesto
+nota de pedido
+orden de compra
+recibo
+nota de crédito
+nota de credito
+nota de débito
+nota de debito
+comprobante
+ticket
+duplicado
+copia
+original
+pdf
+archivo
+mandame el pdf
+reenviame la factura
+reenviame el remito
+pasame la factura
+pasame el comprobante
+
+=====================================================
+38. VENDEDOR
+=====================================================
+
+vendedor
+vendedora
+asesor
+asesora
+comercial
+ejecutivo
+mi vendedor
+el vendedor de siempre
+hablar con vendedor
+pasame con un vendedor
+quiero hablar con alguien
+quiero hablar con una persona
+atención humana
+atencion humana
+operador
+persona
+humano
+representante
+
+INTENCIÓN NORMALIZADA:
+DERIVAR_A_HUMANO
+
+=====================================================
+39. URGENCIA
+=====================================================
+
+urgente
+urgencia
+para ya
+lo necesito ya
+lo necesito hoy
+cuanto antes
+lo antes posible
+apuralo
+apurálo
+prioridad
+es urgente
+si puede salir hoy
+mandalo hoy
+necesito entrega inmediata
+lo necesito temprano
+antes del mediodía
+sin falta
+sí o sí
+si o si
+
+INTENCIÓN NORMALIZADA:
+PEDIDO_URGENTE
+
+=====================================================
+40. TRANSPORTE / LOGÍSTICA
+=====================================================
+
+envío
+envio
+reparto
+flete
+fletero
+transporte
+camión
+camion
+camioneta
+cadete
+moto
+expreso
+correo
+logística
+logistica
+despacho
+entrega
+retira transporte
+mandalo por transporte
+mandalo por expreso
+mandalo con el reparto
+en la próxima vuelta
+en la proxima vuelta
+cuando pase el camión
+cuando pase el camion
+en el reparto de hoy
+en el reparto de mañana
+
+=====================================================
+41. COSTO DE ENVÍO
+=====================================================
+
+cuánto sale el envío
+cuanto sale el envio
+cuánto sale el flete
+cuanto sale el flete
+envío gratis
+envio gratis
+sin cargo
+con cargo
+costo de entrega
+costo de reparto
+flete incluido
+incluye envío
+incluye envio
+cuánto me cobran por llevarlo
+cuanto me cobran por llevarlo
+
+INTENCIÓN NORMALIZADA:
+CONSULTAR_COSTO_ENVIO
+
+=====================================================
+42. SUCURSALES / DEPÓSITOS
+=====================================================
+
+sucursal
+local
+depósito
+deposito
+casa central
+central
+planta
+galpón
+galpon
+almacén
+almacen
+showroom
+punto de retiro
+retiro
+otra sucursal
+qué sucursal tiene
+que sucursal tiene
+dónde hay stock
+donde hay stock
+en qué sucursal
+en que sucursal
+
+=====================================================
+43. LISTAS DE PRECIO
+=====================================================
+
+lista
+lista de precios
+precio de lista
+lista mayorista
+lista minorista
+lista distribuidor
+lista revendedor
+mi lista
+qué lista tengo
+que lista tengo
+precio cliente
+precio especial
+precio acordado
+precio convenio
+precio neto
+precio final
+precio con descuento
+
+=====================================================
+44. IDENTIFICACIÓN DEL CLIENTE
+=====================================================
+
+soy
+soy de
+habla
+te habla
+mi nombre es
+soy Juan
+soy Jorge
+soy de Ferretería
+soy de la empresa
+te escribo de
+te escribo por
+cliente
+cliente número
+cliente numero
+código de cliente
+codigo de cliente
+CUIT
+DNI
+razón social
+razon social
+empresa
+negocio
+local
+
+=====================================================
+45. DATOS DEL CLIENTE
+=====================================================
+
+nombre
+apellido
+empresa
+razón social
+razon social
+cuit
+CUIT
+dni
+DNI
+teléfono
+telefono
+celular
+mail
+email
+correo
+domicilio
+dirección
+direccion
+localidad
+ciudad
+provincia
+código postal
+codigo postal
+condición fiscal
+condicion fiscal
+lista de precio
+vendedor
+forma de pago
+
+=====================================================
+46. PRODUCTOS - FORMAS DE REFERIRSE
+=====================================================
+
+producto
+artículo
+articulo
+mercadería
+mercaderia
+material
+insumo
+repuesto
+ítem
+item
+cosa
+esto
+eso
+ese
+esa
+el primero
+el segundo
+el tercero
+el de arriba
+el de abajo
+el anterior
+el último
+el ultimo
+el que te dije
+el que compré
+el que compre
+el de la foto
+el de la imagen
+el del catálogo
+el del catalogo
+el del presupuesto
+el de la factura anterior
+el de siempre
+
+=====================================================
+47. CÓDIGOS
+=====================================================
+
+código
+codigo
+cod
+cód
+sku
+SKU
+código de barras
+codigo de barras
+barra
+EAN
+código interno
+codigo interno
+código proveedor
+codigo proveedor
+referencia
+número de artículo
+numero de articulo
+art
+art.
+cod art
+cod. art.
+
+=====================================================
+48. BÚSQUEDA POR DESCRIPCIÓN INCOMPLETA
+=====================================================
+
+cemento
+cem
+holcim
+loma
+membrana
+membr
+silicona
+sili
+tornillo
+torn
+pintura
+pintu
+caño
+cano
+cable
+cab
+pegamento
+pega
+adhesivo
+adh
+etc
+
+REGLA:
+No depender de coincidencia exacta.
+Buscar por:
+- descripción
+- marca
+- rubro
+- subrubro
+- código
+- código de barras
+- códigos alternativos
+- proveedor
+- presentación
+- palabras parciales
+
+=====================================================
+49. PALABRAS DE REFERENCIA
+=====================================================
+
+este
+esta
+esto
+ese
+esa
+eso
+aquel
+aquella
+el primero
+la primera
+el segundo
+la segunda
+el tercero
+la tercera
+el anterior
+la anterior
+el último
+la última
+el ultimo
+la ultima
+el mismo
+la misma
+el otro
+la otra
+ese mismo
+esa misma
+
+=====================================================
+50. COLOQUIALISMOS ARGENTINOS ÚTILES
+=====================================================
+
+dale
+de una
+joya
+bárbaro
+barbaro
+buenísimo
+buenisimo
+listo
+perfecto
+genial
+mandale
+mandále
+metele
+metéle
+poneme
+dejame
+sacame
+sumame
+pasame
+tirame
+haceme
+decime
+fijate
+fijáte
+averiguame
+averigüame
+confirmame
+avisame
+avisáme
+guardame
+separame
+reservame
+despachame
+cargame
+anotame
+pasalo
+mandalo
+dejalo
+cerralo
+apurá
+apurame
+
+=====================================================
+51. ERRORES ORTOGRÁFICOS FRECUENTES
+=====================================================
+
+nesesito = necesito
+nececito = necesito
+presio = precio
+presupuesto = presupuesto
+mercaderia = mercadería
+envio = envío
+direccion = dirección
+factura = factura
+facturacion = facturación
+tranferencia = transferencia
+trasferencia = transferencia
+transferensia = transferencia
+efectibo = efectivo
+contaddo = contado
+cuenta corrinte = cuenta corriente
+cuenta coriente = cuenta corriente
+remitto = remito
+pedido = pedido
+pedidio = pedido
+cantida = cantidad
+cantidd = cantidad
+producto = producto
+prodcto = producto
+prod = producto
+descuento = descuento
+descueto = descuento
+stock = stock
+stok = stock
+estok = stock
+kilos = kg
+quilo = kilo
+quilos = kilos
+unid = unidad
+und = unidad
+
+=====================================================
+52. ABREVIATURAS ARGENTINAS / COMERCIALES
+=====================================================
+
+uds = unidades
+un = unidad
+u = unidad
+kg = kilogramo
+kgs = kilogramos
+gr = gramos
+lt = litro
+lts = litros
+ml = mililitros
+mt = metro
+mts = metros
+m2 = metros cuadrados
+m3 = metros cúbicos
+cj = caja
+cjs = cajas
+paq = paquete
+bto = bulto
+bult = bulto
+doc = docena
+cta = cuenta
+cte = corriente
+cta cte = cuenta corriente
+cc = cuenta corriente
+efvo = efectivo
+ef = efectivo
+transf = transferencia
+trans = transferencia
+fact = factura
+fc = factura
+fca = factura A
+fcb = factura B
+rem = remito
+pto vta = punto de venta
+pv = punto de venta
+oc = orden de compra
+np = nota de pedido
+nc = nota de crédito
+nd = nota de débito
+cf = consumidor final
+ri = responsable inscripto
+mono = monotributista
+
+=====================================================
+53. RESPUESTAS CORTAS QUE LA IA DEBE INTERPRETAR
+=====================================================
+
+sí
+si
+no
+dale
+ok
+listo
+ese
+esa
+esa misma
+ese mismo
+el primero
+la primera
+el segundo
+la segunda
+3
+5
+10
+dos
+cinco
+diez
+más
+mas
+menos
+otro
+otra
+ninguno
+ninguna
+todo
+todos
+todas
+mitad
+doble
+igual
+lo mismo
+
+REGLA:
+Estas respuestas deben interpretarse usando el contexto de la conversación.
+
+=====================================================
+54. DOBLAR / MULTIPLICAR / DIVIDIR
+=====================================================
+
+duplicame
+duplicáme
+duplicá
+doble
+el doble
+poneme el doble
+triplicame
+triplicá
+triple
+el triple
+la mitad
+dejame la mitad
+dividilo
+repartilo
+dos de cada
+tres de cada
+uno de cada
+5 de cada
+misma cantidad
+igual cantidad
+
+INTENCIÓN NORMALIZADA:
+OPERACION_CANTIDAD
+
+=====================================================
+55. TODA LA LISTA / DE CADA UNO
+=====================================================
+
+uno de cada
+dos de cada
+tres de cada
+5 de cada
+10 de cada
+todo
+todos
+todas
+uno de todos
+dos de todos
+la misma cantidad de todos
+repetí para todos
+repeti para todos
+
+=====================================================
+56. CONDICIONALES
+=====================================================
+
+si hay
+si tenés
+si tenes
+si queda
+si conseguís
+si conseguis
+si está
+si esta
+si viene
+si llega
+si podés
+si podes
+si no
+si no hay
+si no tenés
+si no tenes
+en caso de que
+si sale menos de
+si cuesta menos de
+si está en oferta
+si esta en oferta
+si tiene descuento
+
+REGLA:
+La IA debe detectar condiciones antes de ejecutar acciones irreversibles.
+
+=====================================================
+57. LÍMITES DE PRECIO
+=====================================================
+
+hasta
+máximo
+maximo
+no más de
+no mas de
+menos de
+entre
+alrededor de
+aproximadamente
+más o menos
+mas o menos
+que no pase de
+hasta $10000
+menos de $5000
+entre $1000 y $3000
+
+INTENCIÓN NORMALIZADA:
+FILTRO_PRECIO
+
+=====================================================
+58. PREFERENCIAS DE MARCA
+=====================================================
+
+de esa marca
+esa marca
+marca
+marca preferida
+si es
+solo
+únicamente
+unicamente
+no quiero
+evitá
+evita
+cualquiera menos
+si no hay esa
+otra marca
+la que tengas
+la más barata
+la mas barata
+la mejor
+primera marca
+segunda marca
+
+=====================================================
+59. CALIDAD / GAMA
+=====================================================
+
+económico
+economico
+barato
+barata
+más barato
+mas barato
+bueno
+buena
+mejor
+premium
+primera marca
+calidad
+buena calidad
+lo más económico
+lo mas economico
+algo intermedio
+algo bueno
+algo que dure
+industrial
+profesional
+hogareño
+hogareno
+
+=====================================================
+60. PRESENTACIONES
+=====================================================
+
+chico
+chica
+mediano
+mediana
+grande
+más grande
+mas grande
+más chico
+mas chico
+familiar
+industrial
+por unidad
+por caja
+por pack
+por bolsa
+por rollo
+por metro
+por kilo
+por litro
+por mayor
+por menor
+suelto
+cerrado
+caja cerrada
+pack cerrado
+bulto cerrado
+
+=====================================================
+61. COLORES
+=====================================================
+
+blanco
+blanca
+negro
+negra
+gris
+rojo
+roja
+azul
+verde
+amarillo
+amarilla
+marrón
+marron
+beige
+transparente
+cristal
+natural
+colores surtidos
+surtido
+el mismo color
+otro color
+
+=====================================================
+62. TAMAÑOS / MEDIDAS
+=====================================================
+
+chico
+mediano
+grande
+pequeño
+grande
+número
+numero
+medida
+tamaño
+tamano
+largo
+ancho
+alto
+espesor
+diámetro
+diametro
+calibre
+pulgada
+pulgadas
+mm
+cm
+metro
+metros
+
+=====================================================
+63. FORMATO DE PRECIO ARGENTINO
+=====================================================
+
+1000
+1.000
+1000,00
+1.000,00
+$1000
+$1.000
+$ 1.000
+$1.000,00
+100 lucas
+10 lucas
+una luca
+dos lucas
+mil pesos
+diez mil pesos
+cien mil
+un palo
+un millón
+un millon
+
+NOTA:
+"luca/lucas" = miles de pesos.
+"palo" puede referir a un millón, pero debe confirmarse en contextos ambiguos.
+
+=====================================================
+64. IVA / IMPUESTOS
+=====================================================
+
+iva
+IVA
+con iva
+sin iva
+más iva
+mas iva
+iva incluido
+precio final
+neto
+neto más iva
+neto mas iva
+percepción
+percepcion
+percepciones
+retención
+retencion
+retenciones
+iibb
+ingresos brutos
+impuestos
+tasa
+
+=====================================================
+65. VENCIMIENTOS / PLAZOS DE PAGO
+=====================================================
+
+contado
+7 días
+7 dias
+15 días
+15 dias
+30 días
+30 dias
+45 días
+45 dias
+60 días
+60 dias
+90 días
+90 dias
+a fecha
+contra entrega
+fin de mes
+a fin de mes
+próximo mes
+proximo mes
+vencimiento
+fecha de vencimiento
+
+=====================================================
+66. DATOS PARA ENTREGA
+=====================================================
+
+dirección
+direccion
+calle
+altura
+número
+numero
+piso
+departamento
+depto
+barrio
+localidad
+ciudad
+provincia
+código postal
+codigo postal
+entre calles
+esquina
+referencia
+portón
+porton
+entrada
+obra
+lote
+manzana
+contacto
+teléfono
+telefono
+quién recibe
+quien recibe
+horario de recepción
+horario de recepcion
+
+=====================================================
+67. INSTRUCCIONES DE ENTREGA
+=====================================================
+
+llamame antes
+llamá antes
+avisame antes
+avisá antes
+llama al llegar
+llamá al llegar
+tocá timbre
+toca timbre
+dejar en portería
+dejar en porteria
+entregar a
+preguntar por
+no descargar
+descargar
+con descarga
+sin descarga
+subir
+dejar abajo
+dejar en depósito
+dejar en deposito
+entrar por
+portón
+porton
+esperar
+no esperar
+
+=====================================================
+68. CONSULTAR DISPONIBILIDAD DE ENTREGA
+=====================================================
+
+podés entregar hoy
+podes entregar hoy
+llegan hoy
+pueden traerlo hoy
+hay reparto hoy
+hay reparto mañana
+cuándo entregan
+cuando entregan
+qué días reparten
+que dias reparten
+a qué hora pasan
+a que hora pasan
+cuándo pueden mandar
+cuando pueden mandar
+cuándo llega
+cuando llega
+
+INTENCIÓN NORMALIZADA:
+CONSULTAR_ENTREGA
+
+=====================================================
+69. FACTURA A NOMBRE DE
+=====================================================
+
+facturá a
+factura a nombre de
+haceme la factura a
+poné la factura a
+usá los datos de
+usa los datos de
+otra razón social
+otra razon social
+otro cuit
+mismo cuit
+cuit de siempre
+datos de siempre
+a nombre mío
+a nombre mio
+a nombre de la empresa
+
+=====================================================
+70. ORDEN DE COMPRA
+=====================================================
+
+orden de compra
+oc
+O.C.
+te mando la orden
+adjunto orden
+número de orden
+numero de orden
+pedido interno
+referencia de compra
+requiere orden
+sin orden
+con orden
+
+=====================================================
+71. ADJUNTOS / FOTOS / AUDIOS
+=====================================================
+
+te mando foto
+te paso foto
+es este
+es esta
+el de la foto
+lo de la foto
+te mando imagen
+te paso imagen
+adjunto
+te mando pdf
+te mando lista
+te mando archivo
+te mando audio
+te explico por audio
+mirá la foto
+mira la foto
+fijate en la foto
+
+INTENCIÓN NORMALIZADA:
+PROCESAR_ADJUNTO
+
+=====================================================
+72. PEDIDO POR LISTA
+=====================================================
+
+te paso una lista
+te mando una lista
+anotá
+anota
+necesito:
+quiero:
+pedido:
+lista:
+sería:
+seria:
+5 cemento
+3 cal
+2 pintura
+10 tornillos
+
+REGLA:
+Aceptar múltiples productos en un solo mensaje.
+
+=====================================================
+73. SEPARADORES HABITUALES EN MENSAJES
+=====================================================
+
+,
+.
+;
+-
+/
++
+y
+también
+tambien
+más
+mas
+x
+
+EJEMPLOS:
+5 cemento, 3 cal y 2 arena
+5 cemento / 3 cal / 2 arena
+5 cemento - 3 cal - 2 arena
+5x cemento
+cemento x5
+5 cemento + 3 cal
+
+=====================================================
+74. FORMAS DE INDICAR MULTIPLICACIÓN / CANTIDAD
+=====================================================
+
+x
+X
+por
+unidades
+u
+uds
+cantidad
+cant
+5x
+x5
+5 x
+x 5
+cemento x5
+5 cemento
+5 de cemento
+
+=====================================================
+75. PEDIDO PARA TERCERO
+=====================================================
+
+es para
+mandalo a nombre de
+lo retira
+retira
+para mi cliente
+para la obra de
+para mi empleado
+para mi socio
+para
+a nombre de
+recibe
+lo recibe
+
+=====================================================
+76. CONSULTAR HORARIO DEL NEGOCIO
+=====================================================
+
+están abiertos
+estan abiertos
+atienden
+hasta qué hora
+hasta que hora
+a qué hora abren
+a que hora abren
+a qué hora cierran
+a que hora cierran
+abren hoy
+abren mañana
+atienden sábado
+atienden sabado
+horario
+
+INTENCIÓN NORMALIZADA:
+CONSULTAR_HORARIO
+
+=====================================================
+77. PEDIDOS MÍNIMOS
+=====================================================
+
+pedido mínimo
+pedido minimo
+mínimo
+minimo
+hay mínimo
+hay minimo
+mínimo de compra
+minimo de compra
+mínimo para envío
+minimo para envio
+monto mínimo
+monto minimo
+
+=====================================================
+78. QUIERO SOLO PRECIO, NO PEDIDO
+=====================================================
+
+solo consulto
+solo quiero precio
+pasame precio nomás
+pasame precio nomas
+no lo cargues
+no hagas pedido
+todavía no
+todavia no
+solo cotización
+solo cotizacion
+solo presupuesto
+estoy averiguando
+estoy comparando
+quiero ver precios
+quiero consultar
+
+INTENCIÓN NORMALIZADA:
+SOLO_CONSULTA
+
+=====================================================
+79. QUEJAS / PROBLEMAS CON EL PEDIDO
+=====================================================
+
+vino mal
+llegó mal
+llego mal
+faltó
+falto
+faltaron
+vino de más
+vino de mas
+vino roto
+vino roto
+vino cambiado
+me mandaron otro
+no es lo que pedí
+no es lo que pedi
+faltó mercadería
+falto mercaderia
+vino menos
+vino más
+vino mas
+quiero reclamar
+reclamo
+problema con pedido
+error en pedido
+
+INTENCIÓN NORMALIZADA:
+RECLAMO_PEDIDO
+
+=====================================================
+80. DEVOLUCIONES
+=====================================================
+
+devolver
+devuelvo
+quiero devolver
+quiero cambiar
+cambio
+devolución
+devolucion
+me sobra
+me sobró
+me sobro
+no lo usé
+no lo use
+vino fallado
+está fallado
+esta fallado
+está roto
+esta roto
+no sirve
+quiero nota de crédito
+quiero nota de credito
+
+INTENCIÓN NORMALIZADA:
+DEVOLUCION
+
+=====================================================
+81. RESPUESTAS DEL ERP RECOMENDADAS - TONO ARGENTINO
+=====================================================
+
+Dale.
+Listo.
+Perfecto.
+Buenísimo.
+Joya.
+De una.
+Ahí te lo agrego.
+Te lo agregué.
+Te lo saco.
+Listo, quedó.
+Quedó cargado.
+Te quedan ...
+Hay stock.
+No tengo stock de ese.
+Tengo estas opciones.
+¿Te sirve esta?
+¿Querés que te ponga esa?
+¿Cuántas necesitás?
+¿Algo más?
+¿Seguimos?
+¿Lo cerramos?
+¿Confirmás?
+¿Lo mandamos a la dirección de siempre?
+¿Lo dejamos en cuenta corriente?
+¿Necesitás factura?
+Te paso el total.
+El total queda en ...
+Pedido confirmado.
+Ya quedó cargado.
+Te aviso cuando salga.
+
+EVITAR ABUSAR DE:
+estimado cliente
+procederemos
+su solicitud ha sido procesada
+seleccione una opción
+ingrese
+hemos registrado exitosamente
+gracias por comunicarse con nosotros
+
+=====================================================
+82. FRASES QUE NO DEBEN TOMARSE LITERALMENTE
+=====================================================
+
+mandame todo
+poneme todo
+dame de todo
+lo que tengas
+cualquiera
+mucho
+poco
+algunos
+varios
+un montón
+un monton
+lo suficiente
+lo necesario
+
+REGLA:
+Confirmar alcance cuando pueda afectar fuertemente el pedido.
+
+=====================================================
+83. PALABRAS PARA CORREGIR / DESHACER
+=====================================================
+
+no
+esperá
+espera
+pará
+para
+me equivoqué
+me equivoque
+perdón
+perdon
+quise decir
+corregí
+corregi
+cambiá
+cambia
+mejor
+en realidad
+no era
+era
+deshacé
+deshace
+volvé atrás
+volve atras
+dejalo como estaba
+
+INTENCIÓN NORMALIZADA:
+CORREGIR_ULTIMA_ACCION
+
+=====================================================
+84. REFERENCIAS TEMPORALES
+=====================================================
+
+hoy
+ayer
+anteayer
+mañana
+pasado mañana
+la otra vez
+la vez pasada
+la semana pasada
+la semana que viene
+el mes pasado
+el próximo mes
+el proximo mes
+último pedido
+ultimo pedido
+pedido anterior
+última compra
+ultima compra
+factura anterior
+última factura
+ultima factura
+
+=====================================================
+85. SINÓNIMOS DE "MANDAR"
+=====================================================
+
+mandar
+mandame
+mandáme
+enviar
+enviame
+enviáme
+traer
+traeme
+traéme
+llevar
+llevame
+lleváme
+despachar
+despachame
+despacháme
+entregar
+entregame
+entregáme
+acercar
+acercame
+acercáme
+hacer llegar
+haceme llegar
+
+=====================================================
+86. SINÓNIMOS DE "PEDIR"
+=====================================================
+
+pedir
+comprar
+encargar
+reservar
+separar
+solicitar
+reponer
+cargar
+anotar
+preparar
+armar
+mandar
+llevar
+traer
+
+=====================================================
+87. SINÓNIMOS DE "AGREGAR"
+=====================================================
+
+agregar
+sumar
+añadir
+poner
+meter
+incluir
+cargar
+anotar
+incorporar
+sumarle
+ponerle
+mandar también
+llevar también
+
+=====================================================
+88. SINÓNIMOS DE "QUITAR"
+=====================================================
+
+sacar
+quitar
+borrar
+eliminar
+remover
+anular
+cancelar
+dejar afuera
+no mandar
+no incluir
+
+=====================================================
+89. SINÓNIMOS DE "CERRAR PEDIDO"
+=====================================================
+
+cerrar
+terminar
+finalizar
+confirmar
+procesar
+cargar
+mandar
+hacer
+registrar
+pasar
+emitir
+guardar
+listo
+nada más
+
+=====================================================
+90. INTENCIONES PRINCIPALES PARA EL MOTOR DE IA
+=====================================================
+
+SALUDO
+IDENTIFICAR_CLIENTE
+CREAR_PEDIDO
+AGREGAR_ITEM
+QUITAR_ITEM
+MODIFICAR_CANTIDAD
+CAMBIAR_PRODUCTO
+CONSULTAR_PRODUCTO
+CONSULTAR_STOCK
+BUSCAR_ALTERNATIVA
+CONSULTAR_PRECIO
+CONSULTAR_TOTAL
+CONSULTAR_DESCUENTO
+CONSULTAR_PROMOCION
+FINALIZAR_CARGA
+CONFIRMAR
+NEGAR
+CANCELAR_PEDIDO
+DEFINIR_ENTREGA
+DEFINIR_FECHA_ENTREGA
+RETIRO
+FORMA_PAGO
+CUENTA_CORRIENTE
+FACTURAR
+GENERAR_REMITO
+PRESUPUESTAR
+NOTA_PEDIDO
+REPETIR_PEDIDO
+CONSULTAR_PEDIDO
+MODIFICAR_PEDIDO_EXISTENTE
+CONSULTAR_CUENTA_CORRIENTE
+DERIVAR_A_HUMANO
+PEDIDO_URGENTE
+CONSULTAR_COSTO_ENVIO
+FILTRO_PRECIO
+PROCESAR_ADJUNTO
+CONSULTAR_ENTREGA
+CONSULTAR_HORARIO
+SOLO_CONSULTA
+RECLAMO_PEDIDO
+DEVOLUCION
+CORREGIR_ULTIMA_ACCION
+OPERACION_CANTIDAD
+
+=====================================================
+91. ENTIDADES QUE DEBE EXTRAER LA IA
+=====================================================
+
+cliente
+nombre_cliente
+cuit
+dni
+razon_social
+telefono
+email
+producto
+codigo_producto
+codigo_barras
+marca
+rubro
+subrubro
+cantidad
+unidad_medida
+presentacion
+color
+talle
+medida
+precio
+precio_maximo
+descuento
+promocion
+sucursal
+deposito
+stock
+direccion_entrega
+localidad
+provincia
+codigo_postal
+fecha_entrega
+hora_entrega
+forma_pago
+banco
+tarjeta
+cheque
+cuenta_corriente
+vendedor
+tipo_comprobante
+punto_venta
+numero_pedido
+numero_factura
+numero_remito
+orden_compra
+observaciones
+persona_recibe
+telefono_recibe
+
+=====================================================
+92. REGLAS IMPORTANTES PARA IMPLEMENTAR
+=====================================================
+
+1. No inventar productos.
+2. No inventar precios.
+3. No inventar stock.
+4. No inventar descuentos.
+5. No inventar saldo de cuenta corriente.
+6. No inventar direcciones.
+7. Buscar siempre los datos reales en el ERP.
+8. Usar contexto para respuestas como "ese", "esa", "sí", "5", "el primero".
+9. Permitir varios productos en un mismo mensaje.
+10. Permitir que el cliente corrija el pedido en cualquier momento.
+11. Mantener un carrito/pedido borrador por conversación.
+12. No confirmar cada producto si no existe ambigüedad.
+13. Confirmar siempre antes de registrar definitivamente el pedido.
+14. Confirmar acciones sensibles: facturación, cuenta corriente, cancelación y cambios críticos.
+15. Si una búsqueda devuelve muchos productos, mostrar pocas opciones relevantes.
+16. Entender abreviaturas y errores ortográficos.
+17. Normalizar mayúsculas, minúsculas y tildes.
+18. Considerar singular/plural.
+19. Considerar códigos de barra alternativos.
+20. Considerar presentaciones y equivalencias: unidad, pack, caja, bulto.
+21. Mantener memoria del cliente y del pedido actual.
+22. Consultar pedidos anteriores cuando el cliente diga "lo mismo de la otra vez".
+23. No confundir una consulta de precio con una confirmación de pedido.
+24. Si el cliente dice "solo presupuesto", no generar pedido definitivo.
+25. Si el cliente dice "no lo cargues todavía", mantener borrador.
+26. Si hay falta de stock, ofrecer alternativas reales.
+27. Aplicar lista de precios del cliente desde el ERP.
+28. Aplicar promociones desde el ERP, no desde la IA.
+29. Respetar condición de venta y límite de crédito.
+30. Registrar auditoría de lo interpretado y lo ejecutado.
+
+=====================================================
+93. EJEMPLOS DE MENSAJES REALES QUE DEBE ENTENDER
+=====================================================
+
+hola mandame 10 cemento holcim y 5 cal
+poneme 3 de la primera
+no, esa no, la otra
+dejame 5 nomás
+agregame 2 más
+sacame la cal
+cuánto llevo
+tenés stock de membrana
+qué precio tiene
+mandame la que compré la otra vez
+haceme lo mismo que el viernes
+duplicame el cemento
+la cal dejame la mitad
+si no hay holcim mandame loma negra
+pasame precio primero no lo cargues
+mandalo mañana
+mandalo a la obra de san martin
+a la dirección de siempre
+lo retiro yo
+dejalo preparado
+lo pago en efectivo
+te hago transferencia
+dejalo en cuenta corriente
+factura A
+mandame remito
+haceme presupuesto
+confirmalo
+dale cerralo
+no pará, agregame 5 silicona
+me equivoqué, eran 10 no 5
+borrá todo
+cancelame el pedido
+cuándo llega
+ya salió mi pedido
+me pasás la factura
+cuánto debo
+qué saldo tengo
+hablo con un vendedor
+vino mal el pedido
+me faltaron 2 cajas
+quiero devolver uno
+
+=====================================================
+94. NORMALIZACIONES SUGERIDAS
+=====================================================
+
+"mandame" -> ENVIAR/AGREGAR según contexto
+"poneme" -> AGREGAR_ITEM
+"sacame" -> QUITAR_ITEM
+"dejame 5" -> MODIFICAR_CANTIDAD
+"sumame 2" -> MODIFICAR_CANTIDAD
+"ese" -> REFERENCIA_CONTEXTO
+"el primero" -> OPCION_1
+"la otra" -> ALTERNATIVA_SIGUIENTE
+"de una" -> CONFIRMAR
+"dale" -> CONFIRMAR según contexto
+"listo" -> puede ser CONFIRMAR o FINALIZAR_CARGA según contexto
+"nada más" -> FINALIZAR_CARGA
+"cerralo" -> FINALIZAR_CARGA
+"cuánto llevo" -> CONSULTAR_TOTAL
+"lo mismo" -> REPETIR/REFERENCIA_CONTEXTO
+"de siempre" -> USAR_DATO_HABITUAL
+"en cuenta" -> CUENTA_CORRIENTE
+"te transfiero" -> TRANSFERENCIA
+"paso a buscar" -> RETIRO
+"para mañana" -> FECHA_ENTREGA
+"urgente" -> PRIORIDAD_ALTA
+"solo precio" -> SOLO_CONSULTA
+"no lo cargues" -> MANTENER_BORRADOR
+"me equivoqué" -> CORREGIR_ULTIMA_ACCION
+
+=====================================================
+95. FIN DEL DICCIONARIO
+=====================================================
+
+Este diccionario debe crecer con mensajes reales.
+La mejor estrategia es guardar las frases que el sistema no pudo interpretar,
+revisarlas y agregarlas como ejemplos de entrenamiento o sinónimos.
+
+Versión inicial orientada a ERP argentino + WhatsApp.

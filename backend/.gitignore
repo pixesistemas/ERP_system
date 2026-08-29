@@ -1,0 +1,10 @@
+node_modules/
+.env
+*.log
+src/certificates/**/cert.crt
+src/certificates/**/private.key
+src/cache/**/*.xml
+src/cache/**/*.tmp
+data/*.db-shm
+data/*.db-wal
+storage/pdfs/

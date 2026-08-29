@@ -1,0 +1,4 @@
+import { useState, useEffect } from "react";
+import { api } from "../../services/api";
+
+export function StockMovementsPage(){ const [rows,setRows]=useState<any[]>([]); const [error,setError]=useState(""); useEffect(()=>{api.listStockMovements().then(r=>setRows(r.movimientos||[])).catch((e:any)=>setError(e.message))},[]); return <div className="products-page">{error&&<div className="error-box">{error}</div>}<div className="products-card"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Producto</th><th>Cantidad</th><th>Motivo</th></tr></thead><tbody>{rows.map((r:any)=><tr key={r.id}><td>{new Date(r.created_at||r.fecha).toLocaleString('es-AR')}</td><td><strong>{r.tipo}</strong></td><td>{r.codigo||'-'} · {r.descripcion}</td><td>{Number(r.cantidad).toLocaleString('es-AR')}</td><td>{r.motivo||'-'}</td></tr>)}</tbody></table>{!rows.length&&<div className="empty-table">No hay movimientos registrados.</div>}</div></div> }

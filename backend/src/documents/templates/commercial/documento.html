@@ -1,0 +1,352 @@
+<!doctype html>
+
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+
+    <style>
+      @page {
+        size: A4;
+        margin: 8mm;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        width: 100%;
+        min-height: 281mm;
+        margin: 0;
+        font-family: Arial, sans-serif;
+        font-size: 11px;
+        color: #000;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .header {
+        border: 1px solid #000;
+        display: grid;
+        grid-template-columns: 1fr 60px 1.35fr;
+        min-height: 48mm;
+      }
+
+      .header-box {
+        padding: 8px;
+      }
+
+      .header-box + .header-box {
+        border-left: 1px solid #000;
+      }
+
+      .header-center {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 6px;
+      }
+
+      .letter-box {
+        font-size: 44px;
+        font-weight: bold;
+        line-height: 1;
+        border: 2px solid #000;
+        padding: 8px 14px;
+        border-radius: 4px;
+      }
+
+      .cod-box {
+        font-size: 10px;
+        font-weight: bold;
+      }
+
+      .logo {
+        max-width: 170px;
+        max-height: 48px;
+        object-fit: contain;
+        margin-bottom: 4px;
+      }
+
+      .empresa-nombre {
+        font-size: 17px;
+        font-weight: bold;
+        margin-bottom: 3px;
+      }
+
+      .header-line {
+        margin: 2px 0;
+      }
+
+      .fechas {
+        border: 1px solid #000;
+        border-top: 0;
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        text-align: center;
+        font-size: 9px;
+        font-weight: bold;
+        padding: 5px 0;
+      }
+
+      .fechas > div + div {
+        border-left: 1px solid #000;
+      }
+
+      .cliente {
+        border: 1px solid #000;
+        border-top: 0;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px 18px;
+        padding: 7px 8px;
+        line-height: 1.45;
+      }
+
+      .detail {
+        flex: 1;
+        border-left: 1px solid #000;
+        border-right: 1px solid #000;
+        padding-top: 5px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+      }
+
+      th {
+        padding: 5px;
+        border: 1px solid #000;
+        background: #e5e5e5;
+        font-size: 10px;
+      }
+
+      td {
+        padding: 5px;
+        border-left: 1px solid #000;
+        border-right: 1px solid #000;
+        vertical-align: top;
+        overflow-wrap: break-word;
+      }
+
+      .col-qty {
+        width: 14mm;
+      }
+
+      .col-code {
+        width: 24mm;
+      }
+
+      .col-unit {
+        width: 16mm;
+      }
+
+      .col-price {
+        width: 27mm;
+      }
+
+      .col-disc {
+        width: 16mm;
+      }
+
+      .col-sub {
+        width: 29mm;
+      }
+
+      .center {
+        text-align: center;
+      }
+
+      .right {
+        text-align: right;
+      }
+
+      .empty-detail {
+        text-align: center;
+        padding: 16px;
+        color: #555;
+      }
+
+      .footer {
+        margin-top: auto;
+        border: 1px solid #000;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        min-height: 40mm;
+      }
+
+      .observations {
+        padding: 8px;
+        min-width: 0;
+      }
+
+      .totals {
+        width: 80mm;
+        border-left: 1px solid #000;
+        padding: 8px 8px 4px 10px;
+      }
+
+      .total-row {
+        display: grid;
+        grid-template-columns: 1fr 35mm;
+        gap: 5px;
+        margin-bottom: 6px;
+      }
+
+      .grand-total {
+        border-top: 1px solid #000;
+        padding-top: 7px;
+        font-size: 16px;
+        font-weight: bold;
+      }
+
+      .legend {
+        margin-top: 8px;
+        font-size: 10px;
+        font-weight: bold;
+      }
+
+      .declared-value {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        margin-top: 8px;
+        padding: 3px 6px;
+        border: 1px solid #999;
+        font-size: 9px;
+      }
+
+      .declared-value:empty {
+        display: none;
+      }
+
+      .signature {
+        margin-top: 18px;
+        display: flex;
+        justify-content: space-between;
+        gap: 15px;
+      }
+
+      .signature-line {
+        width: 48%;
+        border-top: 1px solid #000;
+        padding-top: 4px;
+        text-align: center;
+      }
+    </style>
+  </head>
+
+  <body>
+    <section class="header">
+      <div class="header-box">
+        {{LOGO}}
+
+        <div class="empresa-nombre">{{EMPRESA_NOMBRE}}</div>
+
+        <div class="header-line"><strong>De:</strong> {{EMPRESA_RAZON_SOCIAL}}</div>
+
+        <div class="header-line">Mail: {{EMPRESA_EMAIL}}</div>
+
+        <div class="header-line">{{EMPRESA_DIRECCION}}</div>
+
+        <div class="header-line">
+          Telefono: {{EMPRESA_TELEFONO}}<span class="header-whatsapp"> Whatsapp {{EMPRESA_WHATSAPP}}</span>
+        </div>
+      </div>
+
+      <div class="header-box header-center">
+        <div class="letter-box">{{LETRA}}</div>
+
+        <div class="cod-box">Cod.{{CODIGO_COMPROBANTE}}</div>
+      </div>
+
+      <div class="header-box">
+        <div class="header-line"><strong>Fecha de Emisión:</strong> {{DOCUMENTO_FECHA}}</div>
+
+        <div class="header-line"><strong>{{ORIGINAL}}</strong></div>
+
+        <div class="document-title" style="font-size: 15px; font-weight: bold; text-align: center; margin: 5px 0">
+          {{DOCUMENTO_TITULO}} N° -{{PUNTO_VENTA}}-{{NUMERO}}
+        </div>
+
+        <div class="header-line"><strong>Condición IVA:</strong> {{EMPRESA_IVA}}</div>
+
+        <div class="header-line"><strong>CUIT:</strong> {{EMPRESA_CUIT}}</div>
+
+        <div class="header-line"><strong>Ingresos Brutos:</strong> {{EMPRESA_IIBB}}</div>
+
+        <div class="header-line"><strong>Inicio Actividad:</strong> {{EMPRESA_INICIO}}</div>
+      </div>
+    </section>
+
+    <section class="cliente">
+      <div>
+        <strong>CUIT/DNI/CUIL:</strong>
+        {{CLIENTE_DOCUMENTO}}
+      </div>
+
+      <div>
+        <strong>Apellido y Nombre/Razón Social:</strong>
+        {{CLIENTE_NOMBRE}}
+      </div>
+
+      <div>
+        <strong>Condición Frente al IVA:</strong>
+        {{CLIENTE_IVA}}
+      </div>
+
+      <div>
+        <strong>Domicilio:</strong>
+        {{CLIENTE_DOMICILIO}}
+      </div>
+
+      <div>
+        <strong>Condición de Venta:</strong>
+        {{CLIENTE_CONDICION_VENTA}}
+      </div>
+
+      <div>
+        <strong>Provincia/Ciudad:</strong>
+        {{CLIENTE_PROVINCIA}}
+      </div>
+    </section>
+
+    <section class="detail">
+      <table>
+        <thead>
+          {{DETAIL_HEADER}}
+        </thead>
+
+        <tbody>
+          {{ITEMS}}
+        </tbody>
+      </table>
+    </section>
+
+    <footer class="footer">
+      <div class="observations">
+        <strong>Observaciones:</strong>
+
+        <div>{{OBSERVACIONES}}</div>
+
+        {{DECLARED_VALUE}}
+
+        <div class="legend">{{LEYENDA_NO_FISCAL}}</div>
+
+        <div class="pie-pagina" style="margin-top: 10px; font-size: 0.85em; white-space: pre-line;">{{PIE}}</div>
+
+        <div class="signature">
+          <div class="signature-line">Firma</div>
+
+          <div class="signature-line">Aclaración</div>
+        </div>
+      </div>
+
+      {{TOTALS_BLOCK}}
+    </footer>
+  </body>
+</html>

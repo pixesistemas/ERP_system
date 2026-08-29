@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      @page {
+        size: A4;
+        margin: 8mm;
+      }
+
+      body {
+        font-family: Arial, sans-serif;
+        font-size: 11px;
+        height: 281mm;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .header {
+        display: grid;
+        grid-template-columns: 1fr 70px 1fr;
+        border: 1px solid #000;
+        min-height: 48mm;
+      }
+
+      .box {
+        padding: 8px;
+        text-align: center;
+      }
+
+      .logo {
+        max-width: 190px;
+        max-height: 65px;
+        margin-bottom: 8px;
+      }
+
+      .letter {
+        border-left: 1px solid #000;
+        border-right: 1px solid #000;
+        text-align: center;
+        padding-top: 6px;
+      }
+
+      .letter-big {
+        font-size: 42px;
+        font-weight: bold;
+      }
+
+      .cliente {
+        border: 1px solid #000;
+        border-top: none;
+        padding: 7px;
+        line-height: 1.7;
+      }
+
+      .detalle {
+        flex: 1;
+        border-left: 1px solid #000;
+        border-right: 1px solid #000;
+        padding-top: 6px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th {
+        background: #d9d9d9;
+        border: 1px solid #000;
+        padding: 4px;
+      }
+
+      td {
+        border-left: 1px solid #000;
+        border-right: 1px solid #000;
+        padding: 4px;
+      }
+
+      .center {
+        text-align: center;
+      }
+      .right {
+        text-align: right;
+      }
+
+      .footer {
+        margin-top: auto;
+        border: 1px solid #000;
+        min-height: 45mm;
+        display: grid;
+        grid-template-columns: 40mm 1fr;
+        padding: 8px;
+      }
+
+      .qr img {
+        width: 34mm;
+        height: 34mm;
+      }
+
+      .totales {
+        text-align: right;
+        font-size: 14px;
+        align-self: start;
+      }
+
+      .totales-row {
+        display: grid;
+        grid-template-columns: 1fr 45mm;
+        gap: 10px;
+        margin-bottom: 5px;
+      }
+
+      .total-final {
+        font-size: 20px;
+        font-weight: bold;
+      }
+
+      .transparencia {
+        margin-top: 20px;
+        text-align: right;
+        font-size: 12px;
+      }
+
+      .cae {
+        font-size: 10px;
+        margin-top: 4px;
+      }
+      .comprobante-asociado {
+        border-top: 1px solid #000;
+        margin-top: 5px;
+        padding-top: 5px;
+        font-size: 10px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <section class="header">
+      <div class="box">
+        {{LOGO}}
+        <h2>{{EMPRESA_NOMBRE}}</h2>
+        <div>De: {{EMPRESA_RAZON}}</div>
+        <div>Mail: {{EMPRESA_EMAIL}}</div>
+        <div>{{EMPRESA_DIRECCION}}</div>
+        <div>Telefono: {{EMPRESA_TELEFONO}} Whatsapp {{EMPRESA_WHATSAPP}}</div>
+      </div>
+
+      <div class="letter">
+        <div class="letter-big">{{LETRA}}</div>
+        <div>Cod.{{CODIGO_COMPROBANTE}}</div>
+      </div>
+
+      <div class="box">
+        <div><strong>Fecha de Emisión</strong> {{FECHA}}</div>
+        <h2>ORIGINAL 1/1</h2>
+        <h2>{{COMPROBANTE_NOMBRE}} N° -{{PUNTO_VENTA}}-{{NUMERO}}</h2>
+        <div><strong>Condición IVA:</strong>{{EMPRESA_IVA}}</div>
+        <div><strong>CUIT:</strong> {{EMPRESA_CUIT}}</div>
+        <div><strong>Ingresos Brutos:</strong> {{EMPRESA_IIBB}}</div>
+        <div><strong>Inicio Actividad:</strong> {{EMPRESA_INICIO}}</div>
+      </div>
+    </section>
+
+    <section class="cliente">
+      <div>
+        <strong>CUIT/DNI/CUIL:</strong> {{CLIENTE_DOC}} &nbsp;&nbsp;&nbsp;
+        <strong>Apellido y Nombre / Razón Social:</strong> {{CLIENTE_NOMBRE}}
+      </div>
+
+      <div>
+        <strong>Condición Frente al IVA:</strong> {{CLIENTE_IVA}}
+        &nbsp;&nbsp;&nbsp; <strong>Domicilio:</strong> {{CLIENTE_DOMICILIO}}
+      </div>
+      {{COMPROBANTE_ASOCIADO}}
+    </section>
+
+    <section class="detalle">
+      <table>
+        <thead>
+          {{HEADER_ITEMS}}
+        </thead>
+        <tbody>
+          {{ITEMS}}
+        </tbody>
+      </table>
+    </section>
+
+    <footer class="footer">
+      <div class="qr">
+        <img src="{{QR}}" />
+        <div class="cae">
+          CAE: {{CAE}}<br />
+          VTO CAE: {{CAE_VTO}}
+        </div>
+      </div>
+
+      <div class="totales">{{TOTALES}} {{TRANSPARENCIA_FISCAL}}</div>
+    </footer>
+  </body>
+</html>

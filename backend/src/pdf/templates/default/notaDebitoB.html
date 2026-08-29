@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      @page {
+        size: A4;
+        margin: 8mm;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: Arial, sans-serif;
+        font-size: 11px;
+        height: 281mm;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .header {
+        display: grid;
+        grid-template-columns: 1fr 60px 1.35fr;
+        border: 1px solid #000;
+        min-height: 50mm;
+      }
+
+      .box {
+        padding: 8px;
+      }
+
+      .box-left {
+        text-align: left;
+      }
+
+      .box-right {
+        border-left: 1px solid #000;
+        text-align: left;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .box-right::before {
+        content: "ORIGINAL";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) rotate(-35deg);
+        font-size: 34px;
+        font-weight: 900;
+        letter-spacing: 2px;
+        color: rgba(0, 0, 0, 0.07);
+        white-space: nowrap;
+        pointer-events: none;
+      }
+
+      .box-right > div {
+        position: relative;
+      }
+
+      .fecha-sello {
+        position: relative;
+        display: inline-block;
+      }
+
+      .logo {
+        max-width: 190px;
+        max-height: 65px;
+        margin-bottom: 8px;
+      }
+
+      .empresa-nombre {
+        font-size: 18px;
+        font-weight: bold;
+        margin-bottom: 4px;
+      }
+
+      .letter {
+        border-left: 1px solid #000;
+        border-right: 1px solid #000;
+        text-align: center;
+        padding-top: 8px;
+      }
+
+      .letter-big {
+        font-size: 48px;
+        font-weight: bold;
+      }
+
+      .fechas {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        border: 1px solid #000;
+        border-top: none;
+      }
+
+      .fechas div {
+        padding: 4px 8px;
+        font-size: 10px;
+      }
+
+      .fechas div + div {
+        border-left: 1px solid #000;
+      }
+
+      .cliente {
+        border: 1px solid #000;
+        border-top: none;
+        padding: 6px 8px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 3px 18px;
+        font-size: 11px;
+      }
+
+      .cliente div {
+        overflow-wrap: break-word;
+      }
+
+      .detalle {
+        flex: 1;
+        border-left: 1px solid #000;
+        border-right: 1px solid #000;
+        padding-top: 5px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+      }
+
+      th {
+        background: #d9d9d9;
+        border: 1px solid #000;
+        padding: 4px;
+        font-size: 10px;
+        text-align: center;
+      }
+
+      td {
+        border-left: 1px solid #000;
+        border-right: 1px solid #000;
+        padding: 4px;
+        vertical-align: top;
+        overflow-wrap: break-word;
+      }
+
+      .col-qty { width: 13mm; }
+      .col-desc { width: auto; }
+      .col-code { width: 20mm; }
+      .col-unit { width: 14mm; }
+      .col-price { width: 24mm; }
+      .col-disc { width: 12mm; }
+      .col-sub { width: 26mm; }
+      .col-tax { width: 18mm; }
+      .col-subtax { width: 26mm; }
+
+      .iva-line td {
+        font-size: 10px;
+        border-top: 1px dashed #bbb;
+        padding-top: 2px;
+      }
+
+      .center {
+        text-align: center;
+      }
+      .right {
+        text-align: right;
+      }
+
+      .footer {
+        margin-top: auto;
+        border: 1px solid #000;
+        min-height: 46mm;
+        display: grid;
+        grid-template-columns: 38mm 1fr;
+        padding: 8px;
+      }
+
+      .qr img {
+        width: 32mm;
+        height: 32mm;
+      }
+
+      .cae-line {
+        margin-top: 4px;
+        font-size: 10px;
+      }
+
+      .totales {
+        text-align: right;
+        font-size: 13px;
+        align-self: start;
+      }
+
+      .totales-row {
+        display: grid;
+        grid-template-columns: 1fr 48mm;
+        gap: 10px;
+        margin-bottom: 4px;
+      }
+
+      .total-final {
+        font-size: 18px;
+        font-weight: bold;
+      }
+
+      .transparencia {
+        margin-top: 14px;
+        text-align: right;
+        font-size: 11px;
+      }
+
+      .pie-pagina {
+        margin-top: 10px;
+        font-size: 0.85em;
+        text-align: center;
+        white-space: pre-line;
+      }
+
+      .comprobante-asociado {
+        border-top: 1px solid #000;
+        margin-top: 4px;
+        padding-top: 4px;
+        font-size: 10px;
+        grid-column: 1 / -1;
+      }
+    </style>
+  </head>
+
+  <body>
+    <section class="header">
+      <div class="box box-left">
+        {{LOGO}}
+        <div class="empresa-nombre">{{EMPRESA_NOMBRE}}</div>
+        <div>De: {{EMPRESA_RAZON}}</div>
+        <div>Mail: {{EMPRESA_EMAIL}}</div>
+        <div>{{EMPRESA_DIRECCION}}</div>
+        <div>Telefono: {{EMPRESA_TELEFONO}} Whatsapp {{EMPRESA_WHATSAPP}}</div>
+      </div>
+
+      <div class="letter">
+        <div class="letter-big">{{LETRA}}</div>
+        <div>Cod.{{CODIGO_COMPROBANTE}}</div>
+      </div>
+
+      <div class="box box-right">
+        <div><strong>Fecha de Emisión</strong> <span class="fecha-sello">{{FECHA}}</span></div>
+        <div style="font-size: 15px; font-weight: bold; margin: 3px 0;">ORIGINAL 1/1</div>
+        <div style="font-size: 14px; font-weight: bold;">{{COMPROBANTE_NOMBRE}} N° -{{PUNTO_VENTA}}-{{NUMERO}}</div>
+        <div><strong>Condición IVA:</strong> {{EMPRESA_IVA}}</div>
+        <div><strong>CUIT:</strong> {{EMPRESA_CUIT}}</div>
+        <div><strong>Ingresos Brutos:</strong> {{EMPRESA_IIBB}}</div>
+        <div><strong>Inicio Actividad:</strong> {{EMPRESA_INICIO}}</div>
+        {{VENDEDOR_ROW}}
+      </div>
+    </section>
+
+    <section class="fechas">
+      <div><strong>Fecha de Vencimiento</strong><br />{{FECHA_VENCIMIENTO}}</div>
+      <div><strong>Fecha Serv. desde</strong><br />{{FECHA_SERV_DESDE}}</div>
+      <div><strong>Fecha Serv. hasta</strong><br />{{FECHA_SERV_HASTA}}</div>
+    </section>
+
+    <section class="cliente">
+      <div><strong>CUIT/DNI/CUIL:</strong> {{CLIENTE_DOC}}</div>
+      <div><strong>Apellido y Nombre / Razón Social:</strong> {{CLIENTE_NOMBRE}}</div>
+      <div><strong>Condición Frente al IVA:</strong> {{CLIENTE_IVA}}</div>
+      <div><strong>Domicilio:</strong> {{CLIENTE_DOMICILIO}}</div>
+      <div><strong>Condición de Venta:</strong> {{CLIENTE_CONDICION_VENTA}}</div>
+      <div><strong>Provincia/Ciudad:</strong> {{CLIENTE_PROVINCIA}}</div>
+      {{COMPROBANTE_ASOCIADO}}
+    </section>
+
+    <section class="detalle">
+      <table>
+        <thead>
+          {{HEADER_ITEMS}}
+        </thead>
+        <tbody>
+          {{ITEMS}}
+        </tbody>
+      </table>
+    </section>
+
+    <footer class="footer">
+      <div class="qr">
+        <img src="{{QR}}" />
+        <div class="cae-line">
+          CAE: {{CAE}} VENCIMIENTO CAE: {{CAE_VTO}}
+        </div>
+      </div>
+
+      <div class="totales">{{TOTALES}} {{TRANSPARENCIA_FISCAL}}</div>
+      <div class="pie-pagina">{{PIE}}</div>
+    </footer>
+  </body>
+</html>

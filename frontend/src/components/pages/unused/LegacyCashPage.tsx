@@ -1,0 +1,14 @@
+import { useState } from "react";
+import { useServerRows, useServerValue } from "../../../hooks/useServerStorage";
+
+export function LegacyCashPage({onNavigate}:{onNavigate:(page:string)=>void}){
+  const [rows,saveRows]=useServerRows('afip_cash_movements',[]);
+  const [session,setSession,saveSession]=useServerValue<any>('afip_cash_session',null);
+  const [amount,setAmount]=useState(0); const [concept,setConcept]=useState("");
+  const income=rows.reduce((a:number,r:any)=>a+(r.tipo==='VENTA'||r.tipo==='INGRESO'?Number(r.importe):0),0); const expenses=rows.reduce((a:number,r:any)=>a+(r.tipo==='EGRESO'?Number(r.importe):0),0); const total=Number(session?.apertura||0)+income-expenses;
+  function persist(next:any[]){saveRows(next)}
+  function openCash(){const apertura=Number(prompt('Importe inicial de caja','0')||0);const x={fecha:new Date().toISOString(),apertura};setSession(x);saveSession(x).catch(()=>{})}
+  function add(type:'INGRESO'|'EGRESO'){if(!amount||!concept)return;persist([{id:Date.now(),fecha:new Date().toISOString(),tipo:type,concepto:concept,importe:amount,medios:{efectivo:amount},cliente:'-'},...rows]);setAmount(0);setConcept('')}
+  function closeCash(){if(!confirm(`Cerrar caja con saldo teórico $ ${total.toLocaleString('es-AR',{minimumFractionDigits:2})}?`))return;setSession(null);saveSession(null).then(()=>onNavigate('cash-closes')).catch(()=>{})}
+  return <div className="products-page"><div className="products-toolbar"><div><h3>Caja actual</h3><p>Apertura, ventas, ingresos, egresos y cierre.</p></div><div className="cash-total"><span>SALDO TEÓRICO</span><strong>$ {total.toLocaleString('es-AR',{minimumFractionDigits:2})}</strong></div></div><div className="cash-actions">{!session?<button className="primary-action" onClick={openCash}>Abrir caja</button>:<><input placeholder="Concepto" value={concept} onChange={e=>setConcept(e.target.value)}/><input type="number" placeholder="Importe" value={amount||''} onChange={e=>setAmount(Number(e.target.value))}/><button onClick={()=>add('INGRESO')}>Ingreso</button><button onClick={()=>add('EGRESO')}>Egreso</button><button className="danger-action" onClick={closeCash}>Cerrar caja</button></>}</div><div className="products-card"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th>Cliente</th><th>Medios</th><th>Importe</th></tr></thead><tbody>{rows.map((r:any)=><tr key={r.id}><td>{new Date(r.fecha).toLocaleString('es-AR')}</td><td>{r.tipo}</td><td>{r.concepto}</td><td>{r.cliente}</td><td>{Object.entries(r.medios||{}).filter(([,v])=>Number(v)>0).map(([k,v])=>`${k}: $${Number(v).toLocaleString('es-AR')}`).join(' · ')}</td><td className="price">$ {Number(r.importe).toLocaleString('es-AR',{minimumFractionDigits:2})}</td></tr>)}</tbody></table>{!rows.length&&<div className="empty-table">Todavía no hay movimientos de caja.</div>}</div></div>
+}

@@ -1,0 +1,21 @@
+{
+  "name": "afip-conversacional-demo-frontend",
+  "private": true,
+  "version": "4.0.0-beta.2.2",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "audit:no-local-storage": "node ../scripts/audit-browser-storage.js"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "latest",
+    "vite": "latest",
+    "typescript": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "lucide-react": "latest"
+  },
+  "devDependencies": {}
+}

@@ -1,0 +1,11 @@
+import { useState } from "react";
+import { Plus, Trash2 } from "lucide-react";
+import { useServerRows } from "../../hooks/useServerStorage";
+
+export function CatalogsPage(){
+  const [rows,save]=useServerRows('afip_catalogs_v34',[{id:1,tipo:'RUBRO',nombre:'Ferretería'},{id:2,tipo:'SUBRUBRO',nombre:'Tornillos',rubroId:1}]);
+  const [tab,setTab]=useState<'RUBRO'|'SUBRUBRO'|'MARCA'>('RUBRO'); const [name,setName]=useState(''); const [rubroId,setRubroId]=useState('');
+  const rubros=rows.filter((r:any)=>r.tipo==='RUBRO'); const visible=rows.filter((r:any)=>r.tipo===tab);
+  function add(){if(!name.trim())return;if(tab==='SUBRUBRO'&&!rubroId){alert('Seleccioná el rubro al que pertenece el subrubro.');return}save([{id:Date.now(),tipo:tab,nombre:name.trim(),rubroId:tab==='SUBRUBRO'?Number(rubroId):null},...rows]);setName('')}
+  return <div className="products-page"><div className="products-toolbar"><div><h3>Catálogos de productos</h3><p>Rubros, subrubros y marcas organizados en solapas.</p></div></div><div className="catalog-tabs"><button className={tab==='RUBRO'?'active':''} onClick={()=>setTab('RUBRO')}>Rubros</button><button className={tab==='SUBRUBRO'?'active':''} onClick={()=>setTab('SUBRUBRO')}>Subrubros</button><button className={tab==='MARCA'?'active':''} onClick={()=>setTab('MARCA')}>Marcas</button></div><div className="inline-form catalog-form">{tab==='SUBRUBRO'&&<select value={rubroId} onChange={e=>setRubroId(e.target.value)}><option value="">Rubro...</option>{rubros.map((r:any)=><option key={r.id} value={r.id}>{r.nombre}</option>)}</select>}<input value={name} onChange={e=>setName(e.target.value)} placeholder={`Nombre de ${tab.toLowerCase()}`}/><button className="primary-action" onClick={add}><Plus/> Agregar</button></div><div className="products-card"><table><thead><tr><th>Nombre</th>{tab==='SUBRUBRO'&&<th>Rubro</th>}<th></th></tr></thead><tbody>{visible.map((r:any)=><tr key={r.id}><td><strong>{r.nombre}</strong></td>{tab==='SUBRUBRO'&&<td>{rubros.find((x:any)=>x.id===r.rubroId)?.nombre||'Sin rubro'}</td>}<td><button onClick={()=>save(rows.filter((x:any)=>x.id!==r.id))}><Trash2 size={16}/></button></td></tr>)}</tbody></table>{!visible.length&&<div className="empty-table">No hay registros en esta solapa.</div>}</div></div>
+}

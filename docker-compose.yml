@@ -1,0 +1,29 @@
+services:
+  erp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    container_name: afip-conversacional-erp
+    ports:
+      - "3000:3000"
+    volumes:
+      - erp_data:/app/data
+      - erp_storage:/app/backend/storage
+    env_file:
+      - .env
+    environment:
+      # Estos se sobreescriben a los valores de .env (si querés forzarlos):
+      - TZ=America/Argentina/Buenos_Aires
+      - DB_PATH=/app/data/afip_api.db
+      # Configura al dominio/reverso público cuando lo tengas:
+      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-http://localhost:3000}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  erp_data:
+  erp_storage:
