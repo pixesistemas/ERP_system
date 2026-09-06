@@ -67,25 +67,21 @@ docker compose up -d --build   # reconstruye y levanta
 
 ---
 
-## 4. Configurar `.env` en el servidor
+## 4. Variables de entorno
 
-Copiá la plantilla y completá los valores (NO commitees este archivo):
+En Portainer se cargan desde la sección **"Environment variables"** del Stack (no hace falta un `.env` en el servidor, porque el compose ya las define con valores por defecto).
 
-```bash
-cd /opt/afip-conversacional
-cp .env.production.example .env
-nano .env
-```
-
-Variables importantes para producción:
-
+Obligatoria (sin esto no arranca):
 - `JWT_SECRET`: una clave larga y única (ej: `GeneraUnaClaveDeAlMenos32Chars!`)
+
+Importantes para producción:
 - `DEMO_MODE=false`
 - `AFIP_PRODUCTION=true`
-- `OPENSSL=openssl` (en Linux va así)
+- `OPENSSL=openssl`
 - `PUBLIC_BASE_URL=https://erp.midominio.com.ar` (sin barra final). **Obligatorio** para que los QR/PDF tengan URL pública.
-- MercadoPago (para pago real): `MERCADOPAGO_ACCESS_TOKEN` y `MERCADOPAGO_POS_ID`. Si quedan vacíos, el asistente genera un QR simulado (modo demo).
-- Cómo tocar la base de datos remota te conviene: `DB_PATH` NO se toca (la define el compose).
+- MercadoPago (pago real): `MERCADOPAGO_ACCESS_TOKEN` y `MERCADOPAGO_POS_ID`. Si quedan vacíos, el asistente genera un QR simulado (modo demo).
+
+El resto tiene valores por defecto seguros (`PORT=3000`, `TZ`, `DB_PATH`, `JWT_EXPIRES_IN`, `AI_*`).
 
 ---
 
@@ -93,25 +89,23 @@ Variables importantes para producción:
 
 Tenés dos caminos: **Stack (recomendado)** o **Contenedor simple**.
 
-### Opción A — Stack (recomendado)
+### Opción A — Stack desde Git (recomendado)
 
 1. En Portainer: **Stacks → Add stack**.
 2. Nombre: `afip-erp`.
-3. Pegá el contenido de `docker-compose.yml` en el editor (o usá "Git repository" apuntando a tu repo).
-4. En **"Environment variables"** podés cargar el `.env`, o asegurate de que el archivo `.env` exista en la ruta del stack.
+3. En **"Build method"** elegí **"Repository"** (Git) y pegá la URL del repo (`https://github.com/pixesistemas/ERP_system.git`), rama `main` y ruta del compose: `docker-compose.yml`.
+4. En la sección **"Environment variables"** definí al menos `JWT_SECRET` (y `PUBLIC_BASE_URL` cuando tengas el dominio).
 5. **Deploy the stack**.
 
-Portainer crea los **2 volúmenes** (`erp_data`, `erp_storage`) y levanta el contenedor.
+Portainer clona el repo, **buildea la imagen** (frontend + backend + Chromium) y crea los **2 volúmenes** (`erp_data`, `erp_storage`).
 - `erp_data` → base de datos SQLite `/app/data/afip_api.db`
 - `erp_storage` → PDFs y QR `/app/backend/storage`
 
-> Si primero probaste con `docker compose up` en un servidor con conexión, los datos quedan en los volúmenes y no se pierden al reconstruir.
+> El build tarda unos minutos (npm install + Chromium). Si querés actualizar después de un cambio en Git: **Stack → Update → Pull and redeploy** (reconstruye la imagen con `--build`).
 
 ### Opción B — Contenedor simple
 
-```
-como alternativa, creá un contenedor a partir de la imagen y montá los volúmenes.
-```
+Si preferís no usar Stack, creá un contenedor desde la imagen con los mismos volúmenes y variables. Igual necesitás tener la imagen buildeada (el Stack de Git es la forma más simple de obtenerla).
 
 ---
 

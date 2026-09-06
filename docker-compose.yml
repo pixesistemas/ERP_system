@@ -10,14 +10,28 @@ services:
     volumes:
       - erp_data:/app/data
       - erp_storage:/app/backend/storage
-    env_file:
-      - .env
     environment:
-      # Estos se sobreescriben a los valores de .env (si querés forzarlos):
+      # Variables por defecto seguras; setealas en Portainer (Environment variables).
       - TZ=America/Argentina/Buenos_Aires
+      - PORT=${PORT:-3000}
       - DB_PATH=/app/data/afip_api.db
-      # Configura al dominio/reverso público cuando lo tengas:
+      # Obligatoria: sin esto la app no firma tokens.
+      - JWT_SECRET=${JWT_SECRET:?Definí JWT_SECRET en las variables del stack}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-8h}
+      - DEMO_MODE=${DEMO_MODE:-false}
+      - AFIP_PRODUCTION=${AFIP_PRODUCTION:-true}
+      - OPENSSL=${OPENSSL:-openssl}
+      # URL pública (para QR, PDF y webhooks). Ej: https://erp.midominio.com.ar
       - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-http://localhost:3000}
+      # MercadoPago (opcional). Vacíos = QR simulado (modo demo).
+      - MERCADOPAGO_ACCESS_TOKEN=${MERCADOPAGO_ACCESS_TOKEN:-}
+      - MERCADOPAGO_POS_ID=${MERCADOPAGO_POS_ID:-}
+      - MERCADOPAGO_WEBHOOK_URL=${MERCADOPAGO_WEBHOOK_URL:-}
+      # IA conversacional (opcional). Si está apagada, usa el parser local.
+      - AI_ENABLED=${AI_ENABLED:-false}
+      - AI_BASE_URL=${AI_BASE_URL:-https://api.openai.com/v1}
+      - AI_API_KEY=${AI_API_KEY:-}
+      - AI_MODEL=${AI_MODEL:-gpt-4.1-mini}
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
