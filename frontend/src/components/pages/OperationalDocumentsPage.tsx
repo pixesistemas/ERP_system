@@ -21,6 +21,8 @@ export function OperationalDocumentsPage({ tipo, onNavigate }: { tipo: string; o
   const [to, setTo] = useState(() => new Date().toISOString().slice(0, 10));
   const [q, setQ] = useState('');
   const [pv, setPv] = useState('');
+  const [estado, setEstado] = useState('');
+  const [vendedor, setVendedor] = useState('');
   const [expanded, setExpanded] = useState<any>(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -60,8 +62,12 @@ export function OperationalDocumentsPage({ tipo, onNavigate }: { tipo: string; o
     String(r.fecha).slice(0, 10) >= from &&
     String(r.fecha).slice(0, 10) <= to &&
     (!pv || Number(r.pv) === Number(pv)) &&
+    (!estado || r.estado === estado) &&
+    (!vendedor || r.vendedor === vendedor) &&
     `${r.cliente} ${r.numero} ${r.vendedor || ''}`.toLowerCase().includes(q.toLowerCase())
   );
+  const estados = Array.from(new Set(rows.map((r: any) => r.estado).filter(Boolean))).sort();
+  const vendedores = Array.from(new Set(rows.map((r: any) => r.vendedor).filter((v: any) => v && v !== '-'))).sort();
 
   // Solo Nota de Pedido tiene, hoy, un circuito de backend real para generar
   // remito y cancelar (workflow de documentos_comerciales). Para las demás
@@ -159,6 +165,8 @@ export function OperationalDocumentsPage({ tipo, onNavigate }: { tipo: string; o
       <label>Desde<input type="date" value={from} onChange={e => setFrom(e.target.value)} /></label>
       <label>Hasta<input type="date" value={to} onChange={e => setTo(e.target.value)} /></label>
       {pvs.length > 1 && <label>Punto de venta<select value={pv} onChange={e => setPv(e.target.value)}><option value="">Todos</option>{pvs.map(p => <option key={p} value={p}>PV {String(p).padStart(4, '0')}</option>)}</select></label>}
+      {estados.length > 0 && <label>Estado<select value={estado} onChange={e => setEstado(e.target.value)}><option value="">Todos</option>{estados.map(s => <option key={s} value={s}>{s}</option>)}</select></label>}
+      {vendedores.length > 0 && <label>Vendedor<select value={vendedor} onChange={e => setVendedor(e.target.value)}><option value="">Todos</option>{vendedores.map(v => <option key={v} value={v}>{v}</option>)}</select></label>}
       <label>Buscar<input value={q} onChange={e => setQ(e.target.value)} placeholder="Cliente, número o vendedor" /></label>
     </div>
     {error && <div className="error-box">{error}</div>}

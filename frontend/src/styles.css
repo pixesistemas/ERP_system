@@ -5430,3 +5430,17 @@ html,body{height:auto;overflow:visible!important;background:#fff!important}
 .wa-24h{margin-left:6px}
 .transfer-items .transfer-item{max-height:none}
 .transfer-items{max-height:420px;overflow:auto}
+
+/* ===== Reportes de ventas (motor configurable) ===== */
+.report-toolbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.dropdown-wrap{position:relative}
+.dropdown-menu{position:absolute;right:0;top:calc(100% + 4px);background:var(--bg);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);padding:6px;z-index:50;display:flex;flex-direction:column;min-width:140px}
+.dropdown-menu button{border:0;background:transparent;text-align:left;padding:8px 12px;border-radius:8px;color:var(--ink);font-size:14px;cursor:pointer}
+.dropdown-menu button:hover{background:var(--soft)}
+.report-sortbar{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+.tipos-chips{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding-top:6px}
+.tipos-chips .chip{border:1px solid var(--line);background:var(--bg);color:var(--muted);border-radius:999px;padding:4px 12px;font-size:12px;cursor:pointer}
+.tipos-chips .chip.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.report-config-modal{max-width:520px}
+.report-sub{color:var(--muted);font-weight:normal;font-size:12px}
+.report-direccion{color:var(--muted);font-size:12px}

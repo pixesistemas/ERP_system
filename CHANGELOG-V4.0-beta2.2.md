@@ -127,3 +127,20 @@
 ### Pruebas
 
 - Smoke `tests/smoke-factura-c-pdf.js`: emite factura por POS con ítem gravado 21 % contra stub de WSFE y verifica que el ítem se persista con `total`/`iva_importe` con IVA, que la suma de líneas sea exactamente el `importe_total` y que el PDF fiscal muestre el total con IVA.
+
+## Reportes de ventas (motor configurable)
+
+- Nueva pantalla "Reportes de ventas" (menú CONFIGURACIÓN): una sola pantalla agrupa por vendedor, cliente o producto (N niveles combinables), con modo DETALLE/RESUMEN, columnas visibles (Cantidad, Código, Producto, Precio), ordenamiento por vendedor/cliente/producto/cantidad/precio ASC/DESC, búsqueda rápida y exportación CSV / Excel / PDF (imprimir).
+- Los datos salen de la base real (`documentos_comerciales` + `documento_items` + clientes/vendedores) mediante el nuevo endpoint `GET /erp/reporte-ventas` con filtros de fecha, tipos de comprobante, estado, vendedor, cliente, producto y código.
+- Cliente con dirección (como pedía la referencia) en el agrupamiento por cliente.
+- Subtotales por grupo y TOTAL ACUMULADO de cantidad y precio. Sin comisión.
+
+## Comprobante inicial de ventas
+
+- Nueva configuración por empresa `tipo_inicial_venta` (migración 072): arranca la venta en NOTA_PEDIDO, PRESUPUESTO o FACTURA.
+- UI en Configuración con checks exclusivos: "Arrancar en nota de pedido" y "Arrancar en presupuesto". Si no se marca ninguno, arranca en factura.
+- El punto de venta arranca las pestañas vacías con el comprobante inicial configurado.
+
+## Filtros en listados operativos
+
+- Notas de venta, reservas, notas de pedido y remitos ahora filtran por ESTADO y VENDEDOR (además de fecha, punto de venta y búsqueda).

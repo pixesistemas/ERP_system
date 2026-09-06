@@ -166,6 +166,18 @@ export const erpApi = {
   listCardCollections: () => request<any>('/erp/pos/cobros-tarjetas'),
   reporteProductos: (from: string, to: string) => request<any>(`/erp/pos/reporte-productos?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
   rankingVentas: (desde: string, hasta: string) => request<any>(`/erp/pos/ranking-ventas?desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}`),
+  reporteVentas: (params: { desde?: string; hasta?: string; tipos?: string[]; estado?: string; vendedor_id?: number; cliente_id?: number; producto_id?: number; codigo?: string }) => {
+    const qs = new URLSearchParams();
+    if (params.desde) qs.set('desde', params.desde);
+    if (params.hasta) qs.set('hasta', params.hasta);
+    if (params.tipos?.length) qs.set('tipos', params.tipos.join(','));
+    if (params.estado) qs.set('estado', params.estado);
+    if (params.vendedor_id) qs.set('vendedor_id', String(params.vendedor_id));
+    if (params.cliente_id) qs.set('cliente_id', String(params.cliente_id));
+    if (params.producto_id) qs.set('producto_id', String(params.producto_id));
+    if (params.codigo) qs.set('codigo', params.codigo);
+    return request<any>(`/erp/reporte-ventas?${qs.toString()}`);
+  },
   listPosOperationItems: (id:number) => request<any>(`/erp/pos/operaciones/${id}/items`),
   listComisiones: () => request<any>('/comisiones'),
   posRetryFiscal: (id:number) => request<any>(`/erp/pos/operaciones/${id}/fiscal/reintentar`,{method:'POST',body:JSON.stringify({})}),

@@ -877,10 +877,55 @@ function rankingVentas(req,res){
   const cajeros=db.prepare(`SELECT COALESCE(NULLIF(ca.nombre,''),'SIN CAJERO') nombre,COUNT(*) ventas,ROUND(SUM(v.total),2) total FROM ventas_pos v LEFT JOIN cajeros ca ON ca.id=v.cajero_id WHERE v.empresa_id=? AND v.estado='CONFIRMADA'${rango}GROUP BY COALESCE(NULLIF(ca.nombre,''),'SIN CAJERO') ORDER BY total DESC`).all(...params).map(x=>({...x,ventas:Number(x.ventas),total:Number(x.total)}));
   res.json({ok:true,vendedores,cajeros});
 }
+
+/*
+ * Motor de reportes de ventas. Devuelve los comprobantes (con sus ítems)
+ * filtrados contra la base para que el frontend agrupe por vendedor,
+ * cliente o producto. Filtros: desde, hasta, tipos (csv), estado,
+ * vendedor_id, cliente_id, producto_id, codigo.
+ */
+function reporteVentas(req,res){
+  const e=empresaId(req);
+  const desde=String(req.query.desde||'').slice(0,10)||'2000-01-01';
+  const hasta=String(req.query.hasta||'').slice(0,10)||'2999-12-31';
+  const tipos=(req.query.tipos||'').split(',').map(s=>s.trim()).filter(Boolean);
+  const estado=String(req.query.estado||'').trim();
+  const vendedorId=Number(req.query.vendedor_id||0)||null;
+  const clienteId=Number(req.query.cliente_id||0)||null;
+  const productoId=Number(req.query.producto_id||0)||null;
+  const codigo=String(req.query.codigo||'').trim();
+  const conds=['d.empresa_id=?'];
+  const params=[e];
+  conds.push('date(COALESCE(d.fecha,d.created_at)) BETWEEN ? AND ?');
+  params.push(desde,hasta);
+  if(tipos.length){conds.push(`d.tipo IN (${tipos.map(()=>'?').join(',')})`);params.push(...tipos);}
+  if(estado){conds.push('d.estado=?');params.push(estado);}
+  if(vendedorId){conds.push('d.vendedor_id=?');params.push(vendedorId);}
+  if(clienteId){conds.push('d.cliente_id=?');params.push(clienteId);}
+  if(productoId||codigo){
+    const sub=['SELECT 1 FROM documento_items it WHERE it.documento_id=d.id'];
+    if(productoId)sub.push('it.producto_id=?');
+    if(codigo)sub.push('it.codigo=?');
+    conds.push(`EXISTS (${sub.join(' AND ')})`);
+    if(productoId)params.push(productoId);
+    if(codigo)params.push(codigo);
+  }
+  const docs=db.prepare(`SELECT d.id,d.fecha,d.fecha_anulacion,d.tipo,d.estado,d.punto_venta,d.numero,d.condicion_venta,d.importe_total,d.canal,COALESCE(cl.razon_social,'CONSUMIDOR FINAL') cliente_nombre,cl.id cliente_id,cl.domicilio cliente_direccion,COALESCE(vd.nombre,'-') vendedor_nombre FROM documentos_comerciales d LEFT JOIN clientes cl ON cl.id=d.cliente_id LEFT JOIN vendedores vd ON vd.id=d.vendedor_id WHERE ${conds.join(' AND ')} ORDER BY d.fecha DESC,d.id DESC`).all(...params);
+  let items=[];
+  if(docs.length){
+    const ph=docs.map(()=>'?').join(',');
+    items=db.prepare(`SELECT documento_id,producto_id,codigo,descripcion,unidad,cantidad,precio_unitario,descuento,iva,subtotal,iva_importe,total FROM documento_items WHERE documento_id IN (${ph})`).all(...docs.map(d=>d.id));
+  }
+  const porDoc={};
+  for(const it of items){const k=it.documento_id;(porDoc[k]=porDoc[k]||[]).push(it);}
+  const rows=docs.map(d=>({...d,importe_total:Number(d.importe_total||0),items:porDoc[d.id]||[]}));
+  res.json({ok:true,documentos:rows});
+}
 module.exports.listCardCollections=listCardCollections;
 module.exports.reporteProductos=reporteProductos;
 module.exports.bankReconciliation=bankReconciliation;
 module.exports.rankingVentas=rankingVentas;
+module.exports.reporteVentas=reporteVentas;
 module.exports.listPosCatalogs=listPosCatalogs;
 module.exports.misPuntosVenta=misPuntosVenta;
 module.exports.subirLogoPos=subirLogoPos;

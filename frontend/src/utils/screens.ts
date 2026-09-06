@@ -63,6 +63,7 @@ export const SCREEN_SECTIONS: { section: string; screens: { key: string; label: 
     section: "CONFIGURACIÓN",
     screens: [
       { key: "reports", label: "Reportes" },
+      { key: "sales-reports", label: "Reportes de ventas" },
       { key: "dynamic-orders-report", label: "Pedidos dinámicos" },
       { key: "branches", label: "Sucursales" },
       { key: "cashiers", label: "Cajeros" },
