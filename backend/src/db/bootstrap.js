@@ -3,6 +3,7 @@ const path = require("path");
 const migrate = require("./migrate");
 const ensureSchemaCompatibility = require("./schemaCompatibility");
 const seedDemo = require("./seedDemo");
+const { reconciliarPantallas } = require("./pantallas");
 
 /* Crea una copia de seguridad antes de modificar una base existente. */
 function backup() {
@@ -24,8 +25,9 @@ function bootstrap() {
   const tables = migrate();
   ensureSchemaCompatibility();
   const seed = seedDemo();
+  const pantallas = reconciliarPantallas();
   console.log(`[DB] Lista: ${tables.length} tablas. Admin: ${seed.usuario}`);
-  return { tables, seed };
+  return { tables, seed, pantallas };
 }
 
 module.exports = bootstrap;

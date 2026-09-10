@@ -144,3 +144,11 @@
 ## Filtros en listados operativos
 
 - Notas de venta, reservas, notas de pedido y remitos ahora filtran por ESTADO y VENDEDOR (además de fecha, punto de venta y búsqueda).
+
+## Pantallas nuevas automáticas por rol
+
+- Las pantallas nuevas del sistema se suman automáticamente a los roles que ya tenían una lista explícita de pantallas, sin tener que reconfigurar cada rol a mano.
+- Migración 073: tabla `pantallas_registro` (alta de cada pantalla) y `roles.pantallas_actualizado_en` (última vez que se guardó el rol). Al instalar, se nivela una vez: se agregan a cada rol las pantallas actuales que le falten.
+- A partir de ahí, al guardar un rol desde "Roles y permisos" se respeta lo que el administrador marque: las pantallas desmarcadas no se vuelven a agregar.
+- `src/constants/pantallas.js`: lista canónica (mantener sincronizada con `frontend/src/utils/screens.ts`).
+- `reconciliarPantallas()` corre al iniciar el servidor (bootstrap).

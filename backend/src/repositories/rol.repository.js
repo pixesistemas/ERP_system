@@ -33,6 +33,7 @@ const PANTALLA_PERMISOS = {
   accounts: ["clientes.cc.consultar", "clientes.cc.cobrar", "recibos.consultar"],
   receipts: ["recibos.crear", "recibos.consultar", "recibos.confirmar"],
   reports: ["comisiones.consultar", "facturas.consultar", "documentos.consultar"],
+  "sales-reports": ["facturas.consultar", "documentos.consultar"],
   "dynamic-orders-report": ["documentos.consultar"],
   users: ["usuarios.gestionar"],
   roles: ["usuarios.gestionar"],
@@ -166,6 +167,12 @@ function setPantallasRol({ rolId, pantallas }) {
     for (const pantalla of pantallas) {
       insert.run(rolId, String(pantalla));
     }
+
+    // Marca la referencia: las pantallas registradas después de este momento
+    // se considerarán "nuevas" y se sumarán solas a este rol (ver pantallas.js).
+    db.prepare(
+      `UPDATE roles SET pantallas_actualizado_en = CURRENT_TIMESTAMP WHERE id = ?`,
+    ).run(rolId);
 
     sincronizarPermisosRol(rolId);
   });
