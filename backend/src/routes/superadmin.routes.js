@@ -8,6 +8,8 @@ const controller = require("../controllers/superadmin.controller");
 const superadminMiddleware = require("../middleware/superadmin.middleware");
 
 router.post("/auth/login", controller.loginSuperAdmin);
+router.post("/auth/recuperar", controller.recuperarSuperadmin);
+router.post("/auth/restablecer", controller.restablecerSuperadmin);
 
 router.use(superadminMiddleware);
 

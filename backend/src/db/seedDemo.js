@@ -1,7 +1,16 @@
 const bcrypt = require('bcryptjs');
 const db = require('./database');
+const { seedEsencial, asegurarSuperadmin } = require('./seedEsencial');
 
 function seedDemo() {
+  const demo = process.env.DEMO_MODE !== 'false';
+  // En producción solo se crean permisos, rol ADMIN y el superadmin.
+  // La empresa demo y el usuario admin@empresa.com NO se crean.
+  if (!demo) {
+    seedEsencial();
+    const sa = asegurarSuperadmin(false);
+    return { empresaId: null, usuario: null, superadmin: 'superadmin', ...sa };
+  }
   let empresa = db.prepare("SELECT id FROM empresas WHERE nombre='PixeSistemas'").get() || db.prepare("SELECT id FROM empresas WHERE nombre='empresa1'").get();
   if (!empresa) {
     db.prepare(`INSERT INTO empresas (nombre,cuit,condicion_iva,punto_venta,production,cert_path,key_path,cache_path,activa) VALUES ('empresa1','20939802593','RI',1,0,'src/certificates/empresa1/cert.crt','src/certificates/empresa1/private.key','src/cache/empresa1',1) ON CONFLICT(nombre) DO NOTHING`).run();
@@ -46,8 +55,7 @@ function seedDemo() {
   const insStock=db.prepare('INSERT INTO stock_productos(empresa_id,deposito_id,producto_id,cantidad,stock_minimo,updated_at) VALUES(?,?,?,100,10,CURRENT_TIMESTAMP)');
   const tieneStock=db.prepare('SELECT id FROM stock_productos WHERE empresa_id=? AND deposito_id=? AND producto_id=?');
   for(const p of db.prepare('SELECT id FROM productos WHERE empresa_id=?').all(empresa.id)){if(!tieneStock.get(empresa.id,dep.id,p.id))insStock.run(empresa.id,dep.id,p.id)}
-  const saHash=bcrypt.hashSync('admin123',10);
-  db.prepare(`INSERT INTO super_admins(usuario,nombre,password_hash,activo) VALUES ('superadmin','Administrador PixeSistemas',?,1) ON CONFLICT(usuario) DO UPDATE SET nombre=excluded.nombre`).run(saHash);
+  asegurarSuperadmin(true);
   if(!db.prepare("SELECT id FROM licencias WHERE empresa_id=?").get(empresa.id)) db.prepare("INSERT INTO licencias(empresa_id,plan,precio,descuento_porc,total,fecha_inicio,fecha_vencimiento,estado,notas) VALUES (?,'DEFINITIVO',0,0,0,date('now'),NULL,'ACTIVA','Licencia inicial de demostración')").run(empresa.id);
   return {empresaId:empresa.id,usuario:'admin@empresa.com',clave:'admin123',superadmin:'superadmin'};
 }

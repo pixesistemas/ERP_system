@@ -4,8 +4,9 @@ import { Bot, ChevronLeft, ChevronRight, KeyRound, RefreshCw, ShieldCheck } from
 const API_URL = (import.meta as any).env?.VITE_API_URL || "http://localhost:3000/api/v1";
 
 export function SuperAdminLoginPage() {
-  const [usuario, setUsuario] = useState("superadmin");
-  const [password, setPassword] = useState("admin123");
+  const DEMO = (import.meta as any).env?.VITE_DEMO_MODE === "true";
+  const [usuario, setUsuario] = useState(DEMO ? "superadmin" : "");
+  const [password, setPassword] = useState(DEMO ? "admin123" : "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -49,8 +50,9 @@ export function SuperAdminLoginPage() {
       <label>Contraseña<input type="password" value={password} onChange={e=>setPassword(e.target.value)} /></label>
       {error && <div className="error-box">{error}</div>}
       <button disabled={loading}>{loading ? <RefreshCw className="spin"/> : <><span>Ingresar al panel</span><ChevronRight size={18}/></>}</button>
+      <a className="login-back" onClick={()=>{ window.location.hash = "#/recuperar-superadmin"; }}>¿Olvidaste tu contraseña?</a>
       <a className="login-back" onClick={()=>{ window.location.hash = "#/"; }}><ChevronLeft size={15}/> Volver al sistema</a>
-      <small>Usuario: superadmin · Clave: admin123</small>
+      {DEMO && <small>Usuario: superadmin · Clave: admin123</small>}
     </form>
   </main>;
 }

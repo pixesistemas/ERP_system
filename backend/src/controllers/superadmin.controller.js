@@ -2,6 +2,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 const repo = require("../repositories/superadmin.repository");
+const passwordRecovery = require("../services/passwordRecovery.service");
 
 function loginSuperAdmin(req, res, next) {
   try {
@@ -509,8 +510,40 @@ function eliminarChangelog(req, res, next) {
   }
 }
 
+async function recuperarSuperadmin(req, res, next) {
+  try {
+    const identificador =
+      req.body?.identificador || req.body?.usuario || req.body?.email;
+    const result = await passwordRecovery.solicitarSuperadmin(identificador);
+    res.json({
+      ok: true,
+      mensaje:
+        "Si la cuenta tiene un correo de recuperación, te enviamos un enlace para restablecer la contraseña.",
+      ...(result.link && process.env.NODE_ENV !== "production"
+        ? { link: result.link }
+        : {}),
+    });
+  } catch (e) {
+    next(e);
+  }
+}
+
+function restablecerSuperadmin(req, res, next) {
+  try {
+    const result = passwordRecovery.restablecer({
+      token: req.body?.token,
+      password: req.body?.password,
+    });
+    res.json({ ok: true, ...result, mensaje: "Contraseña actualizada." });
+  } catch (e) {
+    next(e);
+  }
+}
+
 module.exports = {
   loginSuperAdmin,
+  recuperarSuperadmin,
+  restablecerSuperadmin,
   listarEmpresas,
   crearEmpresa,
   actualizarEmpresa,

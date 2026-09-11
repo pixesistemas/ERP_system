@@ -117,7 +117,9 @@ function listarUsuarios(empresaId) {
     .prepare(
       `
     SELECT u.id, u.nombre, u.email, u.telefono, u.activo, u.created_at,
-      GROUP_CONCAT(DISTINCT e.nombre) AS empresas
+      GROUP_CONCAT(DISTINCT e.nombre) AS empresas,
+      MAX(ue.empresa_id) AS empresa_id,
+      (SELECT rol_id FROM usuario_roles ur WHERE ur.usuario_id = u.id LIMIT 1) AS rol_id
     FROM usuarios u
     LEFT JOIN usuario_empresas ue ON ue.usuario_id = u.id AND ue.activo = 1
     LEFT JOIN empresas e ON e.id = ue.empresa_id
@@ -174,20 +176,70 @@ function crearUsuario({ nombre, email, password, empresaId, rol }) {
   return db.prepare("SELECT id, nombre, email FROM usuarios WHERE id = ?").get(usuarioId);
 }
 
-function actualizarUsuario(id, { activo, password }) {
-  const existe = db.prepare("SELECT id FROM usuarios WHERE id = ?").get(id);
+function actualizarUsuario(id, { nombre, email, password, activo, empresaId, rol }) {
+  const existe = db.prepare("SELECT id, email FROM usuarios WHERE id = ?").get(id);
   if (!existe) {
     const error = new Error("Usuario no encontrado");
     error.statusCode = 404;
     throw error;
   }
-  if (activo !== undefined) {
-    db.prepare("UPDATE usuarios SET activo = ? WHERE id = ?").run(activo ? 1 : 0, id);
-  }
-  if (password) {
-    db.prepare("UPDATE usuarios SET password_hash = ? WHERE id = ?").run(bcrypt.hashSync(password, 10), id);
-  }
-  return db.prepare("SELECT id, nombre, email, activo FROM usuarios WHERE id = ?").get(id);
+
+  const tx = db.transaction(() => {
+    if (nombre !== undefined && String(nombre).trim()) {
+      db.prepare("UPDATE usuarios SET nombre = ? WHERE id = ?").run(String(nombre).trim(), id);
+    }
+    if (email !== undefined && String(email).trim() && String(email).trim() !== existe.email) {
+      const nuevoEmail = String(email).trim();
+      const dup = db
+        .prepare("SELECT id FROM usuarios WHERE email = ? AND id <> ?")
+        .get(nuevoEmail, id);
+      if (dup) {
+        const error = new Error("Ya existe otro usuario con ese email");
+        error.statusCode = 409;
+        throw error;
+      }
+      db.prepare("UPDATE usuarios SET email = ? WHERE id = ?").run(nuevoEmail, id);
+    }
+    if (activo !== undefined) {
+      db.prepare("UPDATE usuarios SET activo = ? WHERE id = ?").run(activo ? 1 : 0, id);
+    }
+    if (password) {
+      db.prepare("UPDATE usuarios SET password_hash = ? WHERE id = ?").run(bcrypt.hashSync(password, 10), id);
+    }
+    // Reasignar a otra empresa: deja activa solo la nueva.
+    if (empresaId) {
+      const empresa = db.prepare("SELECT id FROM empresas WHERE id = ?").get(Number(empresaId));
+      if (!empresa) {
+        const error = new Error("Empresa no encontrada");
+        error.statusCode = 400;
+        throw error;
+      }
+      db.prepare("UPDATE usuario_empresas SET activo = 0 WHERE usuario_id = ?").run(id);
+      db.prepare(
+        "INSERT INTO usuario_empresas (usuario_id, empresa_id, activo) VALUES (?, ?, 1) ON CONFLICT(usuario_id, empresa_id) DO UPDATE SET activo = 1",
+      ).run(id, Number(empresaId));
+      if (rol !== undefined && rol !== null && rol !== "") {
+        db.prepare("DELETE FROM usuario_roles WHERE usuario_id = ?").run(id);
+        db.prepare("INSERT INTO usuario_roles (usuario_id, empresa_id, rol_id) VALUES (?, ?, ?)").run(
+          id,
+          Number(empresaId),
+          Number(rol),
+        );
+      }
+    }
+  });
+
+  tx();
+  return db
+    .prepare(
+      `SELECT u.id, u.nombre, u.email, u.activo,
+        MAX(ue.empresa_id) AS empresa_id,
+        (SELECT rol_id FROM usuario_roles ur WHERE ur.usuario_id = u.id LIMIT 1) AS rol_id
+       FROM usuarios u
+       LEFT JOIN usuario_empresas ue ON ue.usuario_id = u.id AND ue.activo = 1
+       WHERE u.id = ? GROUP BY u.id`,
+    )
+    .get(id);
 }
 
 function listarLicencias(empresaId) {

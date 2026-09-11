@@ -3,8 +3,9 @@ import { Bot, ChevronRight, MessageSquareText, RefreshCw, ShieldCheck, Sparkles,
 import { api } from "../services/api";
 
 export function Login({ onLogin }: { onLogin: (data: any) => void }) {
-  const [email, setEmail] = useState("admin@empresa.com");
-  const [password, setPassword] = useState("admin123");
+  const DEMO = (import.meta as any).env?.VITE_DEMO_MODE === "true";
+  const [email, setEmail] = useState(DEMO ? "admin@empresa.com" : "");
+  const [password, setPassword] = useState(DEMO ? "admin123" : "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -36,8 +37,9 @@ export function Login({ onLogin }: { onLogin: (data: any) => void }) {
       <label>Contraseña<input type="password" value={password} onChange={e=>setPassword(e.target.value)} /></label>
       {error && <div className="error-box">{error}</div>}
       <button disabled={loading}>{loading ? <RefreshCw className="spin"/> : <><span>Ingresar</span><ChevronRight size={18}/></>}</button>
-      <a className="login-back" onClick={()=>{ window.location.hash = "#/superadmin-login"; }}><ShieldCheck size={15}/> Panel de administración</a>
-      <small>Usuario: admin@empresa.com · Clave: admin123</small>
+      <a className="login-back" onClick={()=>{ window.location.hash = "#/recuperar"; }}>¿Olvidaste tu contraseña?</a>
+      {DEMO && <a className="login-back" onClick={()=>{ window.location.hash = "#/superadmin-login"; }}><ShieldCheck size={15}/> Panel de administración</a>}
+      {DEMO && <small>Usuario: admin@empresa.com · Clave: admin123</small>}
     </form>
   </main>
 }

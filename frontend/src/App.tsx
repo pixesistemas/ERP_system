@@ -5,6 +5,7 @@ import {
 import { api } from "./services/api";
 import { Login } from "./components/Login";
 import { SuperAdminLoginPage } from "./components/SuperAdminLoginPage";
+import { RecuperarClavePage } from "./components/RecuperarClavePage";
 import { SuperAdminPage } from "./components/SuperAdminPage";
 import { AdvancedPosPage } from "./components/pages/AdvancedPosPage";
 import { BankReconciliationPage } from "./components/pages/BankReconciliationPage";
@@ -68,6 +69,23 @@ import { ChatMessage, Conversation } from "./types";
 import { examples, pageTitle, pageSubtitle, actionText, actionLabel } from "./utils/pageMeta";
 import { canSeeScreen } from "./utils/screens";
 
+/*
+ * Detecta si el hash corresponde a una pantalla de recuperación de
+ * contraseña (usuario o superadmin) y extrae el token si viene.
+ */
+function parseRecovery(hash: string) {
+  if (!hash) return null;
+  const esRecuperar = hash.startsWith("#/recuperar");
+  const esRestablecer = hash.startsWith("#/restablecer");
+  if (!esRecuperar && !esRestablecer) return null;
+  const esSuper = hash.includes("superadmin");
+  const qs = hash.includes("?")
+    ? new URLSearchParams(hash.slice(hash.indexOf("?") + 1))
+    : new URLSearchParams();
+  const token = qs.get("token") || undefined;
+  return { tipo: esSuper ? "superadmin" : "usuario", token };
+}
+
 export function App() {
   const [session, setSession] = useState<any>(null);
   const [appInfo, setAppInfo] = useState<any>(null);
@@ -79,11 +97,13 @@ export function App() {
   const [phone, setPhone] = useState(() => `WEB-${Date.now()}`);
   const [page, setPage] = useState<string>("dashboard");
   const [superadminMode, setSuperadminMode] = useState<boolean>(() => window.location.hash.startsWith("#/superadmin"));
+  const [recovery, setRecovery] = useState<any>(() => parseRecovery(window.location.hash));
   const [menuAbierto, setMenuAbierto] = useState(true);
   const [, setSaTick] = useState(0);
   useEffect(() => {
     const onChange = () => {
       setSuperadminMode(window.location.hash.startsWith("#/superadmin"));
+      setRecovery(parseRecovery(window.location.hash));
       setSaTick(t => t + 1);
     };
     window.addEventListener("hashchange", onChange);
@@ -152,6 +172,10 @@ export function App() {
   const command = activeResponse?.command || {};
   const items = command.items || command.productos || [];
   const total = activeResponse?.response?.result?.total || command.total || null;
+
+  if (recovery) {
+    return <RecuperarClavePage tipo={recovery.tipo} token={recovery.token}/>;
+  }
 
   if (superadminMode) {
     return sessionStorage.getItem("afip_superadmin_token")

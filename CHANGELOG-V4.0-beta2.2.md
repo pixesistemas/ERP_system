@@ -152,3 +152,17 @@
 - A partir de ahí, al guardar un rol desde "Roles y permisos" se respeta lo que el administrador marque: las pantallas desmarcadas no se vuelven a agregar.
 - `src/constants/pantallas.js`: lista canónica (mantener sincronizada con `frontend/src/utils/screens.ts`).
 - `reconciliarPantallas()` corre al iniciar el servidor (bootstrap).
+
+## Seguridad de acceso y recuperación de contraseña
+
+- Las pantallas de login (usuario y superadmin) ya no muestran ni prellenan credenciales. Solo se ven si el build define `VITE_DEMO_MODE=true` (desarrollo). En producción quedan ocultas.
+- Recuperación de contraseña por correo (migración 074, tabla `recuperaciones_clave`): enlace de un solo uso con vencimiento, para usuarios comunes y para el superadmin. El token se guarda hasheado.
+- Envío por SMTP configurable (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`). Si no está configurado, el correo se registra en el log (no rompe).
+- Superadmin: la clave se define con `SUPERADMIN_PASSWORD` (y `SUPERADMIN_EMAIL`). En producción, si no se define, se genera una aleatoria y se muestra una vez en los logs; si quedó la clave insegura `admin123`, se reemplaza sola.
+- La empresa demo ya no se crea en producción (`DEMO_MODE=false`): solo se siembran permisos, rol ADMIN y el superadmin. Script `db:eliminar-demo` para borrar la empresa demo existente.
+
+## Corrección: edición de usuarios en el panel de superadmin
+
+- Ahora se puede editar un usuario: nombre, email, empresa y rol (antes solo se podía activar/desactivar y cambiar la clave).
+- Se agregó el botón "Editar" en el listado de usuarios.
+- Al reasignar de empresa, el usuario queda vinculado a la nueva.

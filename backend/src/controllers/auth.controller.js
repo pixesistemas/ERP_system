@@ -1,5 +1,6 @@
 const AuthService = require("../services/auth.service");
 const { getPantallasUsuario } = require("../repositories/rol.repository");
+const passwordRecovery = require("../services/passwordRecovery.service");
 const db = require("../db/database");
 
 function getPuntosVentaUsuario(usuarioId, empresaId) {
@@ -113,9 +114,39 @@ function logout(req, res, next) {
   }
 }
 
+async function recuperarClave(req, res, next) {
+  try {
+    const result = await passwordRecovery.solicitarUsuario(req.body?.email);
+    res.json({
+      ok: true,
+      mensaje:
+        "Si el correo está registrado, te enviamos un enlace para restablecer la contraseña.",
+      ...(result.link && process.env.NODE_ENV !== "production"
+        ? { link: result.link }
+        : {}),
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+function restablecerClave(req, res, next) {
+  try {
+    const result = passwordRecovery.restablecer({
+      token: req.body?.token,
+      password: req.body?.password,
+    });
+    res.json({ ok: true, ...result, mensaje: "Contraseña actualizada." });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   login,
   me,
   refresh,
   logout,
+  recuperarClave,
+  restablecerClave,
 };

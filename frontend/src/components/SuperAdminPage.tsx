@@ -126,7 +126,14 @@ export function SuperAdminPage() {
     setLoading(true);
     try {
       if (usuarioModal.id) {
-        await call("PATCH", `/usuarios/${usuarioModal.id}`, { activo: usuarioModal.activo !== false });
+        await call("PATCH", `/usuarios/${usuarioModal.id}`, {
+          nombre: usuarioModal.nombre,
+          email: usuarioModal.email,
+          empresaId: Number(usuarioModal.empresaId),
+          rol: Number(usuarioModal.rol),
+          activo: usuarioModal.activo !== false,
+          ...(usuarioModal.password ? { password: usuarioModal.password } : {}),
+        });
         setOk("Usuario actualizado.");
       } else {
         await call("POST", "/usuarios", {
@@ -390,6 +397,7 @@ export function SuperAdminPage() {
             <td>{u.empresas || "—"}</td>
             <td>{u.activo ? <span className="sa-badge ok">Activo</span> : <span className="sa-badge off">Inactivo</span>}</td>
             <td><div className="sa-row-actions">
+              <button className="sa-icon-btn" title="Editar" onClick={() => setUsuarioModal({ id: u.id, nombre: u.nombre, email: u.email, password: "", empresaId: u.empresa_id || empresas[0]?.id || "", rol: String(u.rol_id || 3), activo: !!u.activo })}><Pencil size={15}/></button>
               <button className="sa-icon-btn" title="Cambiar clave" onClick={() => setClaveModal({ id: u.id, nombre: u.nombre, password: "" })}><KeyRound size={15}/></button>
               <button className="sa-icon-btn" title={u.activo ? "Desactivar" : "Activar"} onClick={async () => { try { await call("PATCH", `/usuarios/${u.id}`, { activo: !u.activo }); setOk(u.activo ? "Usuario desactivado." : "Usuario activado."); await load(); } catch (err: any) { setError(err.message); } }}><Trash2 size={15}/></button>
             </div></td>
@@ -553,7 +561,7 @@ export function SuperAdminPage() {
       <div className="form-grid">
         <label>Nombre<input required value={usuarioModal.nombre} onChange={(e) => setUsuarioModal({ ...usuarioModal, nombre: e.target.value })} /></label>
         <label>Email (usuario de login)<input required type="email" value={usuarioModal.email} onChange={(e) => setUsuarioModal({ ...usuarioModal, email: e.target.value })} /></label>
-        <label>Clave inicial<input required type="text" value={usuarioModal.password} onChange={(e) => setUsuarioModal({ ...usuarioModal, password: e.target.value })} /></label>
+        <label>{usuarioModal.id ? "Nueva clave (opcional)" : "Clave inicial"}<input required={!usuarioModal.id} type="text" value={usuarioModal.password} onChange={(e) => setUsuarioModal({ ...usuarioModal, password: e.target.value })} placeholder={usuarioModal.id ? "Dejar vacío para no cambiarla" : ""} /></label>
         <label>Empresa<select required value={usuarioModal.empresaId} onChange={(e) => setUsuarioModal({ ...usuarioModal, empresaId: e.target.value })}>{empresas.map((en) => <option key={en.id} value={en.id}>{en.nombre}</option>)}</select></label>
         <label>Rol<select value={usuarioModal.rol} onChange={(e) => setUsuarioModal({ ...usuarioModal, rol: e.target.value })}><option value="1">ADMIN</option><option value="3">VENDEDOR</option></select></label>
         <label className="sa-check"><input type="checkbox" checked={usuarioModal.activo !== false} onChange={(e) => setUsuarioModal({ ...usuarioModal, activo: e.target.checked })} /> Activo</label>
