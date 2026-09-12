@@ -12,6 +12,7 @@
     "db:check": "node scripts/db-check.js",
     "db:reset-demo": "node scripts/db-reset-demo.js",
     "db:eliminar-demo": "node scripts/eliminar-empresa-demo.js",
+    "db:importar-lubritotal": "node scripts/importar-lubritotal.js",
     "test:beta2": "node tests/beta2-financial.test.js",
     "audit:normalized": "node scripts/audit-normalized.js",
     "test:fiscal": "node tests/beta3-fiscal.test.js",
