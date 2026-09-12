@@ -2,6 +2,12 @@ const path = require("path");
 const soap = require("soap");
 
 const constants = require("./constants");
+const {
+  CONDICION_IVA_RECEPTOR,
+  CONDICION_IVA_RECEPTOR_TABLA,
+  condicionIvaReceptorParaClase,
+  getLetraComprobante,
+} = require("./fiscal.constants");
 
 function redondear(n) {
   return Math.round(Number(n) * 100) / 100;
@@ -100,6 +106,24 @@ class WSFEService {
       Importe: redondear(a.Importe),
     }));
 
+    /*
+     * RG 5616/2024: "Condición frente al IVA del receptor" es obligatorio.
+     * Garantizamos que SIEMPRE viaje un código válido de la tabla de ARCA y
+     * que además sea admitido por la clase del comprobante (error 4962).
+     */
+    const letra = getLetraComprobante(data.tipoComprobante);
+    let condicionIvaReceptorId = Number(data.condicionIVAReceptorId);
+    if (
+      !Number.isInteger(condicionIvaReceptorId) ||
+      !CONDICION_IVA_RECEPTOR_TABLA[condicionIvaReceptorId]
+    ) {
+      condicionIvaReceptorId = CONDICION_IVA_RECEPTOR.CONSUMIDOR_FINAL;
+    }
+    condicionIvaReceptorId = condicionIvaReceptorParaClase(
+      condicionIvaReceptorId,
+      letra,
+    );
+
     const params = {
       Auth: {
         Token: auth.token,
@@ -121,7 +145,7 @@ class WSFEService {
               CbteDesde: nextNumber,
               CbteHasta: nextNumber,
               CbteFch: data.fecha || today,
-              CondicionIVAReceptorId: data.condicionIVAReceptorId,
+              CondicionIVAReceptorId: condicionIvaReceptorId,
               ImpTotal: importeTotal,
               ImpTotConc: 0,
               ImpNeto: importeNeto,

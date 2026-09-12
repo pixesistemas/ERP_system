@@ -16,7 +16,26 @@ const {
 
 const { getEmpresaByNombre } = require("../repositories/empresa.repository");
 
-function login({ email, password, empresaNombre }) {
+/*
+ * Empresas activas a las que pertenece un usuario.
+ */
+function empresasDeUsuario(usuarioId) {
+  return db
+    .prepare(
+      `
+      SELECT e.id, e.nombre, e.tema
+      FROM usuario_empresas ue
+      INNER JOIN empresas e ON e.id = ue.empresa_id
+      WHERE ue.usuario_id = ?
+        AND ue.activo = 1
+        AND e.activa = 1
+      ORDER BY e.nombre
+    `,
+    )
+    .all(usuarioId);
+}
+
+function login({ email, password, empresaNombre, empresaId }) {
   const usuario = getUsuarioByEmail(email);
 
   if (!usuario) {
@@ -33,41 +52,38 @@ function login({ email, password, empresaNombre }) {
     throw error;
   }
 
-  let empresa;
+  const disponibles = empresasDeUsuario(usuario.id);
 
-  if (empresaNombre) {
-    empresa = getEmpresaByNombre(empresaNombre);
-  } else {
-    const primeraDeUsuario = db
-      .prepare(
-        `
-      SELECT e.*
-      FROM usuario_empresas ue
-      INNER JOIN empresas e ON e.id = ue.empresa_id
-      WHERE ue.usuario_id = ?
-        AND ue.activo = 1
-        AND e.activa = 1
-      ORDER BY ue.id LIMIT 1
-    `,
-      )
-      .get(usuario.id);
-
-    if (primeraDeUsuario) {
-      empresa = primeraDeUsuario;
-    } else {
-      empresa = getEmpresaByNombre(empresaNombre || "empresa1");
-    }
-  }
-
-  const pertenece = usuarioPerteneceAEmpresa({
-    usuarioId: usuario.id,
-    empresaId: empresa.id,
-  });
-
-  if (!pertenece) {
-    const error = new Error("Usuario no pertenece a la empresa");
+  if (!disponibles.length) {
+    const error = new Error("El usuario no tiene empresas activas asignadas");
     error.statusCode = 403;
     throw error;
+  }
+
+  let empresa;
+
+  if (empresaId) {
+    empresa = disponibles.find((e) => Number(e.id) === Number(empresaId));
+    if (!empresa) {
+      const error = new Error("El usuario no pertenece a esa empresa");
+      error.statusCode = 403;
+      throw error;
+    }
+  } else if (empresaNombre) {
+    empresa = disponibles.find((e) => e.nombre === empresaNombre);
+    if (!empresa) {
+      const error = new Error("El usuario no pertenece a esa empresa");
+      error.statusCode = 403;
+      throw error;
+    }
+  } else if (disponibles.length === 1) {
+    empresa = disponibles[0];
+  } else {
+    /*
+     * El usuario tiene varias empresas: el frontend debe mostrar un selector
+     * y volver a llamar al login con empresaId (o empresaNombre).
+     */
+    return { requiereEmpresa: true, empresas: disponibles };
   }
 
   const permisos = getPermisosUsuario({

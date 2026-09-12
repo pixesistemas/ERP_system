@@ -1,22 +1,60 @@
 import React, { useState } from "react";
-import { Bot, ChevronRight, MessageSquareText, RefreshCw, ShieldCheck, Sparkles, Zap } from "lucide-react";
+import { Bot, ChevronRight, MessageSquareText, RefreshCw, ShieldCheck, Sparkles, Zap, Building2, ChevronLeft } from "lucide-react";
 import { api } from "../services/api";
 
 export function Login({ onLogin }: { onLogin: (data: any) => void }) {
   const DEMO = (import.meta as any).env?.VITE_DEMO_MODE === "true";
   const [email, setEmail] = useState(DEMO ? "admin@empresa.com" : "");
   const [password, setPassword] = useState(DEMO ? "admin123" : "");
+  const [empresas, setEmpresas] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  function entrar(result: any) {
+    sessionStorage.setItem("afip_demo_token", result.token);
+    sessionStorage.setItem("afip_demo_refresh", result.refreshToken || "");
+    onLogin(result);
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setLoading(true); setError("");
     try {
       const result = await api.login(email, password);
-      sessionStorage.setItem("afip_demo_token", result.token);
-      sessionStorage.setItem("afip_demo_refresh", result.refreshToken || "");
-      onLogin(result);
+      if (result.requiereEmpresa) {
+        setEmpresas(result.empresas || []);
+        return;
+      }
+      entrar(result);
     } catch (err: any) { setError(err.message); } finally { setLoading(false); }
+  }
+
+  async function elegirEmpresa(empresa: any) {
+    setLoading(true); setError("");
+    try {
+      const result = await api.login(email, password, Number(empresa.id));
+      entrar(result);
+    } catch (err: any) { setError(err.message); } finally { setLoading(false); }
+  }
+
+  if (empresas.length) {
+    return <main className="login-page">
+      <section className="login-hero">
+        <div className="brand-pill"><Sparkles size={16}/> ERP Empresarial</div>
+        <h1>Elegí la empresa<br/><span>con la que vas a trabajar.</span></h1>
+        <p>Tu usuario tiene más de una empresa asignada. Seleccioná con cuál querés iniciar sesión.</p>
+      </section>
+      <div className="login-card">
+        <div className="logo"><Building2 size={25}/></div>
+        <h2>Seleccionar empresa</h2><p>Ingresás como {email}.</p>
+        <div className="company-picker">
+          {empresas.map((e) => <button key={e.id} type="button" disabled={loading} onClick={() => elegirEmpresa(e)}>
+            <span><strong>{e.nombre}</strong></span><ChevronRight size={18}/>
+          </button>)}
+        </div>
+        {error && <div className="error-box">{error}</div>}
+        <a className="login-back" onClick={() => { setEmpresas([]); setError(""); }}><ChevronLeft size={15}/> Volver</a>
+      </div>
+    </main>;
   }
 
   return <main className="login-page">

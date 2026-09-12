@@ -5444,3 +5444,9 @@ html,body{height:auto;overflow:visible!important;background:#fff!important}
 .report-config-modal{max-width:520px}
 .report-sub{color:var(--muted);font-weight:normal;font-size:12px}
 .report-direccion{color:var(--muted);font-size:12px}
+
+/* ===== Login: selector de empresa (usuario multiempresa) ===== */
+.company-picker{display:flex;flex-direction:column;gap:8px;margin:10px 0}
+.company-picker button{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:12px 14px;cursor:pointer;color:var(--ink);text-align:left;font-size:15px}
+.company-picker button:hover{background:var(--soft)}
+.company-picker button:disabled{opacity:.6;cursor:default}

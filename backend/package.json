@@ -15,6 +15,7 @@
     "test:beta2": "node tests/beta2-financial.test.js",
     "audit:normalized": "node scripts/audit-normalized.js",
     "test:fiscal": "node tests/beta3-fiscal.test.js",
+    "verificar:rg5616": "node scripts/verificar-rg5616.js",
     "test:pedidos": "node tests/beta4-pedidos.test.js"
   },
   "keywords": [],

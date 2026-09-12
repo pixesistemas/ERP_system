@@ -40,7 +40,16 @@ function login(req, res, next) {
       email: req.body.email,
       password: req.body.password,
       empresaNombre: req.body.empresa || undefined,
+      empresaId: req.body.empresaId || undefined,
     });
+
+    if (result.requiereEmpresa) {
+      return res.json({
+        ok: true,
+        requiereEmpresa: true,
+        empresas: result.empresas,
+      });
+    }
 
     const pantallas = getPantallasUsuario({
       usuarioId: result.usuario.id,

@@ -166,3 +166,15 @@
 - Ahora se puede editar un usuario: nombre, email, empresa y rol (antes solo se podía activar/desactivar y cambiar la clave).
 - Se agregó el botón "Editar" en el listado de usuarios.
 - Al reasignar de empresa, el usuario queda vinculado a la nueva.
+
+## Cumplimiento RG 5616/2024 — Condición frente al IVA del receptor
+
+- Se garantiza que TODA solicitud de CAE informe `CondicionIVAReceptorId` con un código válido de la tabla de ARCA (1 a 16), incluso en el camino legacy. Si falta o es inválido, se usa un valor seguro.
+- Se valida además que el código sea admitido por la clase del comprobante (A/B/C), evitando el rechazo 4962.
+- Tabla oficial completa en `fiscal.constants.js` (códigos y descripciones) y mapeo ampliado de condiciones del cliente.
+- Script de verificación: `npm run verificar:rg5616` (muestra la tabla y comprueba todos los casos).
+
+## Login multiempresa
+
+- Si un usuario tiene varias empresas activas, al iniciar sesión se muestra un selector para elegir con cuál trabajar (antes entraba siempre a la primera).
+- Endpoint de login acepta `empresaId`; devuelve `requiereEmpresa` con la lista cuando corresponde.

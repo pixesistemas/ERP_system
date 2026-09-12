@@ -4,6 +4,7 @@ const {
   COMPROBANTES,
   DOCUMENTOS,
   CONDICION_IVA_RECEPTOR,
+  CONDICION_IVA_RECEPTOR_TABLA,
   normalizarCondicionIVA,
 } = require("./fiscal.constants");
 
@@ -68,18 +69,41 @@ function resolverDocumentoCliente(cliente) {
   };
 }
 function resolverCondicionIVAReceptor(cliente) {
-  const condicion = normalizarCondicionIVA(cliente.condicionIVA);
+  const raw = cliente?.condicionIVA;
 
-  if (condicion === RESPONSABILIDAD_IVA.RESPONSABLE_INSCRIPTO) {
-    return CONDICION_IVA_RECEPTOR.IVA_RESPONSABLE_INSCRIPTO;
+  // Si ya viene un código numérico válido de la tabla, se respeta.
+  const numerico = Number(raw);
+  if (Number.isInteger(numerico) && CONDICION_IVA_RECEPTOR_TABLA[numerico]) {
+    return numerico;
   }
 
-  if (condicion === RESPONSABILIDAD_IVA.MONOTRIBUTO) {
-    return CONDICION_IVA_RECEPTOR.MONOTRIBUTO;
-  }
+  const condicion = normalizarCondicionIVA(raw);
 
-  if (condicion === RESPONSABILIDAD_IVA.EXENTO) {
-    return CONDICION_IVA_RECEPTOR.IVA_EXENTO;
+  const mapa = {
+    [RESPONSABILIDAD_IVA.RESPONSABLE_INSCRIPTO]:
+      CONDICION_IVA_RECEPTOR.IVA_RESPONSABLE_INSCRIPTO,
+    [RESPONSABILIDAD_IVA.MONOTRIBUTO]:
+      CONDICION_IVA_RECEPTOR.RESPONSABLE_MONOTRIBUTO,
+    [RESPONSABILIDAD_IVA.EXENTO]:
+      CONDICION_IVA_RECEPTOR.IVA_SUJETO_EXENTO,
+    [RESPONSABILIDAD_IVA.CONSUMIDOR_FINAL]:
+      CONDICION_IVA_RECEPTOR.CONSUMIDOR_FINAL,
+  };
+
+  if (mapa[condicion] != null) return mapa[condicion];
+
+  // Otras condiciones que la base puede guardar como texto libre.
+  if (/RESPONSABLE NO INSCRIPTO|NO INSCRIPTO/.test(condicion)) {
+    return CONDICION_IVA_RECEPTOR.IVA_RESPONSABLE_NO_INSCRIPTO;
+  }
+  if (/IVA NO RESPONSABLE|^NO RESPONSABLE/.test(condicion)) {
+    return CONDICION_IVA_RECEPTOR.IVA_NO_RESPONSABLE;
+  }
+  if (/NO CATEGORIZADO/.test(condicion)) {
+    return CONDICION_IVA_RECEPTOR.SUJETO_NO_CATEGORIZADO;
+  }
+  if (/AGENTE DE PERCEPCION/.test(condicion)) {
+    return CONDICION_IVA_RECEPTOR.IVA_RI_AGENTE_PERCEPCION;
   }
 
   return CONDICION_IVA_RECEPTOR.CONSUMIDOR_FINAL;
