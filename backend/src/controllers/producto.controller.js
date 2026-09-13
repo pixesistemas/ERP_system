@@ -1,7 +1,7 @@
 const repo = require('../repositories/producto.repository');
 const db = require('../db/database');
 
-function empresaId(req) { return Number(req.user?.empresaId || req.empresa?.id || 1); }
+function empresaId(req) { return Number(req.empresa?.id || req.usuario?.empresaId || req.user?.empresaId || 1); }
 
 function list(req, res) {
   const products = repo.listarProductos({ empresaId: empresaId(req), texto: req.query.q || '', includeInactive: req.query.all === '1' });

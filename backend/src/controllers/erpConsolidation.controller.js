@@ -9,7 +9,7 @@ const { emitirComprobanteAfip, FiscalNetworkError } = require('../afip/fiscalEmi
 const { getLetraComprobante, getNombreComprobante } = require('../afip/fiscal.constants');
 const { registrarComision } = require('../repositories/comision.repository');
 
-function empresaId(req) { return Number(req.empresa?.id || req.user?.empresaId || 1); }
+function empresaId(req) { return Number(req.empresa?.id || req.usuario?.empresaId || req.user?.empresaId || 1); }
 function bool(v) { return v === true || v === 1 || v === '1'; }
 function brutoYDescuento(neto, pct) {
   const p = Math.max(0, Number(pct || 0));
@@ -347,7 +347,7 @@ function consumeReserveFund(req,res){const e=empresaId(req),id=Number(req.params
 
 module.exports={listBanks,saveBank,listPos,savePos,listChecks,createCheck,depositChecks,listWhatsapp,saveWhatsapp,uploadFiscal,fiscalFiles,listPurchases,savePurchase,deletePurchase,vatBook,borradorIva,saveBorradorIvaAjuste,renameBorradorIvaRubro,updatePrices,listReserveFunds,createReserveFund,consumeReserveFund};
 
-function userId(req){ return Number(req.user?.id || req.user?.userId || 1); }
+function userId(req){ return Number(req.usuario?.id || req.user?.id || req.user?.userId || 1); }
 function listPosCatalogs(req,res){
   const e=empresaId(req);
   const branches=db.prepare('SELECT * FROM sucursales WHERE empresa_id=? AND activo=1 ORDER BY nombre').all(e);
@@ -1001,7 +1001,7 @@ function createCobroTemporal(req,res){
   const clienteNombre=String(d.cliente_nombre||'').trim();
   if(!clienteNombre)return res.status(400).json({ok:false,error:'Seleccioná un cliente.'});
   if(!(importe>0))return res.status(400).json({ok:false,error:'El importe debe ser mayor a 0.'});
-  const info=db.prepare('INSERT INTO cobros_temporales(empresa_id,cliente_id,cliente_nombre,importe,observacion,estado,usuario_id) VALUES(?,?,?,?,?,?,?)').run(e,d.cliente_id||null,clienteNombre,Math.round(importe*100)/100,String(d.observacion||'').trim(),'PENDIENTE',Number(req.user?.id||req.usuario?.id||null)||null);
+  const info=db.prepare('INSERT INTO cobros_temporales(empresa_id,cliente_id,cliente_nombre,importe,observacion,estado,usuario_id) VALUES(?,?,?,?,?,?,?)').run(e,d.cliente_id||null,clienteNombre,Math.round(importe*100)/100,String(d.observacion||'').trim(),'PENDIENTE',Number(req.usuario?.id||req.user?.id||null)||null);
   res.status(201).json({ok:true,cobro:db.prepare('SELECT * FROM cobros_temporales WHERE id=?').get(info.lastInsertRowid)});
 }
 function deleteCobroTemporal(req,res){

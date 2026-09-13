@@ -2,8 +2,8 @@ const db = require('../db/database');
 const { getEmpresaById } = require('../repositories/empresa.repository');
 const TicketDocumentEngine = require('../documents/engine/ticketDocumentEngine');
 
-const companyId = req => Number(req.empresa?.id || req.user?.empresaId || 1);
-const userId = req => Number(req.user?.id || req.user?.userId || 1);
+const companyId = req => Number(req.empresa?.id || req.usuario?.empresaId || req.user?.empresaId || 1);
+const userId = req => Number(req.usuario?.id || req.user?.id || req.user?.userId || 1);
 const yes = value => value === true || value === 1 || value === '1';
 const json = value => { try { return JSON.parse(value || 'null'); } catch { return null; } };
 
