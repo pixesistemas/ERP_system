@@ -6,6 +6,7 @@ const path = require("path");
 
 const bootstrapDatabase = require("./db/bootstrap");
 const ensureSchemaCompatibility = require("./db/schemaCompatibility");
+const errorLog = require("./repositories/errorLog.repository");
 
 // Routes
 const authRoutes = require("./routes/auth.routes");
@@ -278,6 +279,18 @@ app.use((err, req, res, next) => {
   console.error(err);
 
   const status = err.status || err.statusCode || 500;
+
+  errorLog.registrarError({
+    metodo: req.method,
+    ruta: req.originalUrl || req.url,
+    status,
+    codigo: err.code || null,
+    mensaje: err.message || "Error interno del servidor.",
+    stack: err.stack || null,
+    usuarioId: req.usuario?.id || null,
+    empresaId: req.empresa?.id || null,
+    ip: req.ip || req.headers["x-forwarded-for"] || null,
+  });
 
   res.status(status).json({
     ok: false,

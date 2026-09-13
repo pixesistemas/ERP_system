@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 
 const repo = require("../repositories/superadmin.repository");
 const passwordRecovery = require("../services/passwordRecovery.service");
+const errorLog = require("../repositories/errorLog.repository");
 
 function loginSuperAdmin(req, res, next) {
   try {
@@ -540,6 +541,29 @@ function restablecerSuperadmin(req, res, next) {
   }
 }
 
+function listarErrores(req, res, next) {
+  try {
+    const { limite, empresaId } = req.query;
+    const errores = errorLog.listarErrores({
+      limite: limite ? Number(limite) : 200,
+      empresaId: empresaId ? Number(empresaId) : null,
+    });
+    return res.json({ ok: true, errores });
+  } catch (e) {
+    next(e);
+  }
+}
+
+function limpiarErrores(req, res, next) {
+  try {
+    const empresaId = req.query?.empresaId || req.body?.empresaId || null;
+    const borrados = errorLog.limpiarErrores({ empresaId: empresaId ? Number(empresaId) : null });
+    return res.json({ ok: true, borrados });
+  } catch (e) {
+    next(e);
+  }
+}
+
 module.exports = {
   loginSuperAdmin,
   recuperarSuperadmin,
@@ -568,4 +592,6 @@ module.exports = {
   subirVersionSistema,
   importarClientesEmpresa,
   importarProductosEmpresa,
+  listarErrores,
+  limpiarErrores,
 };

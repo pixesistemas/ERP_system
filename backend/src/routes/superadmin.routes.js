@@ -59,4 +59,7 @@ router.delete("/changelog/:id", controller.eliminarChangelog);
 router.get("/version", controller.getVersionSistema);
 router.post("/version/subir", controller.subirVersionSistema);
 
+router.get("/errores", controller.listarErrores);
+router.delete("/errores", controller.limpiarErrores);
+
 module.exports = router;

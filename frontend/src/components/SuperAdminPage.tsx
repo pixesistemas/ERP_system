@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Building2, FileKey2, KeyRound, LogOut, Pencil, Plus, ShieldCheck, Sparkles, Trash2, TrendingUp, Users, X, Palette } from "lucide-react";
+import { Building2, FileKey2, KeyRound, LogOut, Pencil, Plus, ShieldCheck, Sparkles, Trash2, TrendingUp, Users, X, Palette, AlertTriangle, RefreshCw } from "lucide-react";
 
 const API_URL = (import.meta as any).env?.VITE_API_URL || "http://localhost:3000/api/v1";
 
@@ -40,7 +40,7 @@ const TEMAS: Record<string, { label: string; swatches: string[] }> = {
 };
 
 export function SuperAdminPage() {
-  const [tab, setTab] = useState<"EMPRESAS" | "USUARIOS" | "LICENCIAS" | "TEMAS" | "FISCALES" | "CHANGELOG" | "ALTA">("EMPRESAS");
+  const [tab, setTab] = useState<"EMPRESAS" | "USUARIOS" | "LICENCIAS" | "TEMAS" | "FISCALES" | "CHANGELOG" | "ERRORES" | "ALTA">("EMPRESAS");
   const { loading, setLoading, error, setError, ok, setOk, call } = useSuperAdminApi();
   const [empresas, setEmpresas] = useState<any[]>([]);
   const [usuarios, setUsuarios] = useState<any[]>([]);
@@ -55,6 +55,8 @@ export function SuperAdminPage() {
   const [versionActual, setVersionActual] = useState("");
   const [alta, setAlta] = useState<any>({ nombre: "", cuit: "", condicionIva: "RESPONSABLE INSCRIPTO", adminNombre: "", adminEmail: "", adminPassword: "", plan: "TRIMESTRAL", precio: "", descuento: "", csvClientes: null, csvProductos: null });
   const [filtroEmpresa, setFiltroEmpresa] = useState("");
+  const [errores, setErrores] = useState<any[]>([]);
+  const [errorDetalle, setErrorDetalle] = useState<any>(null);
 
   const nombreSa = sessionStorage.getItem("afip_superadmin_nombre") || "Administrador";
 
@@ -86,6 +88,29 @@ export function SuperAdminPage() {
     sessionStorage.removeItem("afip_superadmin_token");
     sessionStorage.removeItem("afip_superadmin_nombre");
     window.location.hash = "#/";
+  }
+
+  async function cargarErrores() {
+    try {
+      const r = await call<any>("GET", "/errores?limite=300");
+      setErrores(r.errores || []);
+    } catch (err: any) {
+      setError(err.message);
+    }
+  }
+
+  async function borrarErrores() {
+    if (!window.confirm("¿Borrar todos los errores registrados?")) return;
+    setLoading(true);
+    try {
+      const r = await call<any>("DELETE", "/errores");
+      setOk(`Se borraron ${r.borrados} registros.`);
+      setErrores([]);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function guardarEmpresa(e: React.FormEvent) {
@@ -351,6 +376,7 @@ export function SuperAdminPage() {
       <button className={tab === "TEMAS" ? "active" : ""} onClick={() => setTab("TEMAS")}><Palette size={16}/> Temas</button>
       <button className={tab === "FISCALES" ? "active" : ""} onClick={() => setTab("FISCALES")}><FileKey2 size={16}/> Fiscales</button>
       <button className={tab === "CHANGELOG" ? "active" : ""} onClick={() => setTab("CHANGELOG")}><Sparkles size={16}/> Novedades</button>
+      <button className={tab === "ERRORES" ? "active" : ""} onClick={() => { setTab("ERRORES"); cargarErrores(); }}><AlertTriangle size={16}/> Errores</button>
       <button className={tab === "ALTA" ? "active" : ""} onClick={() => setTab("ALTA")}><Plus size={16}/> Alta cliente</button>
     </nav>
     <main className="sa-main">
@@ -531,6 +557,30 @@ export function SuperAdminPage() {
           {!changelog.length && <div className="empty-table">Todavía no hay entradas. Cargá cada corrección que hagas para notificar a los clientes.</div>}
         </div>
       </div>}
+    {tab === "ERRORES" && <div className="products-page">
+        <div className="products-toolbar">
+          <div><h3>Errores registrados</h3><p>Fallos de la API en producción con fecha, ruta y detalle. Se conservan los últimos 5000.</p></div>
+          <div className="sa-row-actions">
+            <button className="secondary-action" onClick={cargarErrores} disabled={loading}><RefreshCw size={16}/> Actualizar</button>
+            <button className="secondary-action" onClick={borrarErrores} disabled={loading}><Trash2 size={16}/> Limpiar</button>
+          </div>
+        </div>
+        <div className="products-card"><table>
+          <thead><tr><th>ID</th><th>Fecha</th><th>Método</th><th>Ruta</th><th>Estado</th><th>Empresa</th><th>Usuario</th><th>Error</th><th></th></tr></thead>
+          <tbody>{errores.map((x) => <tr key={x.id}>
+            <td>{x.id}</td>
+            <td>{String(x.fecha || "").replace("T", " ").slice(0, 19)}</td>
+            <td>{x.metodo || "—"}</td>
+            <td><code>{x.ruta || "—"}</code></td>
+            <td><span className={Number(x.status) >= 500 ? "sa-badge off" : "sa-badge ok"}>{x.status}</span></td>
+            <td>{x.empresa_nombre || x.empresa_id || "—"}</td>
+            <td>{x.usuario_nombre || x.usuario_id || "—"}</td>
+            <td>{x.codigo ? <code>{x.codigo}</code> : null} {x.mensaje}</td>
+            <td><button className="sa-icon-btn" title="Ver detalle" onClick={() => setErrorDetalle(x)}><AlertTriangle size={15}/></button></td>
+          </tr>)}</tbody></table>
+          {!errores.length && <div className="empty-table">No hay errores registrados. Si algo falla, va a aparecer acá.</div>}
+        </div>
+      </div>}
     </main>
 
     {empresaModal && <div className="modal-backdrop"><form className="product-modal polished-modal" onSubmit={guardarEmpresa}>
@@ -625,5 +675,17 @@ export function SuperAdminPage() {
       </div>
       <div className="modal-actions"><button type="button" className="secondary" onClick={() => setChangelogModal(null)}>Cancelar</button><button className="primary-action" disabled={loading}>Guardar</button></div>
     </form></div>}
+    {errorDetalle && <div className="modal-backdrop"><div className="product-modal polished-modal">
+      <div className="modal-head"><h3>Error #{errorDetalle.id}</h3><button type="button" onClick={() => setErrorDetalle(null)}><X/></button></div>
+      <div className="form-grid">
+        <label className="full">Petición<input readOnly value={`${errorDetalle.metodo || ""} ${errorDetalle.ruta || ""}`} /></label>
+        <label>Estado<input readOnly value={errorDetalle.status || ""} /></label>
+        <label>Código<input readOnly value={errorDetalle.codigo || "—"} /></label>
+        <label className="full">Fecha<input readOnly value={String(errorDetalle.fecha || "")} /></label>
+        <label className="full">Mensaje<textarea readOnly value={errorDetalle.mensaje || ""} rows={2} /></label>
+        <label className="full">Detalle técnico<textarea readOnly value={errorDetalle.stack || ""} rows={12} /></label>
+      </div>
+      <div className="modal-actions"><button type="button" className="secondary" onClick={() => setErrorDetalle(null)}>Cerrar</button></div>
+    </div></div>}
   </div>;
 }
