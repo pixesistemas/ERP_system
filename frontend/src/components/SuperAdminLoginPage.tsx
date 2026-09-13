@@ -24,7 +24,8 @@ export function SuperAdminLoginPage() {
       if (!r.ok) throw new Error(j.error || "No se pudo iniciar sesión");
       sessionStorage.setItem("afip_superadmin_token", j.token);
       sessionStorage.setItem("afip_superadmin_nombre", j.superadmin?.nombre || usuario);
-      window.location.hash = "#/superadmin";
+      if (window.location.hash !== "#/superadmin") window.location.hash = "#/superadmin";
+      window.dispatchEvent(new Event("hashchange"));
     } catch (err: any) {
       setError(err.message);
     } finally {
