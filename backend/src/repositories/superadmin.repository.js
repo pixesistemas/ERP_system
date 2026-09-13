@@ -325,6 +325,20 @@ function cambiarEstadoLicencia(id, estado) {
   return db.prepare("SELECT * FROM licencias WHERE id = ?").get(id);
 }
 
+function getSuperadminAvisos() {
+  return db
+    .prepare("SELECT id,usuario,nombre,email,telefono,whatsapp_activo FROM super_admins WHERE usuario='superadmin'")
+    .get();
+}
+
+function setSuperadminAvisos({ telefono, whatsappActivo }) {
+  db.prepare("UPDATE super_admins SET telefono=?, whatsapp_activo=? WHERE usuario='superadmin'").run(
+    telefono || null,
+    whatsappActivo ? 1 : 0,
+  );
+  return getSuperadminAvisos();
+}
+
 module.exports = {
   getSuperAdminByUsuario,
   listarEmpresas,
@@ -336,4 +350,6 @@ module.exports = {
   listarLicencias,
   crearLicencia,
   cambiarEstadoLicencia,
+  getSuperadminAvisos,
+  setSuperadminAvisos,
 };

@@ -1,0 +1,46 @@
+{
+  "name": "ERP - Alertas de errores al superadmin (WhatsApp)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "erp-alerta-error",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-erp-alerta",
+      "name": "Webhook ERP",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "erp-alerta-error"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $env.WHATSAPP_PHONE_ID }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.WHATSAPP_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $json.body.telefono || $env.SUPERADMIN_WHATSAPP_TO }}\",\n  \"type\": \"text\",\n  \"text\": { \"body\": \"{{ $json.body.mensaje }}\" }\n}",
+        "options": {}
+      },
+      "id": "wa-superadmin",
+      "name": "WhatsApp superadmin",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [260, 0]
+    }
+  ],
+  "connections": {
+    "Webhook ERP": { "main": [[{ "node": "WhatsApp superadmin", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

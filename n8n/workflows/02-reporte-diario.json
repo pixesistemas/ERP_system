@@ -1,0 +1,32 @@
+{
+  "name": "ERP - Reporte diario (ventas/caja/stock) por email",
+  "nodes": [
+    {
+      "parameters": { "rule": { "interval": [{ "field": "cronExpression", "expression": "0 21 * * *" }] } },
+      "id": "cron-reporte",
+      "name": "Cron 21:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ERP_BASE_URL }}/api/v1/n8n/reporte-diario",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "x-api-key", "value": "={{ $env.ERP_API_KEY }}" }] },
+        "options": {}
+      },
+      "id": "erp-reporte",
+      "name": "Enviar reporte",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [260, 0]
+    }
+  ],
+  "connections": {
+    "Cron 21:00": { "main": [[{ "node": "Enviar reporte", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

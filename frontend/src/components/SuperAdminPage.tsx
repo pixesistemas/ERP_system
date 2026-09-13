@@ -57,6 +57,7 @@ export function SuperAdminPage() {
   const [filtroEmpresa, setFiltroEmpresa] = useState("");
   const [errores, setErrores] = useState<any[]>([]);
   const [errorDetalle, setErrorDetalle] = useState<any>(null);
+  const [avisos, setAvisos] = useState<any>({ telefono: "", whatsapp_activo: 0 });
 
   const nombreSa = sessionStorage.getItem("afip_superadmin_nombre") || "Administrador";
 
@@ -106,6 +107,28 @@ export function SuperAdminPage() {
       const r = await call<any>("DELETE", "/errores");
       setOk(`Se borraron ${r.borrados} registros.`);
       setErrores([]);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function cargarAvisos() {
+    try {
+      const r = await call<any>("GET", "/avisos");
+      setAvisos(r.avisos || { telefono: "", whatsapp_activo: 0 });
+    } catch (err: any) {
+      setError(err.message);
+    }
+  }
+
+  async function guardarAvisos() {
+    setLoading(true);
+    try {
+      const r = await call<any>("PUT", "/avisos", { telefono: avisos.telefono, whatsappActivo: Boolean(avisos.whatsapp_activo) });
+      setAvisos(r.avisos || avisos);
+      setOk("Avisos actualizados.");
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -376,7 +399,7 @@ export function SuperAdminPage() {
       <button className={tab === "TEMAS" ? "active" : ""} onClick={() => setTab("TEMAS")}><Palette size={16}/> Temas</button>
       <button className={tab === "FISCALES" ? "active" : ""} onClick={() => setTab("FISCALES")}><FileKey2 size={16}/> Fiscales</button>
       <button className={tab === "CHANGELOG" ? "active" : ""} onClick={() => setTab("CHANGELOG")}><Sparkles size={16}/> Novedades</button>
-      <button className={tab === "ERRORES" ? "active" : ""} onClick={() => { setTab("ERRORES"); cargarErrores(); }}><AlertTriangle size={16}/> Errores</button>
+      <button className={tab === "ERRORES" ? "active" : ""} onClick={() => { setTab("ERRORES"); cargarErrores(); cargarAvisos(); }}><AlertTriangle size={16}/> Errores</button>
       <button className={tab === "ALTA" ? "active" : ""} onClick={() => setTab("ALTA")}><Plus size={16}/> Alta cliente</button>
     </nav>
     <main className="sa-main">
@@ -564,6 +587,12 @@ export function SuperAdminPage() {
             <button className="secondary-action" onClick={cargarErrores} disabled={loading}><RefreshCw size={16}/> Actualizar</button>
             <button className="secondary-action" onClick={borrarErrores} disabled={loading}><Trash2 size={16}/> Limpiar</button>
           </div>
+        </div>
+        <div className="settings-card" style={{ marginBottom: 14 }}>
+          <div className="settings-head"><AlertTriangle/><div><h3>Avisos de errores por WhatsApp</h3><p>Cuando un endpoint falla (error 500), el ERP te avisa al WhatsApp configurado. Necesita un canal (n8n o Meta) activo.</p></div></div>
+          <label className="toggle-row"><div><strong>Activar avisos</strong><span>Recibir alertas de errores del sistema.</span></div><input type="checkbox" checked={Boolean(avisos.whatsapp_activo)} onChange={e=>setAvisos({...avisos,whatsapp_activo:e.target.checked?1:0})}/></label>
+          <label>WhatsApp del superadmin<input value={avisos.telefono||""} onChange={e=>setAvisos({...avisos,telefono:e.target.value})} placeholder="5493450000000"/></label>
+          <button className="primary-action" onClick={guardarAvisos} disabled={loading}>Guardar avisos</button>
         </div>
         <div className="products-card"><table>
           <thead><tr><th>ID</th><th>Fecha</th><th>Método</th><th>Ruta</th><th>Estado</th><th>Empresa</th><th>Usuario</th><th>Error</th><th></th></tr></thead>

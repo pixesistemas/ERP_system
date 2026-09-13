@@ -1053,6 +1053,7 @@ function cambiarRepartoPedido(req,res){
   db.prepare("UPDATE documentos_comerciales SET estado_reparto=? WHERE id=?").run(estado,id);
   const msgs={PREPARANDO:'¡Lo tenemos en preparación! En breve te avisamos.',LISTO:'¡Está listo! Podés pasar a retirarlo cuando quieras.',EN_CAMINO:'¡Salió para entrega! Ya va en camino 🚚',ENTREGADO:'¡Entregado! Gracias por tu compra, nos vemos 👋'};
   db.prepare("INSERT INTO whatsapp_notificaciones(empresa_id,telefono,pedido_id,estado_pedido,mensaje,estado) VALUES(?,?,?,?,?,?)").run(e,doc.telefono_origen||'',id,estado,msgs[estado],'PENDIENTE');
+  require('../services/automatizaciones.service').avisarReparto(e,id,estado).catch(()=>{});
   res.json({ok:true,estado});
 }
 async function enviarLinkPago(req,res){

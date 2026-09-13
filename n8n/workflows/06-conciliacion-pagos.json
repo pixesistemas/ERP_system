@@ -1,0 +1,44 @@
+{
+  "name": "ERP - Conciliacion de pagos MercadoPago",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mercadopago-pago",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-mp",
+      "name": "Webhook MercadoPago",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "mercadopago-pago"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ERP_BASE_URL }}/api/v1/n8n/conciliar-pago",
+        "sendHeaders": true,
+        "headerParameters": [
+          { "name": "x-api-key", "value": "={{ $env.ERP_API_KEY }}" },
+          { "name": "Content-Type", "value": "application/json" }
+        ],
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"externalId\": \"{{ $json.body.data?.id || $json.body.external_reference || $json.query['data.id'] }}\"\n}",
+        "options": {}
+      },
+      "id": "erp-conciliar",
+      "name": "Conciliar pago",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [260, 0]
+    }
+  ],
+  "connections": {
+    "Webhook MercadoPago": { "main": [[{ "node": "Conciliar pago", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

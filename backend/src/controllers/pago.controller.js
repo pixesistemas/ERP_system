@@ -114,13 +114,15 @@ async function webhookMercadoPago(req, res) {
     const externalId =
       body.external_reference ||
       (body.data && body.data.external_reference) ||
+      body.data?.id ||
       null;
     const empresaId = req.query.empresaId || body.empresa_id || null;
     if (!externalId || !empresaId) {
       return res.status(400).json({ ok: false, error: "external_reference y empresaId requeridos" });
     }
-    linkRepo.marcarPagado({ empresaId, externalId, webhookRaw: body });
-    return res.json({ ok: true });
+    const automatizaciones = require("../services/automatizaciones.service");
+    const resultado = await automatizaciones.conciliarPago({ empresaId: Number(empresaId), externalId: String(externalId) });
+    return res.json({ ok: true, ...resultado });
   } catch (e) {
     return res.status(500).json({ ok: false, error: e.message });
   }

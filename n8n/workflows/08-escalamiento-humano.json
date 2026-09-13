@@ -1,0 +1,46 @@
+{
+  "name": "ERP - Escalamiento a humano",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "erp-escalamiento",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-escalar",
+      "name": "Webhook ERP",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "erp-escalamiento"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $env.WHATSAPP_PHONE_ID }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.WHATSAPP_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $json.body.destino }}\",\n  \"type\": \"text\",\n  \"text\": { \"body\": \"🙋 Cliente necesita atención humana\\nTel: {{ $json.body.telefono }}\\n{{ $json.body.mensaje }}\" }\n}",
+        "options": {}
+      },
+      "id": "wa-vendedor",
+      "name": "WhatsApp vendedor",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [260, 0]
+    }
+  ],
+  "connections": {
+    "Webhook ERP": { "main": [[{ "node": "WhatsApp vendedor", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

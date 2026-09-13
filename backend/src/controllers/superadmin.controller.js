@@ -564,6 +564,23 @@ function limpiarErrores(req, res, next) {
   }
 }
 
+function getAvisos(req, res, next) {
+  try {
+    res.json({ ok: true, avisos: repo.getSuperadminAvisos() });
+  } catch (e) {
+    next(e);
+  }
+}
+
+function setAvisos(req, res, next) {
+  try {
+    const activo = req.body?.whatsappActivo === true || req.body?.whatsappActivo === 1;
+    res.json({ ok: true, avisos: repo.setSuperadminAvisos({ telefono: req.body?.telefono, whatsappActivo: activo }) });
+  } catch (e) {
+    next(e);
+  }
+}
+
 module.exports = {
   loginSuperAdmin,
   recuperarSuperadmin,
@@ -594,4 +611,6 @@ module.exports = {
   importarProductosEmpresa,
   listarErrores,
   limpiarErrores,
+  getAvisos,
+  setAvisos,
 };

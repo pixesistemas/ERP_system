@@ -1,4 +1,5 @@
 const db = require("../db/database");
+const notificacion = require("../services/notificacion.service");
 
 /*
  * Persistencia de errores de la API. Se usa desde el manejador global de
@@ -8,6 +9,36 @@ const db = require("../db/database");
  */
 
 const MAX_FILAS = 5000;
+const ALERTA_COOLDOWN_SEG = Number(process.env.ERROR_ALERTA_COOLDOWN_SEG || 600);
+
+function puedeAlertar(signature) {
+  const row = db
+    .prepare(
+      "SELECT veces,(strftime('%s','now') - strftime('%s',enviada_en)) seg FROM error_alertas WHERE signature=?",
+    )
+    .get(signature);
+  if (!row) {
+    db.prepare("INSERT INTO error_alertas(signature) VALUES(?)").run(signature);
+    return true;
+  }
+  if (row.seg != null && row.seg < ALERTA_COOLDOWN_SEG) {
+    db.prepare("UPDATE error_alertas SET veces=veces+1 WHERE signature=?").run(signature);
+    return false;
+  }
+  db.prepare("UPDATE error_alertas SET enviada_en=CURRENT_TIMESTAMP,veces=veces+1 WHERE signature=?").run(signature);
+  return true;
+}
+
+function alertarSuperadmin({ metodo, ruta, status, codigo, mensaje, stack }) {
+  const signature = `${metodo} ${ruta} ${status} ${codigo || ""}`;
+  if (!puedeAlertar(signature)) return;
+  const texto =
+    `⚠️ Error del sistema\n` +
+    `${metodo} ${ruta}\n` +
+    `Estado: ${status}${codigo ? ` (${codigo})` : ""}\n` +
+    `Detalle: ${String(mensaje || "").slice(0, 400)}`;
+  notificacion.enviarWhatsappSuperadmin({ mensaje: texto }).catch(() => {});
+}
 
 function registrarError({ metodo, ruta, status, codigo, mensaje, stack, usuarioId, empresaId, ip }) {
   try {
@@ -30,6 +61,9 @@ function registrarError({ metodo, ruta, status, codigo, mensaje, stack, usuarioI
       db.prepare(
         "DELETE FROM error_logs WHERE id IN (SELECT id FROM error_logs ORDER BY id ASC LIMIT ?)",
       ).run(total - MAX_FILAS);
+    }
+    if (Number(status) >= 500) {
+      alertarSuperadmin({ metodo, ruta, status, codigo, mensaje, stack });
     }
   } catch (e) {
     console.error("[error-log] No se pudo registrar el error:", e.message);

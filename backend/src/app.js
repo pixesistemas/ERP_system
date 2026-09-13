@@ -43,6 +43,7 @@ const clienteRoutes = require("./routes/cliente.routes");
 const companySettingsRoutes = require("./routes/companySettings.routes");
 const erpConsolidationRoutes = require("./routes/erpConsolidation.routes");
 const pagoRoutes = require("./routes/pago.routes");
+const automatizacionesRoutes = require("./routes/automatizaciones.routes");
 const pagoController = require("./controllers/pago.controller");
 
 //Procesos
@@ -178,6 +179,8 @@ app.use("/api/v1/clientes", jwtMiddleware, apiRateLimit, clienteRoutes);
 app.use("/api/v1/configuracion/empresa", jwtMiddleware, apiRateLimit, companySettingsRoutes);
 app.use("/api/v1/erp", jwtMiddleware, apiRateLimit, erpConsolidationRoutes);
 app.use("/api/v1/pagos", jwtMiddleware, apiRateLimit, pagoRoutes);
+app.use("/api/v1/automatizaciones", jwtMiddleware, apiRateLimit, automatizacionesRoutes);
+app.use("/api/v1/n8n", apiKeyMiddleware, apiRateLimit, automatizacionesRoutes);
 app.use("/api/v1/users", jwtMiddleware, apiRateLimit, usuarioRoutes);
 app.use("/api/v1/roles", jwtMiddleware, apiRateLimit, rolRoutes);
 app.use(

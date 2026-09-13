@@ -491,6 +491,7 @@ class PedidoConversacional {
       if (/^(agregar|agregá|agrega|agregame|sumar|sumá|poner|poné|poneme|mandar|mandame|enviar|enviame|comprar|pedir)$/i.test(m)) {
         return { respuesta: "¿Qué producto te agrego? Ej.: “agrega 3 cal”." };
       }
+      require("./automatizaciones.service").escalar(empresaId, { telefono: ctx.telefono, mensaje }).catch(() => {});
       return {
         respuesta:
           "No entendí. Probá con algo como: “2 cal y 5 cemento” o “10 bolsas de cemento”.",

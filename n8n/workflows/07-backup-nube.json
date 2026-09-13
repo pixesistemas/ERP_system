@@ -1,0 +1,46 @@
+{
+  "name": "ERP - Backup automatico y subida a la nube",
+  "nodes": [
+    {
+      "parameters": { "rule": { "interval": [{ "field": "cronExpression", "expression": "0 3 * * *" }] } },
+      "id": "cron-backup",
+      "name": "Cron 03:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ERP_BASE_URL }}/api/v1/n8n/backup",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "x-api-key", "value": "={{ $env.ERP_API_KEY }}" }] },
+        "options": {}
+      },
+      "id": "erp-backup",
+      "name": "Crear backup",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [260, 0]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.ERP_BASE_URL }}/api/v1/n8n/backup/descargar",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "x-api-key", "value": "={{ $env.ERP_API_KEY }}" }] },
+        "options": { "response": { "response": { "responseFormat": "file" } } }
+      },
+      "id": "erp-descarga",
+      "name": "Descargar backup",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 0]
+    }
+  ],
+  "connections": {
+    "Cron 03:00": { "main": [[{ "node": "Crear backup", "type": "main", "index": 0 }]] },
+    "Crear backup": { "main": [[{ "node": "Descargar backup", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

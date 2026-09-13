@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Save, Settings, ReceiptText } from "lucide-react";
+import { Save, Settings, ReceiptText, Bot } from "lucide-react";
 import { api } from "../../services/api";
 
 export function SettingsPage(){
@@ -13,5 +13,22 @@ export function SettingsPage(){
       <label className="toggle-row"><div><strong>Arrancar en presupuesto</strong><span>La venta nueva abre directamente como presupuesto.</span></div><input type="checkbox" checked={settings.tipoInicialVenta==='PRESUPUESTO'} onChange={e=>setInicial(e.target.checked?'PRESUPUESTO':'FACTURA')}/></label>
       <p className="report-sub">Actual: {settings.tipoInicialVenta==='NOTA_PEDIDO'?'Nota de pedido':settings.tipoInicialVenta==='PRESUPUESTO'?'Presupuesto':'Factura'} (ningún check activo)</p>
       <button className="primary-action" onClick={save}><Save size={17}/> Guardar configuración</button>
-    </div></div>
+    </div>
+    <div className="settings-card">
+      <div className="settings-head"><Bot/><div><h3>Automatizaciones</h3><p>Activalas si querés que n8n las ejecute sola (reportes, stock, cobranzas, backup y avisos).</p></div></div>
+      <label className="toggle-row"><div><strong>Reporte diario por email</strong><span>Ventas, caja y stock del día.</span></div><input type="checkbox" checked={Boolean(settings.autoReporteDiario)} onChange={e=>setSettings({...settings,autoReporteDiario:e.target.checked})}/></label>
+      {settings.autoReporteDiario&&<div className="form-grid"><label>Hora<input type="time" value={settings.autoReporteHora||"21:00"} onChange={e=>setSettings({...settings,autoReporteHora:e.target.value})}/></label><label>Email destino<input type="email" value={settings.autoReporteEmail||""} onChange={e=>setSettings({...settings,autoReporteEmail:e.target.value})}/></label></div>}
+      <label className="toggle-row"><div><strong>Alertas de stock mínimo</strong><span>Aviso por WhatsApp con productos a reponer.</span></div><input type="checkbox" checked={Boolean(settings.autoStockMinimo)} onChange={e=>setSettings({...settings,autoStockMinimo:e.target.checked})}/></label>
+      {settings.autoStockMinimo&&<label>WhatsApp para alertas<input value={settings.autoStockTelefono||""} onChange={e=>setSettings({...settings,autoStockTelefono:e.target.value})} placeholder="5493450000000"/></label>}
+      <label className="toggle-row"><div><strong>Reintentar CAE pendientes</strong><span>Reintenta comprobantes que AFIP no autorizó por caída de red.</span></div><input type="checkbox" checked={Boolean(settings.autoReintentoCae)} onChange={e=>setSettings({...settings,autoReintentoCae:e.target.checked})}/></label>
+      <label className="toggle-row"><div><strong>Recordatorio de cobranzas</strong><span>Avisa por WhatsApp a clientes con saldo en cuenta corriente.</span></div><input type="checkbox" checked={Boolean(settings.autoCobranzas)} onChange={e=>setSettings({...settings,autoCobranzas:e.target.checked})}/></label>
+      {settings.autoCobranzas&&<div className="form-grid"><label>Días de saldo<input type="number" min="0" value={settings.autoCobranzasDias||0} onChange={e=>setSettings({...settings,autoCobranzasDias:Number(e.target.value)})}/></label><label>Hora<input type="time" value={settings.autoCobranzasHora||"10:00"} onChange={e=>setSettings({...settings,autoCobranzasHora:e.target.value})}/></label></div>}
+      <label className="toggle-row"><div><strong>Backup automático</strong><span>Copia de la base para que n8n la suba a la nube.</span></div><input type="checkbox" checked={Boolean(settings.autoBackup)} onChange={e=>setSettings({...settings,autoBackup:e.target.checked})}/></label>
+      {settings.autoBackup&&<label>Hora del backup<input type="time" value={settings.autoBackupHora||"03:00"} onChange={e=>setSettings({...settings,autoBackupHora:e.target.value})}/></label>}
+      <label className="toggle-row"><div><strong>Avisar al cliente cuando sale el remito</strong><span>Envía el estado del pedido por WhatsApp.</span></div><input type="checkbox" checked={Boolean(settings.autoAvisarReparto)} onChange={e=>setSettings({...settings,autoAvisarReparto:e.target.checked})}/></label>
+      <label className="toggle-row"><div><strong>Escalar a humano</strong><span>Cuando el bot no entiende, avisa a un vendedor.</span></div><input type="checkbox" checked={Boolean(settings.autoEscalarHumano)} onChange={e=>setSettings({...settings,autoEscalarHumano:e.target.checked})}/></label>
+      {settings.autoEscalarHumano&&<label>WhatsApp del vendedor<input value={settings.autoEscalarTelefono||""} onChange={e=>setSettings({...settings,autoEscalarTelefono:e.target.value})} placeholder="5493450000000"/></label>}
+      <button className="primary-action" onClick={save}><Save size={17}/> Guardar automatizaciones</button>
+    </div>
+  </div>
 }

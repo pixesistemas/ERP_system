@@ -61,5 +61,7 @@ router.post("/version/subir", controller.subirVersionSistema);
 
 router.get("/errores", controller.listarErrores);
 router.delete("/errores", controller.limpiarErrores);
+router.get("/avisos", controller.getAvisos);
+router.put("/avisos", controller.setAvisos);
 
 module.exports = router;
