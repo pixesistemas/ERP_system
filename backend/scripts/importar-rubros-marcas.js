@@ -24,10 +24,11 @@ const { parseCsv, headerIndex, valorFila } = require("../src/utils/csv");
  * asociación a los productos sin duplicar nada.
  */
 
-const args = process.argv.slice(2).filter((a) => a !== "--dry-run");
+const args = process.argv.slice(2).filter((a) => a !== "--dry-run" && !a.startsWith("--dir="));
 const dryRun = process.argv.includes("--dry-run");
+const DIR_ARG = (process.argv.find((a) => a.startsWith("--dir=")) || "").slice(6);
 const EMPRESA_BUSCADA = args[0] || process.env.IMPORT_EMPRESA || "Lubritotal";
-const DIR = path.join(__dirname, "../data/importacion");
+const DIR = DIR_ARG ? path.resolve(__dirname, "..", DIR_ARG) : path.join(__dirname, "../data/importacion");
 const MARCA_OFFSET = 1000;
 
 function buscarEmpresa(valor) {

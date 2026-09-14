@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Building2, FileKey2, KeyRound, LogOut, Pencil, Plus, ShieldCheck, Sparkles, Trash2, TrendingUp, Users, X, Palette, AlertTriangle, RefreshCw } from "lucide-react";
+import { Building2, FileKey2, KeyRound, LogOut, Pencil, Plus, ShieldCheck, Sparkles, Tags, Trash2, TrendingUp, Users, X, Palette, AlertTriangle, RefreshCw } from "lucide-react";
 
 const API_URL = (import.meta as any).env?.VITE_API_URL || "http://localhost:3000/api/v1";
 
@@ -50,6 +50,7 @@ export function SuperAdminPage() {
   const [licenciaModal, setLicenciaModal] = useState<any>(null);
   const [claveModal, setClaveModal] = useState<any>(null);
   const [fiscalModal, setFiscalModal] = useState<any>(null);
+  const [rubrosModal, setRubrosModal] = useState<any>(null);
   const [changelog, setChangelog] = useState<any[]>([]);
   const [changelogModal, setChangelogModal] = useState<any>(null);
   const [versionActual, setVersionActual] = useState("");
@@ -308,6 +309,37 @@ export function SuperAdminPage() {
     }
   }
 
+  async function importarRubrosMarcas(e: React.FormEvent) {
+    e.preventDefault();
+    if (!rubrosModal) return;
+    if (!rubrosModal.rubros && !rubrosModal.marcas && !rubrosModal.asociaciones) {
+      setError("Subí al menos un archivo CSV.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const fd = new FormData();
+      if (rubrosModal.rubros) fd.append("rubros", rubrosModal.rubros);
+      if (rubrosModal.marcas) fd.append("marcas", rubrosModal.marcas);
+      if (rubrosModal.asociaciones) fd.append("asociaciones", rubrosModal.asociaciones);
+      const r = await fetch(`${API_URL}/superadmin/empresas/${rubrosModal.empresaId}/importar-rubros-marcas`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${sessionStorage.getItem("afip_superadmin_token") || ""}` },
+        body: fd,
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || "No se pudieron importar rubros y marcas.");
+      setOk(`Rubros y marcas de ${rubrosModal.nombre}: ${j.rubros} rubros, ${j.marcas} marcas, ${j.asociados} productos asociados${j.sinProducto ? ` (${j.sinProducto} códigos sin producto en el ERP)` : ""}.`);
+      setRubrosModal(null);
+      await load();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function guardarChangelog(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -423,7 +455,10 @@ export function SuperAdminPage() {
             <td>{e.plan_activo || "Sin licencia"}</td>
             <td>{fmtFecha(e.vencimiento_licencia)}</td>
             <td>{e.activa ? <span className="sa-badge ok">Activa</span> : <span className="sa-badge off">Inactiva</span>}</td>
-            <td><button className="sa-icon-btn" title="Editar" onClick={() => setEmpresaModal({ id: e.id, nombre: e.nombre, cuit: e.cuit, condicionIva: e.condicion_iva, razonSocial: e.razon_social, direccion: e.direccion || "", localidad: e.localidad || "", provincia: e.provincia || "", telefono: e.telefono || "", email: e.email || "", activa: !!e.activa, versionInstalada: e.version_instalada || "" })}><Pencil size={15}/></button></td>
+            <td><div className="sa-row-actions">
+              <button className="sa-icon-btn" title="Importar rubros y marcas (CSV)" onClick={() => setRubrosModal({ empresaId: e.id, nombre: e.nombre, rubros: null, marcas: null, asociaciones: null })}><Tags size={15}/></button>
+              <button className="sa-icon-btn" title="Editar" onClick={() => setEmpresaModal({ id: e.id, nombre: e.nombre, cuit: e.cuit, condicionIva: e.condicion_iva, razonSocial: e.razon_social, direccion: e.direccion || "", localidad: e.localidad || "", provincia: e.provincia || "", telefono: e.telefono || "", email: e.email || "", activa: !!e.activa, versionInstalada: e.version_instalada || "" })}><Pencil size={15}/></button>
+            </div></td>
           </tr>)}</tbody></table>
           {!empresasVisibles.length && <div className="empty-table">No hay empresas.</div>}
         </div>
@@ -561,7 +596,7 @@ export function SuperAdminPage() {
           <div><h3>Historial de cambios (novedades)</h3><p>Lo que ven los clientes en Novedades. Registrá acá cada corrección o función nueva para poder notificarlos.</p><small className="sa-version-actual">Versión actual del sistema: <code>{versionActual || "—"}</code></small></div>
           <div className="sa-row-actions">
             <button className="secondary-action" onClick={subirVersion} title="Sube la versión del sistema y prepara una entrada nueva"><TrendingUp size={16}/> Subir versión</button>
-            <button className="primary-action" onClick={() => setChangelogModal({ version: versionActual || "4.0.0-beta.2.2", fecha: new Date().toISOString().slice(0, 10), tipo: "CORRECCION", titulo: "", detalle: "" })}><Plus/> Nueva entrada</button>
+            <button className="primary-action" onClick={() => setChangelogModal({ version: versionActual || "4.0.0-beta.2.3", fecha: new Date().toISOString().slice(0, 10), tipo: "CORRECCION", titulo: "", detalle: "" })}><Plus/> Nueva entrada</button>
           </div>
         </div>
         <div className="products-card"><table>
@@ -629,7 +664,7 @@ export function SuperAdminPage() {
         <label>Provincia<input value={empresaModal.provincia || ""} onChange={(e) => setEmpresaModal({ ...empresaModal, provincia: e.target.value })} /></label>
         <label>Teléfono<input value={empresaModal.telefono || ""} onChange={(e) => setEmpresaModal({ ...empresaModal, telefono: e.target.value })} /></label>
         <label>Email<input value={empresaModal.email || ""} onChange={(e) => setEmpresaModal({ ...empresaModal, email: e.target.value })} /></label>
-        <label>Versión instalada<em>Qué versión tiene este cliente instalada. El cliente verá si está actualizado o si tiene actualizaciones disponibles.</em><input value={empresaModal.versionInstalada || ""} onChange={(e) => setEmpresaModal({ ...empresaModal, versionInstalada: e.target.value })} placeholder="Ej: 4.0.0-beta.2.2" /></label>
+        <label>Versión instalada<em>Qué versión tiene este cliente instalada. El cliente verá si está actualizado o si tiene actualizaciones disponibles.</em><input value={empresaModal.versionInstalada || ""} onChange={(e) => setEmpresaModal({ ...empresaModal, versionInstalada: e.target.value })} placeholder="Ej: 4.0.0-beta.2.3" /></label>
         <label className="sa-check"><input type="checkbox" checked={empresaModal.activa !== false} onChange={(e) => setEmpresaModal({ ...empresaModal, activa: e.target.checked })} /> Empresa activa</label>
       </div>
       <div className="modal-actions"><button type="button" className="secondary" onClick={() => setEmpresaModal(null)}>Cancelar</button><button className="primary-action">{empresaModal.id ? "Guardar cambios" : "Crear empresa"}</button></div>
@@ -693,10 +728,20 @@ export function SuperAdminPage() {
       {fiscalModal.data.logoUrl && <img className="company-logo-preview" src={fiscalModal.data.logoUrl} />}
       <div className="modal-actions"><button type="button" className="secondary" onClick={() => setFiscalModal(null)}>Cancelar</button><button className="primary-action" disabled={loading}>Guardar datos fiscales</button></div>
     </form></div>}
+    {rubrosModal && <div className="modal-backdrop"><form className="product-modal polished-modal" onSubmit={importarRubrosMarcas}>
+      <div className="modal-head"><div><h3>Importar rubros y marcas — {rubrosModal.nombre}</h3><p>Se reutilizan por nombre y se asocian a los productos por código. Es idempotente: podés volver a correrlo.</p></div><button type="button" onClick={() => setRubrosModal(null)}><X/></button></div>
+      <div className="info-note">Rubros y marcas: columnas <b>id</b> y <b>nombre</b>. Asociaciones (productos_rubro_marca.csv): <b>codigo</b>, idrubro, idmarca. Los archivos son los generados por el importador del sistema viejo.</div>
+      <div className="form-grid">
+        <label className="full upload-field"><span className="label-icon"><Tags size={16}/> Rubros (rubros.csv)</span><input type="file" accept=".csv,.txt" onChange={(e) => setRubrosModal({ ...rubrosModal, rubros: e.target.files?.[0] || null })} /><small>{rubrosModal.rubros?.name || "Sin archivo"}</small></label>
+        <label className="full upload-field"><span className="label-icon"><Tags size={16}/> Marcas (marcas.csv)</span><input type="file" accept=".csv,.txt" onChange={(e) => setRubrosModal({ ...rubrosModal, marcas: e.target.files?.[0] || null })} /><small>{rubrosModal.marcas?.name || "Sin archivo"}</small></label>
+        <label className="full upload-field"><span className="label-icon"><Tags size={16}/> Asociaciones (productos_rubro_marca.csv)</span><input type="file" accept=".csv,.txt" onChange={(e) => setRubrosModal({ ...rubrosModal, asociaciones: e.target.files?.[0] || null })} /><small>{rubrosModal.asociaciones?.name || "Sin archivo"}</small></label>
+      </div>
+      <div className="modal-actions"><button type="button" className="secondary" onClick={() => setRubrosModal(null)}>Cancelar</button><button className="primary-action" disabled={loading}>Importar</button></div>
+    </form></div>}
     {changelogModal && <div className="modal-backdrop"><form className="product-modal polished-modal" onSubmit={guardarChangelog}>
       <div className="modal-head"><h3>{changelogModal.id ? "Editar entrada" : "Nueva entrada de novedades"}</h3><button type="button" onClick={() => setChangelogModal(null)}><X/></button></div>
       <div className="form-grid">
-        <label>Versión<input required value={changelogModal.version} onChange={(e) => setChangelogModal({ ...changelogModal, version: e.target.value })} placeholder="Ej: 4.0.0-beta.2.2" /></label>
+        <label>Versión<input required value={changelogModal.version} onChange={(e) => setChangelogModal({ ...changelogModal, version: e.target.value })} placeholder="Ej: 4.0.0-beta.2.3" /></label>
         <label>Fecha<input type="date" value={changelogModal.fecha} onChange={(e) => setChangelogModal({ ...changelogModal, fecha: e.target.value })} /></label>
         <label>Tipo<select value={changelogModal.tipo} onChange={(e) => setChangelogModal({ ...changelogModal, tipo: e.target.value })}><option value="NUEVO">Nuevo</option><option value="CORRECCION">Corrección</option><option value="MEJORA">Mejora</option></select></label>
         <label className="full">Título<input required value={changelogModal.titulo} onChange={(e) => setChangelogModal({ ...changelogModal, titulo: e.target.value })} placeholder="Ej: Se corrigió el registro de cobro en caja" /></label>

@@ -43,6 +43,16 @@ router.post("/empresas/:id/archivos-fiscales/:type", upload.single("file"), cont
 const uploadCsv = multer({ storage: multer.diskStorage({ destination: uploadDir, filename: (req, file, cb) => cb(null, `import-${req.params.id || 0}-${Date.now()}.csv`) }) });
 router.post("/empresas/:id/importar-clientes", uploadCsv.single("file"), controller.importarClientesEmpresa);
 router.post("/empresas/:id/importar-productos", uploadCsv.single("file"), controller.importarProductosEmpresa);
+const uploadCsvCampos = multer({ storage: multer.diskStorage({ destination: uploadDir, filename: (req, file, cb) => cb(null, `import-${req.params.id || 0}-${file.fieldname}-${Date.now()}.csv`) }) });
+router.post(
+  "/empresas/:id/importar-rubros-marcas",
+  uploadCsvCampos.fields([
+    { name: "rubros", maxCount: 1 },
+    { name: "marcas", maxCount: 1 },
+    { name: "asociaciones", maxCount: 1 },
+  ]),
+  controller.importarRubrosMarcasEmpresa,
+);
 
 router.get("/usuarios", controller.listarUsuarios);
 router.post("/usuarios", controller.crearUsuario);

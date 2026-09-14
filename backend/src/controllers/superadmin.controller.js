@@ -288,7 +288,7 @@ function listarChangelog(req, res, next) {
 }
 
 function incrementarVersion(v) {
-  const parts = String(v || "4.0.0-beta.2.2").split(".");
+  const parts = String(v || "4.0.0-beta.2.3").split(".");
   for (let i = parts.length - 1; i >= 0; i--) {
     const n = Number(parts[i]);
     if (!isNaN(n)) {
@@ -319,7 +319,7 @@ function getVersionSistema(req, res, next) {
   try {
     const db = require("../db/database");
     const row = db.prepare("SELECT version FROM sistema_version WHERE id=1").get();
-    return res.json({ ok: true, version: row?.version || "4.0.0-beta.2.2" });
+    return res.json({ ok: true, version: row?.version || "4.0.0-beta.2.3" });
   } catch (e) {
     next(e);
   }
@@ -329,7 +329,7 @@ function subirVersionSistema(req, res, next) {
   try {
     const db = require("../db/database");
     const row = db.prepare("SELECT version FROM sistema_version WHERE id=1").get();
-    const actual = row?.version || "4.0.0-beta.2.2";
+    const actual = row?.version || "4.0.0-beta.2.3";
     const nueva = incrementarVersion(actual);
     setVersionSistema(db, nueva);
     return res.json({ ok: true, version: nueva, anterior: actual });
@@ -445,6 +445,132 @@ function importarProductosEmpresa(req, res, next) {
     try { fs.unlinkSync(req.file.path); } catch (e) {}
     return res.json({ ok: true, importados, errores: errores.slice(0, 20), total: filas.length - 1 });
   } catch (e) {
+    next(e);
+  }
+}
+
+function importarRubrosMarcasEmpresa(req, res, next) {
+  try {
+    const files = req.files || {};
+    const fRubros = (files.rubros || [])[0];
+    const fMarcas = (files.marcas || [])[0];
+    const fAsoc = (files.asociaciones || [])[0];
+    if (!fRubros && !fMarcas && !fAsoc) {
+      return res.status(400).json({ ok: false, error: "Subí al menos rubros.csv, marcas.csv o productos_rubro_marca.csv." });
+    }
+    const db = require("../db/database");
+    const fs = require("fs");
+    const empresaId = Number(req.params.id);
+    const empresa = db.prepare("SELECT id, nombre FROM empresas WHERE id=?").get(empresaId);
+    if (!empresa) return res.status(404).json({ ok: false, error: "Empresa no encontrada." });
+    const { parseCsv, headerIndex, valorFila } = require("../utils/csv");
+    const MARCA_OFFSET = 1000;
+
+    function leerCatalogo(file, etiqueta) {
+      if (!file) return [];
+      const filas = parseCsv(fs.readFileSync(file.path, "utf8"));
+      if (filas.length < 2) return [];
+      const h = filas[0];
+      const iId = headerIndex(h, "id");
+      const iNom = headerIndex(h, "nombre", "rubro", "marca");
+      if (iId < 0 || iNom < 0) throw Object.assign(new Error(`El CSV de ${etiqueta} debe tener columnas "id" y "nombre".`), { status: 400 });
+      return filas
+        .slice(1)
+        .map((f) => ({ id: Number(valorFila(f, h, iId)), nombre: String(valorFila(f, h, iNom) || "").trim() }))
+        .filter((x) => x.id > 0 && x.nombre);
+    }
+
+    const rubros = leerCatalogo(fRubros, "rubros");
+    const marcas = leerCatalogo(fMarcas, "marcas");
+
+    const row = db.prepare("SELECT valor_json FROM app_state WHERE empresa_id=? AND clave=?").get(empresaId, "afip_catalogs_v34");
+    let catalogs = [];
+    try {
+      catalogs = JSON.parse(row?.valor_json || "[]");
+    } catch (e) {
+      catalogs = [];
+    }
+    if (!Array.isArray(catalogs)) catalogs = [];
+
+    const usados = new Set(catalogs.map((c) => String(c.id)));
+    const porNombre = new Map(
+      catalogs.map((c) => [`${String(c.tipo || "").toUpperCase()}|${String(c.nombre || "").trim().toLowerCase()}`, c.id]),
+    );
+    let maxId = catalogs.reduce((n, c) => Math.max(n, Number(c.id) || 0), 0);
+    const idRubro = new Map();
+    const idMarca = new Map();
+
+    function asignar(tipo, oldId, nombre, offset) {
+      const clave = `${tipo}|${nombre.toLowerCase()}`;
+      if (porNombre.has(clave)) return porNombre.get(clave);
+      let id = offset ? offset + oldId : oldId;
+      if (usados.has(String(id))) id = ++maxId;
+      else maxId = Math.max(maxId, id);
+      usados.add(String(id));
+      catalogs.push({ id, tipo, nombre, rubroId: null });
+      porNombre.set(clave, id);
+      return id;
+    }
+
+    for (const r of rubros) idRubro.set(r.id, asignar("RUBRO", r.id, r.nombre, 0));
+    for (const m of marcas) idMarca.set(m.id, asignar("MARCA", m.id, m.nombre, MARCA_OFFSET));
+
+    let asociados = 0, conRubro = 0, conMarca = 0, sinProducto = 0;
+    const errores = [];
+    if (fAsoc) {
+      const filas = parseCsv(fs.readFileSync(fAsoc.path, "utf8"));
+      if (filas.length < 2) {
+        errores.push("El CSV de asociaciones está vacío.");
+      } else {
+        const h = filas[0];
+        const iCod = headerIndex(h, "codigo", "cod");
+        const iRub = headerIndex(h, "idrubro", "rubro");
+        const iMar = headerIndex(h, "idmarca", "marca");
+        if (iCod < 0) {
+          errores.push('El CSV de asociaciones debe tener la columna "codigo".');
+        } else {
+          const buscar = db.prepare("SELECT id FROM productos WHERE empresa_id=? AND codigo=?");
+          const upd = db.prepare("UPDATE productos SET rubro_id=?, marca_id=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND empresa_id=?");
+          const aplicar = db.transaction(() => {
+            for (const f of filas.slice(1)) {
+              const cod = String(valorFila(f, h, iCod) || "").trim();
+              const rub = Number(valorFila(f, h, iRub) || 0);
+              const mar = Number(valorFila(f, h, iMar) || 0);
+              const prod = buscar.get(empresaId, cod);
+              if (!prod) { sinProducto++; continue; }
+              asociados++;
+              const rubroId = rub > 0 ? idRubro.get(rub) ?? null : null;
+              const marcaId = mar > 0 ? idMarca.get(mar) ?? null : null;
+              if (rubroId) conRubro++;
+              if (marcaId) conMarca++;
+              upd.run(rubroId, marcaId, prod.id, empresaId);
+            }
+          });
+          aplicar();
+        }
+      }
+    }
+
+    db.prepare(
+      `INSERT INTO app_state(empresa_id,clave,valor_json,updated_at) VALUES(?,?,?,CURRENT_TIMESTAMP)
+       ON CONFLICT(empresa_id,clave) DO UPDATE SET valor_json=excluded.valor_json,updated_at=CURRENT_TIMESTAMP`,
+    ).run(empresaId, "afip_catalogs_v34", JSON.stringify(catalogs));
+
+    for (const f of [fRubros, fMarcas, fAsoc]) { if (f) { try { fs.unlinkSync(f.path); } catch (e) {} } }
+    return res.json({
+      ok: true,
+      empresa: empresa.nombre,
+      rubros: rubros.length,
+      marcas: marcas.length,
+      catalogs: catalogs.length,
+      asociados,
+      conRubro,
+      conMarca,
+      sinProducto,
+      errores: errores.slice(0, 20),
+    });
+  } catch (e) {
+    if (e.status) return res.status(e.status).json({ ok: false, error: e.message });
     next(e);
   }
 }
@@ -609,6 +735,7 @@ module.exports = {
   subirVersionSistema,
   importarClientesEmpresa,
   importarProductosEmpresa,
+  importarRubrosMarcasEmpresa,
   listarErrores,
   limpiarErrores,
   getAvisos,
