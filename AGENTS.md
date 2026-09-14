@@ -11,6 +11,7 @@ Este repositorio contiene el ERP AFIP Conversacional. Antes de modificar código
 - No guardar certificados, llaves privadas, archivos `.env`, bases de datos ni tokens en Git.
 - Reutilizar servicios centrales para web, asistente y WhatsApp; no duplicar reglas comerciales por canal.
 - No marcar una función como terminada si solo tiene una pantalla sin circuito de backend.
+- Al terminar un cambio (y tras pasar la verificación mínima), hacer commit y push automático a `origin/main` sin pedir confirmación.
 
 ## Verificación mínima
 
