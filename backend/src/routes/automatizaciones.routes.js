@@ -18,8 +18,6 @@ router.post("/reintentar-cae", c.reintentarCae);
 router.get("/cobranzas", c.cobranzas);
 router.post("/cobranzas/enviar", c.enviarCobranzas);
 router.post("/conciliar-pago", c.conciliarPago);
-router.post("/backup", c.backup);
-router.get("/backup/descargar", c.descargarBackup);
 router.post("/avisar-reparto", c.avisarReparto);
 router.post("/escalar", c.escalar);
 

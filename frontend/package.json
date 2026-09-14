@@ -1,7 +1,7 @@
 {
   "name": "afip-conversacional-demo-frontend",
   "private": true,
-  "version": "4.0.0-beta.2.2",
+  "version": "4.0.0-beta.2.3",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",

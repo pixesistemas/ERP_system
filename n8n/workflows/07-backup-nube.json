@@ -12,9 +12,9 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.ERP_BASE_URL }}/api/v1/n8n/backup",
+        "url": "={{ $env.ERP_BASE_URL }}/api/v1/backup",
         "sendHeaders": true,
-        "headerParameters": { "parameters": [{ "name": "x-api-key", "value": "={{ $env.ERP_API_KEY }}" }] },
+        "headerParameters": { "parameters": [{ "name": "x-backup-key", "value": "={{ $env.ERP_BACKUP_KEY }}" }] },
         "options": {}
       },
       "id": "erp-backup",
@@ -25,9 +25,9 @@
     },
     {
       "parameters": {
-        "url": "={{ $env.ERP_BASE_URL }}/api/v1/n8n/backup/descargar",
+        "url": "={{ $env.ERP_BASE_URL }}/api/v1/backup/descargar",
         "sendHeaders": true,
-        "headerParameters": { "parameters": [{ "name": "x-api-key", "value": "={{ $env.ERP_API_KEY }}" }] },
+        "headerParameters": { "parameters": [{ "name": "x-backup-key", "value": "={{ $env.ERP_BACKUP_KEY }}" }] },
         "options": { "response": { "response": { "responseFormat": "file" } } }
       },
       "id": "erp-descarga",

@@ -14,6 +14,7 @@ Creá estas variables en n8n (Settings → Variables) o en su `.env`:
 |---|---|
 | `ERP_BASE_URL` | Ej: `https://erp.pixesistemas.com.ar` |
 | `ERP_API_KEY` | API Key de la empresa (tabla `empresas.api_key`) |
+| `ERP_BACKUP_KEY` | Clave de backup del servidor (`BACKUP_API_KEY`). Solo para el workflow 07 |
 | `WHATSAPP_TOKEN` | Token de WhatsApp Cloud API (para workflows 01 y 08) |
 | `WHATSAPP_PHONE_ID` | Phone ID de WhatsApp (para workflows 01 y 08) |
 | `SUPERADMIN_WHATSAPP_TO` | Número de respaldo del superadmin |
@@ -48,11 +49,20 @@ POST /api/v1/n8n/reintentar-cae
 GET  /api/v1/n8n/cobranzas
 POST /api/v1/n8n/cobranzas/enviar
 POST /api/v1/n8n/conciliar-pago      body: { "externalId": "..." }
-POST /api/v1/n8n/backup
-GET  /api/v1/n8n/backup/descargar
 POST /api/v1/n8n/avisar-reparto      body: { "documentoId": 123, "estado": "EN_CAMINO" }
 POST /api/v1/n8n/escalar             body: { "telefono": "...", "mensaje": "..." }
 ```
+
+> **Backup (solo workflow 07):** el backup contiene datos de *todas* las
+> empresas, por eso no usa `x-api-key` sino una clave propia del servidor.
+> Header `x-backup-key: <BACKUP_API_KEY>`:
+>
+> ```
+> POST /api/v1/backup
+> GET  /api/v1/backup/descargar
+> ```
+>
+> Si `BACKUP_API_KEY` no está definida en el backend, el endpoint responde 503.
 
 ## Variables de entorno del ERP (backend)
 

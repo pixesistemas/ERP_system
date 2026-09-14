@@ -61,8 +61,12 @@ async function conciliarPago(req, res, next) {
   }
 }
 
-function backup(req, res) {
-  res.json(svc.crearBackup());
+async function backup(req, res, next) {
+  try {
+    res.json(await svc.crearBackup());
+  } catch (e) {
+    next(e);
+  }
 }
 
 function descargarBackup(req, res) {

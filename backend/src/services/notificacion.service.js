@@ -53,7 +53,9 @@ async function enviarWhatsappEmpresa({ empresaId, telefono, mensaje }) {
 
 async function enviarWhatsappSuperadmin({ mensaje }) {
   const sa = db
-    .prepare("SELECT telefono, whatsapp_activo FROM super_admins WHERE usuario='superadmin'")
+    .prepare(
+      "SELECT telefono, whatsapp_activo FROM super_admins WHERE telefono IS NOT NULL AND telefono <> '' ORDER BY (usuario='superadmin') DESC, id ASC LIMIT 1",
+    )
     .get();
   const n8nUrl = process.env.N8N_ALERT_WEBHOOK_URL;
   const activo = Number(sa?.whatsapp_activo || 0) === 1 || Boolean(n8nUrl);

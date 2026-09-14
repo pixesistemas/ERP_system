@@ -1247,7 +1247,7 @@ module.exports.printPaymentOrder=printPaymentOrder;
 function appEstado(req,res){
   const e=empresaId(req);
   const vrow=db.prepare("SELECT version FROM sistema_version WHERE id=1").get();
-  let version=vrow?.version||'4.0.0-beta.2.2';
+  let version=vrow?.version||'4.0.0-beta.2.3';
   try{const pkg=require('../../package.json');if(pkg&&pkg.version&&!vrow)version=pkg.version}catch(err){}
   const empresa=db.prepare('SELECT version_instalada FROM empresas WHERE id=?').get(e)||{};
   const lic=db.prepare("SELECT * FROM licencias WHERE empresa_id=? AND estado='ACTIVA' ORDER BY id DESC LIMIT 1").get(e)||null;

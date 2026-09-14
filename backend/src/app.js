@@ -44,6 +44,7 @@ const companySettingsRoutes = require("./routes/companySettings.routes");
 const erpConsolidationRoutes = require("./routes/erpConsolidation.routes");
 const pagoRoutes = require("./routes/pago.routes");
 const automatizacionesRoutes = require("./routes/automatizaciones.routes");
+const backupRoutes = require("./routes/backup.routes");
 const pagoController = require("./controllers/pago.controller");
 
 //Procesos
@@ -51,6 +52,7 @@ const registerProcesses = require("./process/registerProcesses");
 
 // Middlewares
 const apiKeyMiddleware = require("./middleware/apiKey.middleware");
+const backupKeyMiddleware = require("./middleware/backupKey.middleware");
 const jwtMiddleware = require("./middleware/jwt.middleware");
 const whatsappAuthMiddleware = require("./middleware/whatsappAuth.middleware");
 const whatsappClienteAuthMiddleware = require("./middleware/whatsappClienteAuth.middleware");
@@ -181,6 +183,7 @@ app.use("/api/v1/erp", jwtMiddleware, apiRateLimit, erpConsolidationRoutes);
 app.use("/api/v1/pagos", jwtMiddleware, apiRateLimit, pagoRoutes);
 app.use("/api/v1/automatizaciones", jwtMiddleware, apiRateLimit, automatizacionesRoutes);
 app.use("/api/v1/n8n", apiKeyMiddleware, apiRateLimit, automatizacionesRoutes);
+app.use("/api/v1/backup", backupKeyMiddleware, apiRateLimit, backupRoutes);
 app.use("/api/v1/users", jwtMiddleware, apiRateLimit, usuarioRoutes);
 app.use("/api/v1/roles", jwtMiddleware, apiRateLimit, rolRoutes);
 app.use(

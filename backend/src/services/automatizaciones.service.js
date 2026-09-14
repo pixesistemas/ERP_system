@@ -163,18 +163,21 @@ async function reintentarCae(empresaId) {
   return { ok: true, pendientes: pendientes.length, resultados };
 }
 
-function cobranzas(empresaId) {
+function cobranzas(empresaId, dias = 0) {
+  const minDias = Number(dias) > 0 ? Number(dias) : 0;
   const rows = db
     .prepare(
       `SELECT m.cliente_doc, MAX(m.cliente_id) cliente_id, MAX(m.cliente_nombre) nombre,
-              SUM(m.debe) - SUM(m.haber) saldo
+              SUM(m.debe) - SUM(m.haber) saldo,
+              MAX(m.created_at) ultimo_movimiento
        FROM cliente_cc_movimientos m
        WHERE m.empresa_id=?
        GROUP BY m.cliente_doc
        HAVING saldo > 0.009
+         AND (? = 0 OR (julianday('now') - julianday(MAX(m.created_at))) >= ?)
        ORDER BY saldo DESC LIMIT 200`,
     )
-    .all(empresaId);
+    .all(empresaId, minDias, minDias);
   const buscarTel = db.prepare(
     `SELECT id, razon_social, telefono FROM clientes
      WHERE empresa_id=? AND (cuit=? OR dni=? OR CAST(id AS TEXT)=?) LIMIT 1`,
@@ -188,7 +191,7 @@ function cobranzas(empresaId) {
 async function enviarCobranzas(empresaId) {
   const cfg = getConfig(empresaId);
   if (!cfg.cobranzas) return { skipped: true, motivo: "Cobranzas desactivadas" };
-  const deudores = cobranzas(empresaId);
+  const deudores = cobranzas(empresaId, cfg.cobranzasDias);
   const enviados = [];
   for (const d of deudores.slice(0, 50)) {
     if (!d.telefono) continue;
@@ -202,6 +205,7 @@ async function enviarCobranzas(empresaId) {
 async function conciliarPago({ empresaId, externalId }) {
   if (!empresaId || !externalId) return { ok: false, motivo: "empresaId y externalId requeridos" };
   const link = db.prepare("SELECT * FROM links_pago WHERE empresa_id=? AND external_id=?").get(empresaId, externalId);
+  if (!link) return { ok: false, motivo: "Link de pago no encontrado" };
   const r = linkRepo.marcarPagado({ empresaId, externalId, webhookRaw: { origen: "conciliacion" } });
   const empresa = db.prepare("SELECT nombre FROM empresas WHERE id=?").get(empresaId);
   const mensaje =
@@ -210,17 +214,17 @@ async function conciliarPago({ empresaId, externalId }) {
     (link?.documento_id ? `\nDocumento #${link.documento_id}` : "");
   const cfg = getConfig(empresaId);
   if (cfg.stockTelefono) await notificacion.enviarWhatsappEmpresa({ empresaId, telefono: cfg.stockTelefono, mensaje });
-  return { ok: true, actualizados: r.changes, link: link || null };
+  return { ok: true, actualizados: r.changes, link };
 }
 
-function crearBackup() {
+async function crearBackup() {
   const dbPath = process.env.DB_PATH || path.join(__dirname, "../../data/afip_api.db");
   if (!fs.existsSync(dbPath)) return { ok: false, motivo: "No existe la base" };
   const dir = path.join(path.dirname(dbPath), "backups");
   fs.mkdirSync(dir, { recursive: true });
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const destino = path.join(dir, `afip_api-${stamp}.db`);
-  fs.copyFileSync(dbPath, destino);
+  await db.backup(destino);
   const size = fs.statSync(destino).size;
   return { ok: true, archivo: path.basename(destino), tamano: size };
 }
