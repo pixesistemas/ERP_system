@@ -66,7 +66,12 @@ function importarProductos(empresaId) {
       const costo = Number(String(valorFila(f, h, iCosto)).replace(",", ".")) || 0;
       const iva = Number(String(valorFila(f, h, iIva)).replace(",", ".")) || 21;
       if (!dryRun) {
-        insert.run(empresaId, codigo, valorFila(f, h, iBarra) || null, descripcion, precio, iva, costo, valorFila(f, h, iUnidad) || "UN");
+        try {
+          insert.run(empresaId, codigo, valorFila(f, h, iBarra) || null, descripcion, precio, iva, costo, valorFila(f, h, iUnidad) || "UN");
+        } catch (e) {
+          errores++;
+          continue;
+        }
       }
       creados++;
     }

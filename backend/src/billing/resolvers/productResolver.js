@@ -14,15 +14,15 @@ class ProductResolver {
     let productoDb = null;
 
     if (item.codigo) {
-      productoDb = getProductoByCodigo(item.codigo);
+      productoDb = getProductoByCodigo(item.codigo, context.empresaId);
     }
 
     if (!productoDb && item.codigoBarra) {
-      productoDb = getProductoByCodigoBarra(item.codigoBarra);
+      productoDb = getProductoByCodigoBarra(item.codigoBarra, context.empresaId);
     }
 
     if (!productoDb && item.descripcion) {
-      productoDb = buscarProducto(item.descripcion);
+      productoDb = buscarProducto(item.descripcion, context.empresaId);
     }
 
     if (!productoDb) {

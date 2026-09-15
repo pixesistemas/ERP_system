@@ -435,11 +435,16 @@ function importarProductosEmpresa(req, res, next) {
       const precio = Number(valorFila(fila, headers, iPrecio).replace(",", ".")) || 0;
       const iva = Number(valorFila(fila, headers, iIva).replace(",", ".")) || 0;
       const costo = Number(valorFila(fila, headers, iCosto).replace(",", ".")) || 0;
-      insert.run(
-        empresaId, codigo, valorFila(fila, headers, iBarra) || null, descripcion,
-        Math.round(precio * 100) / 100, iva, Math.round(costo * 100) / 100,
-        valorFila(fila, headers, iUnidad) || "UN", rubroId,
-      );
+      try {
+        insert.run(
+          empresaId, codigo, valorFila(fila, headers, iBarra) || null, descripcion,
+          Math.round(precio * 100) / 100, iva, Math.round(costo * 100) / 100,
+          valorFila(fila, headers, iUnidad) || "UN", rubroId,
+        );
+      } catch (e) {
+        errores.push(`No se pudo importar ${codigo}: ${e.message}`);
+        continue;
+      }
       importados++;
     }
     try { fs.unlinkSync(req.file.path); } catch (e) {}

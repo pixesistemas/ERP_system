@@ -16,28 +16,50 @@ function mapProducto(row) {
   };
 }
 
-function getProductoByCodigo(codigo) {
-  const row = db
-    .prepare("SELECT * FROM productos WHERE codigo = ? AND activo = 1")
-    .get(String(codigo));
+function getProductoByCodigo(codigo, empresaId) {
+  const row = empresaId
+    ? db
+        .prepare("SELECT * FROM productos WHERE codigo = ? AND empresa_id = ? AND activo = 1")
+        .get(String(codigo), Number(empresaId))
+    : db
+        .prepare("SELECT * FROM productos WHERE codigo = ? AND activo = 1")
+        .get(String(codigo));
 
   return mapProducto(row);
 }
 
-function getProductoByCodigoBarra(codigoBarra) {
-  const row = db
-    .prepare("SELECT * FROM productos WHERE codigo_barra = ? AND activo = 1")
-    .get(String(codigoBarra));
+function getProductoByCodigoBarra(codigoBarra, empresaId) {
+  const row = empresaId
+    ? db
+        .prepare("SELECT * FROM productos WHERE codigo_barra = ? AND empresa_id = ? AND activo = 1")
+        .get(String(codigoBarra), Number(empresaId))
+    : db
+        .prepare("SELECT * FROM productos WHERE codigo_barra = ? AND activo = 1")
+        .get(String(codigoBarra));
 
   return mapProducto(row);
 }
 
-function buscarProducto(texto) {
+function buscarProducto(texto, empresaId) {
   const like = `%${String(texto).trim()}%`;
 
-  const row = db
-    .prepare(
-      `
+  const row = empresaId
+    ? db
+        .prepare(
+          `
+      SELECT *
+      FROM productos
+      WHERE empresa_id = ?
+        AND activo = 1
+        AND descripcion LIKE ?
+      ORDER BY descripcion
+      LIMIT 1
+    `,
+        )
+        .get(Number(empresaId), like)
+    : db
+        .prepare(
+          `
       SELECT *
       FROM productos
       WHERE activo = 1
@@ -45,8 +67,8 @@ function buscarProducto(texto) {
       ORDER BY descripcion
       LIMIT 1
     `,
-    )
-    .get(like);
+        )
+        .get(like);
 
   return mapProducto(row);
 }
@@ -88,25 +110,39 @@ function buscarProductos({ empresaId, texto, limit = 10 }) {
 }
 
 function saveProducto(producto) {
+  const empresaId = producto.empresaId || null;
+  const codigo = producto.codigo || null;
+  const existente = codigo
+    ? db.prepare("SELECT id FROM productos WHERE codigo = ? AND empresa_id IS ?").get(String(codigo), empresaId)
+    : null;
+
+  if (existente) {
+    db.prepare(
+      `UPDATE productos
+       SET codigo_barra = @codigo_barra, descripcion = @descripcion, precio = @precio,
+           iva = @iva, unidad = @unidad, activo = 1, updated_at = CURRENT_TIMESTAMP
+       WHERE id = @id`,
+    ).run({
+      id: existente.id,
+      codigo_barra: producto.codigoBarra || null,
+      descripcion: producto.descripcion,
+      precio: Number(producto.precio || 0),
+      iva: Number(producto.iva ?? 21),
+      unidad: producto.unidad || "UN",
+    });
+    return getProductoByCodigo(codigo, empresaId);
+  }
+
   db.prepare(
-    `
-    INSERT INTO productos (
-      codigo, codigo_barra, descripcion, precio, iva, unidad, activo, updated_at
+    `INSERT INTO productos (
+      empresa_id, codigo, codigo_barra, descripcion, precio, iva, unidad, activo, updated_at
     )
     VALUES (
-      @codigo, @codigo_barra, @descripcion, @precio, @iva, @unidad, 1, CURRENT_TIMESTAMP
-    )
-    ON CONFLICT(codigo) DO UPDATE SET
-      codigo_barra = excluded.codigo_barra,
-      descripcion = excluded.descripcion,
-      precio = excluded.precio,
-      iva = excluded.iva,
-      unidad = excluded.unidad,
-      activo = 1,
-      updated_at = CURRENT_TIMESTAMP
-  `,
+      @empresa_id, @codigo, @codigo_barra, @descripcion, @precio, @iva, @unidad, 1, CURRENT_TIMESTAMP
+    )`,
   ).run({
-    codigo: producto.codigo || null,
+    empresa_id: empresaId,
+    codigo,
     codigo_barra: producto.codigoBarra || null,
     descripcion: producto.descripcion,
     precio: Number(producto.precio || 0),
@@ -114,7 +150,7 @@ function saveProducto(producto) {
     unidad: producto.unidad || "UN",
   });
 
-  return getProductoByCodigo(producto.codigo);
+  return getProductoByCodigo(codigo, empresaId);
 }
 
 // Busca un producto por su identificador interno.
