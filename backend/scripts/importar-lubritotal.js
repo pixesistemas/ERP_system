@@ -114,13 +114,18 @@ function importarClientes(empresaId) {
       if (key && (enArchivo.has(key) || existe.get(empresaId, cuit || "", dni || ""))) { existentes++; continue; }
       if (key) enArchivo.add(key);
       if (!dryRun) {
-        insert.run(
-          empresaId, nombre, cuit || null, dni || null,
-          valorFila(f, h, iCond) || "CONSUMIDOR FINAL",
-          valorFila(f, h, iDom) || null, valorFila(f, h, iLoc) || null, valorFila(f, h, iProv) || null,
-          valorFila(f, h, iMail) || null, valorFila(f, h, iTel) || null,
-          Math.max(0, Math.min(100, Number(valorFila(f, h, iDesc)) || 0)),
-        );
+        try {
+          insert.run(
+            empresaId, nombre, cuit || null, dni || null,
+            valorFila(f, h, iCond) || "CONSUMIDOR FINAL",
+            valorFila(f, h, iDom) || null, valorFila(f, h, iLoc) || null, valorFila(f, h, iProv) || null,
+            valorFila(f, h, iMail) || null, valorFila(f, h, iTel) || null,
+            Math.max(0, Math.min(100, Number(valorFila(f, h, iDesc)) || 0)),
+          );
+        } catch (e) {
+          errores++;
+          continue;
+        }
       }
       creados++;
     }

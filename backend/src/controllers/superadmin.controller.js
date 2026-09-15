@@ -375,16 +375,21 @@ function importarClientesEmpresa(req, res, next) {
         ? db.prepare("SELECT id,razon_social FROM clientes WHERE empresa_id=? AND (cuit=? OR dni=?) AND cuit<>''").get(empresaId, cuit, dni)
         : null;
       if (dup) { errores.push(`Ya existe un cliente cargado con ese documento: ${dup.razon_social} (${cuit || dni})`); continue; }
-      insert.run(
-        empresaId, nombre, cuit || null, dni || null,
-        valorFila(fila, headers, iCond) || "CONSUMIDOR FINAL",
-        valorFila(fila, headers, iDomicilio) || null,
-        valorFila(fila, headers, iLocalidad) || null,
-        valorFila(fila, headers, iProvincia) || null,
-        valorFila(fila, headers, iEmail) || null,
-        valorFila(fila, headers, iTelefono) || null,
-        Math.max(0, Math.min(100, Number(valorFila(fila, headers, iDescuento)) || 0)),
-      );
+      try {
+        insert.run(
+          empresaId, nombre, cuit || null, dni || null,
+          valorFila(fila, headers, iCond) || "CONSUMIDOR FINAL",
+          valorFila(fila, headers, iDomicilio) || null,
+          valorFila(fila, headers, iLocalidad) || null,
+          valorFila(fila, headers, iProvincia) || null,
+          valorFila(fila, headers, iEmail) || null,
+          valorFila(fila, headers, iTelefono) || null,
+          Math.max(0, Math.min(100, Number(valorFila(fila, headers, iDescuento)) || 0)),
+        );
+      } catch (e) {
+        errores.push(`No se pudo importar ${nombre}: ${e.message}`);
+        continue;
+      }
       importados++;
     }
     try { fs.unlinkSync(req.file.path); } catch (e) {}
