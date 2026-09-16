@@ -1,0 +1,6 @@
+Empresa: MATERIALES MESOPOTAMICOS (CUIT 30718765117) - RESPONSABLE INSCRIPTO
+Clientes: 1653 (con documento: 166, sin nombre/omitidos: 0)
+Productos: 469 (precio histórico: 0, por costo/markup: 0, sin descripción: 2, placeholder 000: 48, sin código (autogenerado): 0)
+Rubros: 22
+Marcas: 0
+Precios: modo=costo markup=0% iva_incluido_origen=true

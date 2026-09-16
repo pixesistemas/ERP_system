@@ -45,6 +45,16 @@ const OUT = path.resolve(__dirname, "..", arg("out", "data/importacion/materiale
 const PRECIO = arg("precio", "historico").toLowerCase();
 const MARKUP = Number(arg("markup", "0")) || 0;
 const IVA_INCLUIDO = arg("iva-incluido", "true") !== "false";
+const ARCHIVOS = {
+  bases: arg("bases", "bases_mym.sql"),
+  productos: arg("productos", "productos_mym.sql"),
+  clientes: arg("clientes", "clientes_mym.sql"),
+  rubros: arg("rubros", "rubros_mym.sql"),
+  marcas: arg("marcas", "marcas_mym.sql"),
+  empresa: arg("empresa", "empresa_mym.sql"),
+  comprobantes: arg("comprobantes", "comprobantes_mym.sql"),
+  detalle: arg("detalle", "detalle_comprobantes_mym.sql"),
+};
 
 /* ------------------------------------------------------------------ */
 /* Parser de dumps MySQL (REPLACE INTO ... VALUES (...),(...);)        */
@@ -141,14 +151,14 @@ function main() {
   console.log(`Destino: ${OUT}`);
   console.log(`Precio : ${PRECIO}${PRECIO === "markup" ? ` (${MARKUP}%)` : ""} | IVA incluido en origen: ${IVA_INCLUIDO}`);
 
-  const base = leer("bases_mym.sql"); // catálogos genéricos (mismo software)
-  const artTxt = leer("productos_mym.sql");
-  const cliTxt = leer("clientes_mym.sql");
-  const rubTxt = leer("rubros_mym.sql");
-  const marTxt = leer("marcas_mym.sql");
-  const empTxt = leer("empresa_mym.sql");
-  const compTxt = leer("comprobantes_mym.sql");
-  const detTxt = leer("detalle_comprobantes_mym.sql");
+  const base = leer(ARCHIVOS.bases); // catálogos genéricos (mismo software)
+  const artTxt = leer(ARCHIVOS.productos);
+  const cliTxt = leer(ARCHIVOS.clientes);
+  const rubTxt = leer(ARCHIVOS.rubros);
+  const marTxt = leer(ARCHIVOS.marcas);
+  const empTxt = leer(ARCHIVOS.empresa);
+  const compTxt = leer(ARCHIVOS.comprobantes);
+  const detTxt = leer(ARCHIVOS.detalle);
 
   // Catálogos
   const tipocuit = new Map(parseReplace(base, "tipocuit").map((r) => [num(r.idtipocuit), String(r.tipocuit || "").trim()]));
@@ -239,11 +249,12 @@ function main() {
   // Productos + asociación rubro/marca
   const productos = [["codigo", "codigoBarra", "descripcion", "precio", "costo", "iva", "unidad"]];
   const prodRubro = [["codigo", "idrubro", "idmarca", "idsubrubro"]];
-  let pSinCod = 0, pSinDesc = 0, pHist = 0, pFallback = 0;
+  let pSinCod = 0, pSinDesc = 0, pCero = 0, pHist = 0, pFallback = 0;
   const vistos = new Set();
   for (const a of parseReplace(artTxt, "articulos")) {
     const descripcion = String(a.descrip || "").trim();
     if (!descripcion) { pSinDesc++; continue; }
+    if (/^0+$/.test(descripcion)) { pCero++; continue; }
     let codigo = String(a.codinterno || "").trim() || String(a.codbarra || "").trim();
     if (!codigo || codigo === "0") { codigo = `ART-${num(a.idart)}`; pSinCod++; }
     const key = codigo.toLowerCase();
@@ -290,12 +301,12 @@ function main() {
   fs.writeFileSync(path.join(OUT, "rubros.csv"), csv(rubros), "utf8");
   fs.writeFileSync(path.join(OUT, "marcas.csv"), csv(marcas), "utf8");
   fs.writeFileSync(path.join(OUT, "productos_rubro_marca.csv"), csv(prodRubro), "utf8");
-  fs.writeFileSync(path.join(OUT, "empresa.json"), JSON.stringify(empresa, null, 2), "utf8");
+  if (empTxt) fs.writeFileSync(path.join(OUT, "empresa.json"), JSON.stringify(empresa, null, 2), "utf8");
 
   const resumen = [
-    `Empresa: ${empresa.nombre} (CUIT ${empresa.cuit}) - ${empresa.condicionIva}`,
+    empTxt ? `Empresa: ${empresa.nombre} (CUIT ${empresa.cuit}) - ${empresa.condicionIva}` : "Empresa: (sin dump de empresa)",
     `Clientes: ${clientes.length - 1} (con documento: ${cliDoc}, sin nombre/omitidos: ${cliErr})`,
-    `Productos: ${productos.length - 1} (precio histórico: ${pHist}, por costo/markup: ${pFallback}, sin descripción: ${pSinDesc}, sin código (autogenerado): ${pSinCod})`,
+    `Productos: ${productos.length - 1} (precio histórico: ${pHist}, por costo/markup: ${pFallback}, sin descripción: ${pSinDesc}, placeholder 000: ${pCero}, sin código (autogenerado): ${pSinCod})`,
     `Rubros: ${rubros.length - 1}`,
     `Marcas: ${marcas.length - 1}`,
     `Precios: modo=${PRECIO} markup=${MARKUP}% iva_incluido_origen=${IVA_INCLUIDO}`,
