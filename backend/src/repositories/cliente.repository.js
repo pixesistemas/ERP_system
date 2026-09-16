@@ -280,8 +280,9 @@ function buscarClientes({ empresaId, texto, limit = 10 }) {
 
   /*
    * Busca CUIT sin puntos, espacios o guiones.
+   * Solo cuando la búsqueda trae dígitos: si no, "LIKE %" devolvería todo.
    */
-  if (columns.has("cuit")) {
+  if (columns.has("cuit") && normalizedDocument) {
     conditions.push(
       `
       REPLACE(
@@ -306,7 +307,7 @@ function buscarClientes({ empresaId, texto, limit = 10 }) {
   /*
    * Busca DNI normalizado.
    */
-  if (columns.has("dni")) {
+  if (columns.has("dni") && normalizedDocument) {
     conditions.push(
       `
       REPLACE(
@@ -331,7 +332,7 @@ function buscarClientes({ empresaId, texto, limit = 10 }) {
   /*
    * Busca teléfono normalizado.
    */
-  if (columns.has("telefono")) {
+  if (columns.has("telefono") && normalizedDocument) {
     conditions.push(
       `
       REPLACE(

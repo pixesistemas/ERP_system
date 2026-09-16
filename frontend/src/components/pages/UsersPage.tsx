@@ -31,7 +31,7 @@ export function UsersPage() {
         erpApi.listPointsOfSale(),
         api.listUserPointsOfSale(u.id),
       ]);
-      setPointsOfSale(puntos.puntosVenta || []);
+      setPointsOfSale(puntos.pointsOfSale || puntos.puntosVenta || []);
       setAsignados(new Set((asign.puntosVenta || []).map((p: any) => Number(p.punto_venta_id))));
       const def = (asign.puntosVenta || []).find((p: any) => p.predeterminado);
       setPredeterminado(def ? Number(def.punto_venta_id) : null);

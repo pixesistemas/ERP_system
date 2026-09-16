@@ -36,9 +36,13 @@ const resourceReaders = {
 };
 
 function readResource(req,res){
-  const fn=resourceReaders[req.params.key];
-  if(!fn)return res.status(404).json({ok:false,error:'El recurso no está normalizado.'});
-  res.json({ok:true,key:req.params.key,value:fn(companyId(req))});
+  const key=String(req.params.key||'');
+  const fn=resourceReaders[key];
+  if(!fn){
+    const row=db.prepare('SELECT valor_json FROM app_state WHERE empresa_id=? AND clave=?').get(companyId(req),key);
+    return res.json({ok:true,key,value:json(row?.valor_json)});
+  }
+  res.json({ok:true,key,value:fn(companyId(req))});
 }
 
 function syncRows(table,e,rows,columns,map){
@@ -57,7 +61,12 @@ function syncRows(table,e,rows,columns,map){
 }
 
 function writeResource(req,res){
-  const e=companyId(req),key=req.params.key,value=req.body?.value;
+  const e=companyId(req),key=String(req.params.key||''),value=req.body?.value;
+  if(!resourceReaders[key]){
+    db.prepare(`INSERT INTO app_state(empresa_id,clave,valor_json,updated_at) VALUES(?,?,?,CURRENT_TIMESTAMP)
+      ON CONFLICT(empresa_id,clave) DO UPDATE SET valor_json=excluded.valor_json,updated_at=CURRENT_TIMESTAMP`).run(e,key,JSON.stringify(value??null));
+    return res.json({ok:true,key,value});
+  }
   const rows=Array.isArray(value)?value:[];
   const tx=db.transaction(()=>{
     if(key==='afip_suppliers_v30') syncRows('proveedores',e,rows,['nombre','cuit','condicion_iva','domicilio','telefono','email','saldo_inicial','activo'],r=>[r.nombre||r.razonSocial,String(r.cuit||'')||null,r.condicionIVA||'',r.domicilio||'',r.telefono||'',r.email||'',Number(r.saldo||0),yes(r.activo??true)?1:0]);
