@@ -89,7 +89,7 @@ async function cargarPendienteEnVenta(op:any){
     const r=await erpApi.listPosOperationItems(op.id);
     const items=r.items||[];
     if(!items.length)throw new Error('El documento no tiene ítems para cargar.');
-    patchTab({mode:'NORMAL',paymentCondition:op.condicion_pago||'CONTADO',clienteBloqueado:true,origenDocumentoId:null,cart:items.map((i:any)=>({id:i.producto_id||null,codigo:i.codigo,descripcion:i.descripcion,unidad:i.unidad||'UN',cantidad:Number(i.cantidad),precio:Math.round(Number(i.precio_unitario||0)*10000)/10000,descuento:Number(i.descuento||0),iva:Number(i.iva||21),costo:0,pendienteOpId:op.id}))});
+    patchTab({mode:'NORMAL',paymentCondition:op.condicion_pago||'CONTADO',clienteBloqueado:true,origenDocumentoId:null,cart:items.map((i:any)=>({id:i.producto_id||null,codigo:i.codigo,descripcion:i.descripcion,unidad:i.unidad||'UN',cantidad:Number(i.cantidad),precio:Math.round(Number(i.precio_unitario||0)*10000)/10000,descuento:Number(i.descuento||0),iva:Number(i.iva||21),costo:0,esManual:!i.producto_id,rubroId:i.rubro_id??null,pendienteOpId:op.id}))});
     setNotice('Documento cargado en la venta: quitá o cambiá productos y apretá Cerrar venta (F10). El cliente queda fijo.');
   }catch(e:any){setNotice(e.message)}finally{setProcessing('')}
 }
@@ -100,7 +100,7 @@ async function cargarPendientesSeleccionados(){
   try{
     const all=await Promise.all(ids.map(async opId=>({opId,items:(await erpApi.listPosOperationItems(opId)).items||[]})));
     const items:any[]=[];
-    for(const {opId,items:its} of all)for(const i of its)items.push({id:i.producto_id||null,codigo:i.codigo,descripcion:i.descripcion,unidad:i.unidad||'UN',cantidad:Number(i.cantidad),precio:Math.round(Number(i.precio_unitario||0)*10000)/10000,descuento:Number(i.descuento||0),iva:Number(i.iva||21),costo:0,pendienteOpId:opId});
+    for(const {opId,items:its} of all)for(const i of its)items.push({id:i.producto_id||null,codigo:i.codigo,descripcion:i.descripcion,unidad:i.unidad||'UN',cantidad:Number(i.cantidad),precio:Math.round(Number(i.precio_unitario||0)*10000)/10000,descuento:Number(i.descuento||0),iva:Number(i.iva||21),costo:0,esManual:!i.producto_id,rubroId:i.rubro_id??null,pendienteOpId:opId});
     if(!items.length)throw new Error('Los documentos seleccionados no tienen ítems.');
     patchTab({mode:'NORMAL',paymentCondition:tab.paymentCondition,clienteBloqueado:true,origenDocumentoId:null,cart:items});
     setPendientesSel([]);
