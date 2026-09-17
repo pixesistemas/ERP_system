@@ -13,7 +13,7 @@ export function WhatsappTrayPage() {
   const [busy, setBusy] = useState<number | null>(null);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [respBot, setRespBot] = useState<Record<number, string>>({});
-  const [cfg, setCfg] = useState<any>({ token: "", phoneId: "", numero: "", verifyToken: "", activo: false });
+  const [cfg, setCfg] = useState<any>({ token: "", phoneId: "", numero: "", verifyToken: "", activo: false, enviarSaldoVencido: true });
   const [cfgMsg, setCfgMsg] = useState("");
   const [pedidos, setPedidos] = useState<any[]>([]);
 
@@ -49,13 +49,13 @@ export function WhatsappTrayPage() {
   async function loadCfg() {
     try {
       const r = await api.getWhatsappConfig();
-      if (r.config) setCfg({ token: r.config.token || "", phoneId: r.config.phoneId || "", numero: r.config.numero || "", verifyToken: r.config.verifyToken || "", activo: !!r.config.activo });
+      if (r.config) setCfg({ token: r.config.token || "", phoneId: r.config.phoneId || "", numero: r.config.numero || "", verifyToken: r.config.verifyToken || "", activo: !!r.config.activo, enviarSaldoVencido: r.config.enviarSaldoVencido !== false });
     } catch (e: any) { setError(e.message); }
   }
   async function guardarCfg() {
     setCfgMsg("");
     try {
-      await api.saveWhatsappConfig({ token: cfg.token, phoneId: cfg.phoneId, numero: cfg.numero, verifyToken: cfg.verifyToken, activo: cfg.activo });
+      await api.saveWhatsappConfig({ token: cfg.token, phoneId: cfg.phoneId, numero: cfg.numero, verifyToken: cfg.verifyToken, activo: cfg.activo, enviarSaldoVencido: cfg.enviarSaldoVencido !== false });
       setCfgMsg("Conexión guardada.");
     } catch (e: any) { setError(e.message); }
   }
@@ -212,7 +212,7 @@ export function WhatsappTrayPage() {
               <option value="ENTREGADO">Entregado</option>
             </select>
             <button title="Enviar el link de pago de Mercado Pago al cliente" onClick={() => enviarPago(pd.id)}>Link de pago</button>
-            <button title="Ver el PDF del pedido" onClick={() => api.generarDocumentoPdf(pd.id).catch((e:any) => setError(e.message))}>PDF</button>
+            <button title="Ver el PDF del pedido" onClick={() => api.generarDocumentoPdf(pd.id).then(r => window.open(r.pdfUrl, '_blank')).catch((e:any) => setError(e.message))}>PDF</button>
           </td>
         </tr>)}
         {!pedidos.length && <tr><td colSpan={5} className="empty-table">Todavía no hay pedidos de WhatsApp.</td></tr>}
@@ -232,6 +232,7 @@ export function WhatsappTrayPage() {
       </div>
       <div className="modal-actions">
         <label className="toggle-row"><div><strong>Activo</strong></div><input type="checkbox" checked={cfg.activo} onChange={e => setCfg({ ...cfg, activo: e.target.checked })} /></label>
+        <label className="toggle-row"><div><strong>Enviar saldo vencido</strong><small>Recordatorios de cuenta corriente por WhatsApp</small></div><input type="checkbox" checked={cfg.enviarSaldoVencido !== false} onChange={e => setCfg({ ...cfg, enviarSaldoVencido: e.target.checked })} /></label>
         <button className="secondary-action" onClick={guardarCfg}>Guardar conexión</button>
         <button className="primary-action" onClick={probarCfg}>Probar conexión</button>
       </div>

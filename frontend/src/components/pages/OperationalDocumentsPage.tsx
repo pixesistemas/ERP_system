@@ -4,6 +4,7 @@ import { api, erpApi } from "../../services/api";
 import { fmtFecha } from "../../utils/fecha";
 import { DocumentDetail } from "../shared/DocumentDetail";
 import { DynamicGroupingReport } from "../shared/DynamicGroupingReport";
+import { PdfViewerModal } from "../shared/PdfViewerModal";
 
 // La pestaña usa el texto que se ve en el menú; el backend guarda otro código.
 const TIPO_BACKEND: Record<string, string> = {
@@ -30,6 +31,7 @@ export function OperationalDocumentsPage({ tipo, onNavigate }: { tipo: string; o
   const [vista, setVista] = useState<'agrupado' | 'lista'>('lista');
   const [remitoSub, setRemitoSub] = useState<'R' | 'X'>('X');
   const [remitoViaNotaPedido, setRemitoViaNotaPedido] = useState(true);
+  const [pdfModal, setPdfModal] = useState<{ url: string; title: string } | null>(null);
 
   async function load() {
     setError('');
@@ -148,7 +150,8 @@ export function OperationalDocumentsPage({ tipo, onNavigate }: { tipo: string; o
     setBusy(r.id);
     setError('');
     try {
-      await api.generarDocumentoPdf(r.id);
+      const { pdfUrl } = await api.generarDocumentoPdf(r.id);
+      setPdfModal({ url: pdfUrl, title: `${tipo} ${String(r.punto_venta || '').padStart(4, '0')}-${String(r.numero || '').padStart(8, '0')}` });
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -208,5 +211,6 @@ export function OperationalDocumentsPage({ tipo, onNavigate }: { tipo: string; o
       </table>
       {!filtered.length && <div className="empty-table">No hay documentos para mostrar.</div>}
     </div>}
+    {pdfModal && <PdfViewerModal url={pdfModal.url} title={pdfModal.title} onClose={() => setPdfModal(null)} />}
   </div>;
 }

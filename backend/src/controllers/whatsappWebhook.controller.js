@@ -1,5 +1,6 @@
 const db = require("../db/database");
 const CommercialConversation = require("../core/commercial-conversation");
+const ChequeWhatsapp = require("../services/chequeWhatsapp.service");
 
 function getWebhook(req, res) {
   const mode = req.query["hub.mode"];
@@ -62,8 +63,11 @@ async function postWebhook(req, res) {
             continue;
           }
           if (!texto) continue;
-          let conversation = CommercialConversation.Service.findActive({ empresaId: empresa.id, telefono: from, canal: "WHATSAPP" });
           let respuesta = null;
+          if (/^cheque\b/i.test(texto) && ChequeWhatsapp.esTelefonoAutorizado(empresa.id, from)) {
+            respuesta = ChequeWhatsapp.procesarCheque({ empresaId: empresa.id, texto }).mensaje;
+          } else {
+          let conversation = CommercialConversation.Service.findActive({ empresaId: empresa.id, telefono: from, canal: "WHATSAPP" });
           if (!conversation) {
             const context = CommercialConversation.Engine.start({ message: texto, channel: "WHATSAPP" });
             context.telefonoOrigen = from;
@@ -75,6 +79,7 @@ async function postWebhook(req, res) {
             const result = await CommercialConversation.Engine.continue({ context: conversation.context, message: texto, empresaId: empresa.id, usuarioId: null, empresaNombre: empresa.nombre });
             CommercialConversation.Service.save(conversation);
             respuesta = result?.response?.message || null;
+          }
           }
           if (respuesta && config.token && config.phone_id) {
             try {

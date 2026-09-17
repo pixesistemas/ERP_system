@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, X, UserRound, MonitorSmartphone } from "lucide-react";
+import { Plus, X, UserRound, MonitorSmartphone, Wallet } from "lucide-react";
 import { api, erpApi } from "../../services/api";
 
 export function UsersPage() {
@@ -11,6 +11,9 @@ export function UsersPage() {
   const [pointsOfSale, setPointsOfSale] = useState<any[]>([]);
   const [asignados, setAsignados] = useState<Set<number>>(new Set());
   const [predeterminado, setPredeterminado] = useState<number | null>(null);
+  const [cajaUser, setCajaUser] = useState<any>(null);
+  const [cajas, setCajas] = useState<any[]>([]);
+  const [cajasAsignadas, setCajasAsignadas] = useState<Set<number>>(new Set());
 
   async function load() {
     setError("");
@@ -50,6 +53,29 @@ export function UsersPage() {
         predeterminado,
       });
       setPvUser(null);
+    } catch (e: any) {
+      setError(e.message);
+    }
+  }
+
+  async function openCajasModal(u: any) {
+    setError("");
+    try {
+      const r = await api.listUserCashiers(u.id);
+      setCajas(r.cajas || []);
+      setCajasAsignadas(new Set((r.cajas || []).filter((c: any) => c.asignado).map((c: any) => Number(c.id))));
+      setCajaUser(u);
+    } catch (e: any) {
+      setError(e.message);
+    }
+  }
+
+  async function saveCajas() {
+    if (!cajaUser) return;
+    setError("");
+    try {
+      await api.saveUserCashiers(cajaUser.id, { asignados: Array.from(cajasAsignadas) });
+      setCajaUser(null);
     } catch (e: any) {
       setError(e.message);
     }
@@ -95,7 +121,7 @@ export function UsersPage() {
     {error && <div className="error-box">{error}</div>}
     <div className="products-card">
       <table>
-        <thead><tr><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Rol</th><th>Estado</th><th></th><th></th></tr></thead>
+        <thead><tr><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Rol</th><th>Estado</th><th></th><th></th><th></th></tr></thead>
         <tbody>{users.map((u: any) => <tr key={u.id}>
           <td><strong>{u.nombre}</strong></td>
           <td>{u.email}</td>
@@ -104,6 +130,7 @@ export function UsersPage() {
           <td>{u.activo ? "ACTIVO" : "INACTIVO"}</td>
           <td><button onClick={() => toggleActive(u)}>{u.activo ? "Desactivar" : "Activar"}</button></td>
           <td><button className="secondary-action" onClick={() => openPvModal(u)}><MonitorSmartphone /> Puntos de venta</button></td>
+          <td><button className="secondary-action" onClick={() => openCajasModal(u)}><Wallet /> Cajas</button></td>
         </tr>)}</tbody>
       </table>
       {!users.length && <div className="empty-table">No hay usuarios cargados.</div>}
@@ -140,6 +167,27 @@ export function UsersPage() {
         {!pointsOfSale.length && <div className="empty-table">No hay puntos de venta activos.</div>}
       </div>
       <div className="modal-actions"><button type="button" onClick={() => setPvUser(null)}>Cancelar</button><button className="save" onClick={savePv}>Guardar asignación</button></div>
+    </div></div>}
+    {cajaUser && <div className="modal-backdrop"><div className="product-modal polished-modal">
+      <div className="modal-head"><div><Wallet /><h3>Cajas de {cajaUser.nombre}</h3></div><button type="button" onClick={() => setCajaUser(null)}><X /></button></div>
+      <p className="form-hint">El operador va a arrancar en el POS con una de las cajas marcadas. Una caja puede pertenecer a un solo usuario.</p>
+      <div className="pv-list">
+        {cajas.map((c: any) => {
+          const id = Number(c.id);
+          const checked = cajasAsignadas.has(id);
+          return <label key={id} className="pv-row">
+            <input type="checkbox" checked={checked} onChange={e => {
+              const next = new Set(cajasAsignadas);
+              if (e.target.checked) next.add(id); else next.delete(id);
+              setCajasAsignadas(next);
+            }} />
+            <span><b>{c.codigo}</b> — {c.nombre}</span>
+            {c.usuario_id && !checked && <small>Asignada a otro usuario</small>}
+          </label>;
+        })}
+        {!cajas.length && <div className="empty-table">No hay cajas cargadas. Creálas desde Cajeros.</div>}
+      </div>
+      <div className="modal-actions"><button type="button" onClick={() => setCajaUser(null)}>Cancelar</button><button className="save" onClick={saveCajas}>Guardar asignación</button></div>
     </div></div>}
   </div>;
 }

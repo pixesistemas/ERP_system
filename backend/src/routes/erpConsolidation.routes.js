@@ -13,11 +13,12 @@ router.get('/app/estado',c.appEstado);router.get('/changelog',c.listChangelog);r
 router.get('/resources/:key',beta2.readResource);router.put('/resources/:key',beta2.writeResource);
 router.get('/bancos',c.listBanks);router.post('/bancos',c.saveBank);router.put('/bancos/:id',c.saveBank);router.get('/bancos/reconciliacion',c.bankReconciliation);
 router.get('/puntos-venta',c.listPos);router.post('/puntos-venta',c.savePos);router.put('/puntos-venta/:id',c.savePos);
-router.get('/cheques',c.listChecks);router.post('/cheques',c.createCheck);router.post('/cheques/depositos',c.depositChecks);
+router.get('/cheques',c.listChecks);router.post('/cheques',c.createCheck);router.post('/cheques/depositos',c.depositChecks);router.delete('/cajeros/:id',c.deleteCajero);
 router.get('/cheques/depositos/listado',beta2.listDeposits);router.post('/cheques/depositos/:id/conciliar',beta2.reconcileDeposit);
 router.get('/ordenes-pago',beta2.listPaymentOrders);router.post('/ordenes-pago',beta2.createPaymentOrder);router.get('/ordenes-pago/:id/imprimir',c.printPaymentOrder);
 router.get('/whatsapp-autorizados',c.listWhatsapp);router.post('/whatsapp-autorizados',c.saveWhatsapp);router.put('/whatsapp-autorizados/:id',c.saveWhatsapp);
-router.get('/compras',c.listPurchases);router.post('/compras',c.savePurchase);router.delete('/compras/:id',c.deletePurchase);
+const xlsxUpload=multer({storage:multer.memoryStorage(),limits:{fileSize:8*1024*1024}});
+router.get('/compras',c.listPurchases);router.post('/compras/importar',xlsxUpload.single('file'),c.importarComprasExcel);router.post('/compras',c.savePurchase);router.delete('/compras/:id',c.deletePurchase);
 router.get('/libro-iva',c.vatBook);
 router.post('/precios/actualizacion-masiva',c.updatePrices);
 router.get('/pos/borrador-iva',c.borradorIva);router.post('/pos/borrador-iva/ajustes',c.saveBorradorIvaAjuste);router.post('/pos/borrador-iva/rubros/:id',c.renameBorradorIvaRubro);

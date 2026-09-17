@@ -1,12 +1,14 @@
 import { Fragment, useState, useEffect } from "react";
 import { api, erpApi } from "../../services/api";
 import { fmtFechaHora } from "../../utils/fecha";
+import { PdfViewerModal } from "../shared/PdfViewerModal";
 
 export function SalesHistoryPage() {
   const [sales, setSales] = useState<any[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState<number | null>(null);
   const [obsOpen, setObsOpen] = useState<number | null>(null);
+  const [pdfModal, setPdfModal] = useState<{ url: string; title: string } | null>(null);
 
   async function load() {
     try {
@@ -25,6 +27,19 @@ export function SalesHistoryPage() {
     try {
       await erpApi.posRetryFiscal(id);
       await load();
+    } catch (e:any) {
+      setError(e.message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function verPdf(s:any) {
+    if (!s.documento_id) { setError("La venta todavía no tiene comprobante PDF."); return; }
+    setBusy(s.id);
+    try {
+      const { pdfUrl } = await api.generarDocumentoPdf(Number(s.documento_id));
+      setPdfModal({ url: pdfUrl, title: numeroFiscal(s) });
     } catch (e:any) {
       setError(e.message);
     } finally {
@@ -66,6 +81,7 @@ export function SalesHistoryPage() {
   return <div className="products-page">
     <div className="products-toolbar"><div><h3>Historial de ventas</h3><p>Ventas del POS con estado fiscal ARCA.</p></div><button className="primary-action" onClick={load}>Actualizar</button></div>
     {error && <div className="error-box">{error}</div>}
-    <div className="products-card"><table><thead><tr><th>Fecha</th><th>Comprobante</th><th>Cliente</th><th>Estado fiscal</th><th>CAE</th><th>Total</th><th></th></tr></thead><tbody>{sales.map((s:any)=><Fragment key={s.id}><tr><td>{fmtFechaHora(s.created_at || s.fecha)}</td><td><strong>{numeroFiscal(s)}</strong></td><td>{s.cliente || s.razon_social || s.cliente_nombre ? (s.cliente || s.razon_social || s.cliente_nombre) : 'CONSUMIDOR FINAL'}</td><td><span className={claseFiscal(s)}>{estadoFiscal(s)}</span></td><td>{s.cae || '-'}</td><td className="price">$ {Number(s.total || s.importe_total || 0).toLocaleString('es-AR',{minimumFractionDigits:2})}</td><td className="row-actions">{s.afip_estado==='PENDIENTE'&&<button disabled={busy===s.id} onClick={()=>retry(s.id)}>Reintentar CAE</button>}<button onClick={()=>setObsOpen(obsOpen===s.id?null:s.id)}>Ver observación</button></td></tr>{obsOpen===s.id&&<tr className="obs-row"><td colSpan={7}><strong>Observación:</strong> {s.observaciones || 'Sin observación.'}{(()=>{const arca=observacionesArca(s);if(!arca)return null;return <><div className="obs-arca"><strong>Respuesta de ARCA:</strong>{arca.map((o:any,i:number)=><div className="obs-arca-line" key={i}><b>Obs {o.Code}</b><span>{o.Msg}</span></div>)}</div></>})()}</td></tr>}</Fragment>)}</tbody></table>{!sales.length&&<div className="empty-table">Todavía no hay ventas registradas.</div>}</div>
+    <div className="products-card"><table><thead><tr><th>Fecha</th><th>Comprobante</th><th>Cliente</th><th>Estado fiscal</th><th>CAE</th><th>Total</th><th></th></tr></thead><tbody>{sales.map((s:any)=><Fragment key={s.id}><tr><td>{fmtFechaHora(s.created_at || s.fecha)}</td><td><strong>{numeroFiscal(s)}</strong></td><td>{s.cliente || s.razon_social || s.cliente_nombre ? (s.cliente || s.razon_social || s.cliente_nombre) : 'CONSUMIDOR FINAL'}</td><td><span className={claseFiscal(s)}>{estadoFiscal(s)}</span></td><td>{s.cae || '-'}</td><td className="price">$ {Number(s.total || s.importe_total || 0).toLocaleString('es-AR',{minimumFractionDigits:2})}</td><td className="row-actions">{s.afip_estado==='PENDIENTE'&&<button disabled={busy===s.id} onClick={()=>retry(s.id)}>Reintentar CAE</button>}{s.documento_id&&<button disabled={busy===s.id} onClick={()=>verPdf(s)}>PDF</button>}<button onClick={()=>setObsOpen(obsOpen===s.id?null:s.id)}>Ver observación</button></td></tr>{obsOpen===s.id&&<tr className="obs-row"><td colSpan={7}><strong>Observación:</strong> {s.observaciones || 'Sin observación.'}{(()=>{const arca=observacionesArca(s);if(!arca)return null;return <><div className="obs-arca"><strong>Respuesta de ARCA:</strong>{arca.map((o:any,i:number)=><div className="obs-arca-line" key={i}><b>Obs {o.Code}</b><span>{o.Msg}</span></div>)}</div></>})()}</td></tr>}</Fragment>)}</tbody></table>{!sales.length&&<div className="empty-table">Todavía no hay ventas registradas.</div>}</div>
+    {pdfModal && <PdfViewerModal url={pdfModal.url} title={pdfModal.title} onClose={() => setPdfModal(null)} />}
   </div>;
 }

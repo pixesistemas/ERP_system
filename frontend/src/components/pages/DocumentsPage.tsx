@@ -3,6 +3,7 @@ import { FileText, RefreshCw, LayoutGrid, List } from "lucide-react";
 import { api, normalizarUrlArchivo } from "../../services/api";
 import { DocumentDetail } from "../shared/DocumentDetail";
 import { DynamicGroupingReport } from "../shared/DynamicGroupingReport";
+import { PdfViewerModal } from "../shared/PdfViewerModal";
 
 export function DocumentsPage({ tipo = "" }: { tipo?: string }) {
   const [rows, setRows] = useState<any[]>([]);
@@ -16,6 +17,7 @@ export function DocumentsPage({ tipo = "" }: { tipo?: string }) {
   const [filterPv, setFilterPv] = useState("");
   const [expanded, setExpanded] = useState<any>(null);
   const [vista, setVista] = useState<'agrupado' | 'lista'>('lista');
+  const [pdfModal, setPdfModal] = useState<{ url: string; title: string } | null>(null);
 
   async function load() {
     try {
@@ -34,7 +36,7 @@ export function DocumentsPage({ tipo = "" }: { tipo?: string }) {
       const r = await api.generateDocumentPdf(id);
       const raw = r.pdf?.publicUrl || r.pdf?.url || r.documento?.pdf_url || r.pdfUrl;
       const url = normalizarUrlArchivo(raw);
-      if (url) window.open(url, '_blank');
+      if (url) setPdfModal({ url, title: "Comprobante PDF" });
       else alert('El PDF fue generado, pero no se recibió una URL.');
     } catch (e: any) {
       setError(e.message);
@@ -149,5 +151,6 @@ export function DocumentsPage({ tipo = "" }: { tipo?: string }) {
       </table>
       {!visible.length && <div className="empty-table">No hay documentos para mostrar.</div>}
     </div>}
+    {pdfModal && <PdfViewerModal url={pdfModal.url} title={pdfModal.title} onClose={() => setPdfModal(null)} />}
   </div>;
 }

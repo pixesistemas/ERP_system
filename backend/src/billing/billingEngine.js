@@ -28,8 +28,16 @@ class BillingEngine {
     validateFacturaInput(data);
     const { factura, afip } = await FacturaFactory.create(data);
 
+    /*
+     * Si el pedido trae punto de venta (por ejemplo, al facturar un
+     * presupuesto o nota de pedido del POS), se emite con ese punto de
+     * venta y no con el general de la empresa.
+     */
+    const builderInput = factura.toInvoiceBuilderInput();
+    if (Number(data.puntoVenta)) builderInput.puntoVenta = Number(data.puntoVenta);
+
     const facturaPreparada = buildInvoiceRequest(
-      factura.toInvoiceBuilderInput(),
+      builderInput,
       afip.companyConfig,
     );
 

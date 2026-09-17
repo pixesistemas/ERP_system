@@ -67,6 +67,7 @@ async function facturarDocumento({
     vendedorId: documento.vendedor_id || null,
     condicionVenta,
     listaPrecio: "GENERAL",
+    puntoVenta: Number(documento.punto_venta) || null,
 
     cliente: {
       id: cliente.id,

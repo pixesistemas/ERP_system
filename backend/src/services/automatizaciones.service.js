@@ -191,6 +191,12 @@ function cobranzas(empresaId, dias = 0) {
 async function enviarCobranzas(empresaId) {
   const cfg = getConfig(empresaId);
   if (!cfg.cobranzas) return { skipped: true, motivo: "Cobranzas desactivadas" };
+  const waCfg = db
+    .prepare("SELECT enviar_saldo_vencido FROM whatsapp_config WHERE empresa_id=?")
+    .get(empresaId);
+  if (waCfg && Number(waCfg.enviar_saldo_vencido) === 0) {
+    return { skipped: true, motivo: "Envío de saldo vencido desactivado" };
+  }
   const deudores = cobranzas(empresaId, cfg.cobranzasDias);
   const enviados = [];
   for (const d of deudores.slice(0, 50)) {

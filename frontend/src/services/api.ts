@@ -118,9 +118,7 @@ export const api = {
     const r=await request<any>(`/documentos/${id}/pdf`,{method:'POST'});
     const raw=r.pdf?.publicUrl||r.pdf?.url||r.documento?.pdf_url||null;
     if(!raw)throw new Error('No se pudo generar el PDF.');
-    const url=normalizarUrlArchivo(String(raw));
-    window.open(url,'_blank');
-    return {pdfUrl:url};
+    return {pdfUrl:normalizarUrlArchivo(String(raw))};
   },
   listChangelog() { return request<any>("/erp/changelog"); },
   listUsers() { return request<any>("/users"); },
@@ -129,6 +127,8 @@ export const api = {
   changeUserRole(id: number, rol: string) { return request<any>(`/users/${id}/rol`, { method: "PATCH", body: JSON.stringify({ rol }) }); },
   listUserPointsOfSale(id: number) { return request<any>(`/users/${id}/puntos-venta`); },
   saveUserPointsOfSale(id: number, data: any) { return request<any>(`/users/${id}/puntos-venta`, { method: "PUT", body: JSON.stringify(data) }); },
+  listUserCashiers(id: number) { return request<any>(`/users/${id}/cajas`); },
+  saveUserCashiers(id: number, data: any) { return request<any>(`/users/${id}/cajas`, { method: "PUT", body: JSON.stringify(data) }); },
   listRoles() { return request<any>("/roles"); },
   createRole(data: any) { return request<any>("/roles", { method: "POST", body: JSON.stringify(data) }); },
   deleteRole(id: number) { return request<any>(`/roles/${id}`, { method: "DELETE" }); },
@@ -149,6 +149,7 @@ export const erpApi = {
   updatePointOfSale: (id:number,data:any) => request<any>(`/erp/puntos-venta/${id}`,{method:'PUT',body:JSON.stringify(data)}),
   listChecks: (states='') => request<any>(`/erp/cheques${states?`?states=${encodeURIComponent(states)}`:''}`),
   createCheck: (data:any) => request<any>('/erp/cheques',{method:'POST',body:JSON.stringify(data)}),
+  deleteCajero: (id:number) => request<any>(`/erp/cajeros/${id}`,{method:'DELETE'}),
   depositChecks: (data:any) => request<any>('/erp/cheques/depositos',{method:'POST',body:JSON.stringify(data)}),
   listWhatsappAuthorized: () => request<any>('/erp/whatsapp-autorizados'),
   saveWhatsappAuthorized: (data:any,id?:number) => request<any>(id?`/erp/whatsapp-autorizados/${id}`:'/erp/whatsapp-autorizados',{method:id?'PUT':'POST',body:JSON.stringify(data)}),
@@ -157,6 +158,13 @@ export const erpApi = {
   listPurchases: (month?:number,year?:number) => request<any>(`/erp/compras?${new URLSearchParams({...(month?{month:String(month)}:{}),...(year?{year:String(year)}:{})}).toString()}`),
   createPurchase: (data:any) => request<any>('/erp/compras',{method:'POST',body:JSON.stringify(data)}),
   deletePurchase: (id:number) => request<any>(`/erp/compras/${id}`,{method:'DELETE'}),
+  async importPurchasesExcel(file:File){
+    const token=getToken(); const form=new FormData(); form.append('file',file);
+    const response=await fetch(`${API_URL}/erp/compras/importar`,{method:'POST',headers:token?{Authorization:`Bearer ${token}`}:{},body:form});
+    const payload=await response.json().catch(()=>({}));
+    if(!response.ok)throw new Error(payload.error||'No se pudo importar el Excel de compras.');
+    return payload;
+  },
   getVatBook: (month:number,year:number,pv?:number) => request<any>(`/erp/libro-iva?month=${month}&year=${year}${pv?`&pv=${pv}`:''}`),
   updatePrices: (data:any) => request<any>('/erp/precios/actualizacion-masiva',{method:'POST',body:JSON.stringify(data)}),
   getBorradorIva: (month:number,year:number,pv?:number) => request<any>(`/erp/pos/borrador-iva?month=${month}&year=${year}${pv?`&pv=${pv}`:''}`),

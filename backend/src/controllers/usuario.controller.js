@@ -164,6 +164,76 @@ function guardarPuntosVenta(req, res, next) {
   }
 }
 
+/*
+ * Cajas (cajeros) asignadas a un usuario. Cada caja pertenece a un solo
+ * usuario; el POS la usa para arrancar con la caja del operador.
+ */
+function listarCajas(req, res, next) {
+  try {
+    const usuarioId = Number(req.params.id);
+
+    const rows = db
+      .prepare(
+        `SELECT id,codigo,nombre,usuario_id
+         FROM cajeros
+         WHERE empresa_id=?
+         ORDER BY activo DESC,nombre`,
+      )
+      .all(req.empresa.id)
+      .map((r) => ({ ...r, asignado: Number(r.usuario_id) === usuarioId }));
+
+    res.json({ ok: true, cajas: rows });
+  } catch (error) {
+    next(error);
+  }
+}
+
+function guardarCajas(req, res, next) {
+  try {
+    const usuarioId = Number(req.params.id);
+
+    const asignados = Array.isArray(req.body.asignados)
+      ? Array.from(new Set(req.body.asignados.map(Number).filter(Boolean)))
+      : [];
+
+    const validos = new Set(
+      db
+        .prepare("SELECT id FROM cajeros WHERE empresa_id=?")
+        .all(req.empresa.id)
+        .map((r) => r.id),
+    );
+
+    const invalido = asignados.find((id) => !validos.has(id));
+
+    if (invalido) {
+      return res.status(400).json({
+        ok: false,
+        error: `La caja ${invalido} no existe.`,
+      });
+    }
+
+    const tx = db.transaction(() => {
+      db.prepare(
+        "UPDATE cajeros SET usuario_id=NULL,updated_at=CURRENT_TIMESTAMP WHERE empresa_id=? AND usuario_id=?",
+      ).run(req.empresa.id, usuarioId);
+
+      const upd = db.prepare(
+        "UPDATE cajeros SET usuario_id=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND empresa_id=?",
+      );
+
+      for (const id of asignados) {
+        upd.run(usuarioId, id, req.empresa.id);
+      }
+    });
+
+    tx();
+
+    res.json({ ok: true, cajas: asignados });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   crear,
   listar,
@@ -171,4 +241,6 @@ module.exports = {
   cambiarRol,
   listarPuntosVenta,
   guardarPuntosVenta,
+  listarCajas,
+  guardarCajas,
 };

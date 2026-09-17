@@ -31,4 +31,16 @@ router.put(
   controller.guardarPuntosVenta,
 );
 
+router.get(
+  "/:id/cajas",
+  requirePermission("usuarios.gestionar"),
+  controller.listarCajas,
+);
+
+router.put(
+  "/:id/cajas",
+  requirePermission("usuarios.gestionar"),
+  controller.guardarCajas,
+);
+
 module.exports = router;
