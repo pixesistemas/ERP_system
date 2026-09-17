@@ -6,6 +6,7 @@ const TotalsRenderer = require("../../pdf/engine/totalsRenderer");
 const TransparencyFiscalRenderer = require("../../pdf/engine/transparencyFiscalRenderer");
 const CompanyAssetsLoader = require("./companyAssetsLoader");
 const { getPlantillaComprobante } = require("../../repositories/empresa.repository");
+const { empresaConPuntoVenta } = require("../../repositories/puntoVenta.repository");
 
 class DocumentEngine {
   async renderInvoice({ factura, request, response }) {
@@ -22,11 +23,18 @@ class DocumentEngine {
       response,
     });
 
-    const empresaAssets = CompanyAssetsLoader.load(factura.empresa, {
+    /*
+     * Identidad comercial del punto de venta que emite el comprobante:
+     * si tiene nombre de fantasía, dirección o contactos propios, se
+     * imprimen esos datos y no los generales de la empresa.
+     */
+    const empresa = empresaConPuntoVenta(factura.empresa, request.puntoVenta);
+
+    const empresaAssets = CompanyAssetsLoader.load(empresa, {
       puntoVenta: request.puntoVenta,
     });
-    const plantilla = getPlantillaComprobante(factura.empresa.id) || {};
-    const pieTexto = plantilla.pie || factura.empresa.pieFactura || "";
+    const plantilla = getPlantillaComprobante(empresa.id) || {};
+    const pieTexto = plantilla.pie || empresa.pieFactura || "";
 
     const tipo = Number(request.tipoComprobante);
     const discrimina = [1, 2, 3].includes(tipo);
@@ -51,18 +59,16 @@ class DocumentEngine {
     const replacements = {
       "{{LOGO}}": empresaAssets.logoHtml,
 
-      "{{EMPRESA_NOMBRE}}": factura.empresa.nombre || "",
-      "{{EMPRESA_RAZON}}":
-        factura.empresa.razonSocial || factura.empresa.nombre || "",
-      "{{EMPRESA_EMAIL}}": factura.empresa.email || "",
-      "{{EMPRESA_DIRECCION}}": this.formatDireccion(factura.empresa),
-      "{{EMPRESA_TELEFONO}}": factura.empresa.telefono || "",
-      "{{EMPRESA_WHATSAPP}}": factura.empresa.whatsapp || "",
-      "{{EMPRESA_IVA}}": factura.empresa.condicionIVA || "",
-      "{{EMPRESA_CUIT}}": factura.empresa.cuit || "",
-      "{{EMPRESA_IIBB}}":
-        factura.empresa.ingresosBrutos || factura.empresa.cuit || "",
-      "{{EMPRESA_INICIO}}": factura.empresa.inicioActividad || "",
+      "{{EMPRESA_NOMBRE}}": empresa.nombreFantasia || empresa.nombre || "",
+      "{{EMPRESA_RAZON}}": empresa.razonSocial || empresa.nombre || "",
+      "{{EMPRESA_EMAIL}}": empresa.email || "",
+      "{{EMPRESA_DIRECCION}}": this.formatDireccion(empresa),
+      "{{EMPRESA_TELEFONO}}": empresa.telefono || "",
+      "{{EMPRESA_WHATSAPP}}": empresa.whatsapp || "",
+      "{{EMPRESA_IVA}}": empresa.condicionIVA || "",
+      "{{EMPRESA_CUIT}}": empresa.cuit || "",
+      "{{EMPRESA_IIBB}}": empresa.ingresosBrutos || empresa.cuit || "",
+      "{{EMPRESA_INICIO}}": empresa.inicioActividad || "",
 
       "{{VENDEDOR_ROW}}": request.vendedor
         ? `<div class="header-line"><strong>Vendedor:</strong> ${request.vendedor}</div>`

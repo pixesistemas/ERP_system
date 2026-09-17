@@ -7,6 +7,7 @@ const CompanyAssetsLoader = require("./companyAssetsLoader");
 const CuentaCorrienteService = require("../../services/cuentaCorriente.service");
 const { resolverDocumentoCliente } = require("../../afip/fiscalResolver");
 const { getPlantillaComprobante } = require("../../repositories/empresa.repository");
+const { empresaConPuntoVenta } = require("../../repositories/puntoVenta.repository");
 
 /*
  * TicketDocumentEngine
@@ -42,15 +43,18 @@ class TicketDocumentEngine {
     const esTicket80 =
       String(sale.formato_impresion || "A4").toUpperCase() === "80MM";
 
-    const assets = CompanyAssetsLoader.load(empresa, {
+    /*
+     * Identidad comercial del punto de venta que emite el comprobante:
+     * si tiene nombre de fantasía, dirección o contactos propios, se
+     * imprimen esos datos y no los generales de la empresa.
+     */
+    const emp = empresaConPuntoVenta(empresa, sale.punto_venta);
+
+    const assets = CompanyAssetsLoader.load(emp, {
       puntoVenta: sale.punto_venta,
     });
-    const nombreFantasia = this.getNombreFantasiaPuntoVenta(
-      empresa.id,
-      sale.punto_venta,
-    );
-    const plantilla = getPlantillaComprobante(empresa.id) || {};
-    const pieTexto = plantilla.pie || empresa.pieFactura || "";
+    const plantilla = getPlantillaComprobante(emp.id) || {};
+    const pieTexto = plantilla.pie || emp.pieFactura || "";
     const fontSize = Number(plantilla.fontSize) || null;
     const fontFamily = String(plantilla.fontFamily || "Arial").trim() || "Arial";
     let footerPegado = plantilla.footerPegado !== false;
@@ -91,17 +95,17 @@ class TicketDocumentEngine {
 
       "{{LOGO}}": assets.logoHtml || "",
       "{{EMPRESA_NOMBRE}}": this.escape(
-        nombreFantasia || empresa.razonSocial || empresa.nombre || "EMPRESA",
+        emp.nombreFantasia || emp.razonSocial || emp.nombre || "EMPRESA",
       ),
-      "{{EMPRESA_RAZON}}": this.escape(empresa.razonSocial || ""),
-      "{{EMPRESA_EMAIL}}": this.escape(empresa.email || ""),
-      "{{EMPRESA_DIRECCION}}": this.escape(empresa.direccion || ""),
-      "{{EMPRESA_TELEFONO}}": this.escape(empresa.telefono || ""),
-      "{{EMPRESA_WHATSAPP}}": this.escape(empresa.whatsapp || ""),
-      "{{EMPRESA_CUIT}}": this.escape(empresa.cuit || ""),
-      "{{EMPRESA_IVA}}": this.escape(empresa.condicionIVA || ""),
-      "{{EMPRESA_IIBB}}": this.escape(empresa.ingresosBrutos || ""),
-      "{{EMPRESA_INICIO}}": this.escape(this.formatFecha(empresa.inicioActividad)),
+      "{{EMPRESA_RAZON}}": this.escape(emp.razonSocial || ""),
+      "{{EMPRESA_EMAIL}}": this.escape(emp.email || ""),
+      "{{EMPRESA_DIRECCION}}": this.escape(emp.direccion || ""),
+      "{{EMPRESA_TELEFONO}}": this.escape(emp.telefono || ""),
+      "{{EMPRESA_WHATSAPP}}": this.escape(emp.whatsapp || ""),
+      "{{EMPRESA_CUIT}}": this.escape(emp.cuit || ""),
+      "{{EMPRESA_IVA}}": this.escape(emp.condicionIVA || ""),
+      "{{EMPRESA_IIBB}}": this.escape(emp.ingresosBrutos || ""),
+      "{{EMPRESA_INICIO}}": this.escape(this.formatFecha(emp.inicioActividad)),
 
       "{{VENDEDOR}}": this.escape(sale.vendedor || ""),
       "{{VENDEDOR_FOOTER}}": "",
@@ -231,24 +235,6 @@ class TicketDocumentEngine {
    * guardada en app_state (clave pos_impresion).
    * 0 o sin config: sin límite (una sola hoja).
    */
-  getNombreFantasiaPuntoVenta(empresaId, puntoVenta) {
-    const numero = Number(puntoVenta);
-
-    if (!numero || !empresaId) {
-      return "";
-    }
-
-    const row = db
-      .prepare(
-        `SELECT nombre_fantasia FROM puntos_venta
-         WHERE empresa_id=? AND numero=? AND nombre_fantasia IS NOT NULL
-           AND TRIM(nombre_fantasia)<>''`,
-      )
-      .get(empresaId, numero);
-
-    return String(row?.nombre_fantasia || "").trim();
-  }
-
   getMaxItemsPorHoja(empresaId, plantilla = {}) {
     if (Number(plantilla.maxItemsPorHoja) > 0) {
       return Number(plantilla.maxItemsPorHoja);

@@ -3,6 +3,7 @@ const path = require("path");
 
 const CompanyAssetsLoader = require("./companyAssetsLoader");
 const { getPlantillaComprobante } = require("../../repositories/empresa.repository");
+const { empresaConPuntoVenta } = require("../../repositories/puntoVenta.repository");
 
 /*
  * CommercialDocumentEngine
@@ -30,11 +31,18 @@ class CommercialDocumentEngine {
 
     let html = fs.readFileSync(templatePath, "utf8");
 
-    const assets = CompanyAssetsLoader.load(empresa, {
+    /*
+     * Identidad comercial del punto de venta que emite el documento:
+     * si tiene nombre de fantasía, dirección o contactos propios, se
+     * imprimen esos datos y no los generales de la empresa.
+     */
+    const emp = empresaConPuntoVenta(empresa, documento.punto_venta);
+
+    const assets = CompanyAssetsLoader.load(emp, {
       puntoVenta: documento.punto_venta,
     });
-    const plantilla = getPlantillaComprobante(empresa.id) || {};
-    const pieTexto = plantilla.pie || empresa.pieFactura || "";
+    const plantilla = getPlantillaComprobante(emp.id) || {};
+    const pieTexto = plantilla.pie || emp.pieFactura || "";
 
     const tipo = this.normalizeDocumentType(documento.tipo);
 
@@ -80,27 +88,27 @@ class CommercialDocumentEngine {
     const replacements = {
       "{{LOGO}}": assets.logoHtml || "",
 
-      "{{EMPRESA_NOMBRE}}": empresa.nombreFantasia || empresa.nombre || "",
+      "{{EMPRESA_NOMBRE}}": emp.nombreFantasia || emp.nombre || "",
 
-      "{{EMPRESA_RAZON_SOCIAL}}": empresa.razonSocial || empresa.nombre || "",
+      "{{EMPRESA_RAZON_SOCIAL}}": emp.razonSocial || emp.nombre || "",
 
-      "{{EMPRESA_CUIT}}": empresa.cuit || "",
+      "{{EMPRESA_CUIT}}": emp.cuit || "",
 
-      "{{EMPRESA_IVA}}": empresa.condicionIVA || "",
+      "{{EMPRESA_IVA}}": emp.condicionIVA || "",
 
-      "{{EMPRESA_IIBB}}": empresa.ingresosBrutos || empresa.cuit || "",
+      "{{EMPRESA_IIBB}}": emp.ingresosBrutos || emp.cuit || "",
 
       "{{EMPRESA_INICIO}}": this.escape(
-        this.formatDate(empresa.inicioActividad),
+        this.formatDate(emp.inicioActividad),
       ),
 
-      "{{EMPRESA_DIRECCION}}": this.formatEmpresaDireccion(empresa),
+      "{{EMPRESA_DIRECCION}}": this.formatEmpresaDireccion(emp),
 
-      "{{EMPRESA_TELEFONO}}": empresa.telefono || "",
+      "{{EMPRESA_TELEFONO}}": emp.telefono || "",
 
-      "{{EMPRESA_WHATSAPP}}": empresa.whatsapp || "",
+      "{{EMPRESA_WHATSAPP}}": emp.whatsapp || "",
 
-      "{{EMPRESA_EMAIL}}": empresa.email || "",
+      "{{EMPRESA_EMAIL}}": emp.email || "",
 
       "{{LETRA}}": this.getDocumentLetter(tipo, documento),
 
