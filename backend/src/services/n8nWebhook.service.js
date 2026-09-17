@@ -1,3 +1,5 @@
+const { urlPublica } = require("../utils/url");
+
 class N8NWebhookService {
   isEnabled() {
     return process.env.N8N_WEBHOOK_ENABLED === "true";
@@ -29,7 +31,7 @@ class N8NWebhookService {
       },
       pdf: {
         fileName: payload.pdf.fileName,
-        url: `${process.env.PUBLIC_BASE_URL}${payload.pdf.url}`,
+        url: urlPublica(payload.pdf?.publicUrl || payload.pdf?.url),
       },
     };
 
@@ -80,11 +82,7 @@ class N8NWebhookService {
 
       pdf: {
         fileName: pdf?.fileName || null,
-        url:
-          pdf?.publicUrl ||
-          (process.env.PUBLIC_BASE_URL && pdf?.url
-            ? `${process.env.PUBLIC_BASE_URL}${pdf.url}`
-            : pdf?.url),
+        url: urlPublica(pdf?.publicUrl || pdf?.url),
       },
     };
 

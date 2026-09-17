@@ -1,5 +1,17 @@
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api/v1";
 
+/*
+ * Normaliza la URL de un archivo (PDF/QR): corrige bases mal formadas como
+ * "https//host" y completa con el origen de la API cuando viene relativa.
+ */
+export function normalizarUrlArchivo(raw: string): string {
+  let url = String(raw || "").trim();
+  if (!url) return "";
+  url = url.replace(/^(https?):?\/\/?/i, "$1://");
+  if (/^https?:\/\//i.test(url)) return url;
+  return new URL(API_URL).origin + (url.startsWith("/") ? url : "/" + url);
+}
+
 export type ApiError = Error & { status?: number };
 
 function getToken() {
@@ -106,7 +118,7 @@ export const api = {
     const r=await request<any>(`/documentos/${id}/pdf`,{method:'POST'});
     const raw=r.pdf?.publicUrl||r.pdf?.url||r.documento?.pdf_url||null;
     if(!raw)throw new Error('No se pudo generar el PDF.');
-    const url=String(raw).startsWith('http')?String(raw):new URL(API_URL).origin+raw;
+    const url=normalizarUrlArchivo(String(raw));
     window.open(url,'_blank');
     return {pdfUrl:url};
   },

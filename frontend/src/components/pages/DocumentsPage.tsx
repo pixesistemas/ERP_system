@@ -1,6 +1,6 @@
 import { useState, useEffect, Fragment } from "react";
 import { FileText, RefreshCw, LayoutGrid, List } from "lucide-react";
-import { api } from "../../services/api";
+import { api, normalizarUrlArchivo } from "../../services/api";
 import { DocumentDetail } from "../shared/DocumentDetail";
 import { DynamicGroupingReport } from "../shared/DynamicGroupingReport";
 
@@ -32,8 +32,9 @@ export function DocumentsPage({ tipo = "" }: { tipo?: string }) {
   async function pdf(id: number) {
     try {
       const r = await api.generateDocumentPdf(id);
-      const url = r.pdf?.url || r.documento?.pdf_url;
-      if (url) window.open(`http://localhost:3000${url}`, '_blank');
+      const raw = r.pdf?.publicUrl || r.pdf?.url || r.documento?.pdf_url || r.pdfUrl;
+      const url = normalizarUrlArchivo(raw);
+      if (url) window.open(url, '_blank');
       else alert('El PDF fue generado, pero no se recibió una URL.');
     } catch (e: any) {
       setError(e.message);

@@ -2,6 +2,7 @@ const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const db = require("../db/database");
 const { enviarMail, configurado } = require("./mailer.service");
+const { basePublica } = require("../utils/url");
 
 /*
  * Recuperación de contraseña por correo. Genera un token de un solo uso,
@@ -17,7 +18,7 @@ function hashToken(token) {
 }
 
 function baseUrl() {
-  return String(process.env.PUBLIC_BASE_URL || "").replace(/\/$/, "");
+  return basePublica();
 }
 
 function crearToken({ tipo, refId, email }) {

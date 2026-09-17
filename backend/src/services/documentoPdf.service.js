@@ -13,6 +13,8 @@ const eventBus = require("../events/eventBus");
 
 const EVENTS = require("../events/events.constants");
 
+const { urlPublica } = require("../utils/url");
+
 /*
  * Genera el PDF de un documento comercial
  * previamente guardado en la base.
@@ -114,30 +116,7 @@ async function generarPDFDocumento({ empresa, documentoId }) {
  * duplicar barras entre base y ruta.
  */
 function buildPublicUrl(relativeUrl) {
-  const url = String(relativeUrl || "").trim();
-
-  if (!url) {
-    return null;
-  }
-
-  /*
-   * Conserva URLs que ya sean absolutas.
-   */
-  if (/^https?:\/\//i.test(url)) {
-    return url;
-  }
-
-  const baseUrl = String(process.env.PUBLIC_BASE_URL || "")
-    .trim()
-    .replace(/\/+$/g, "");
-
-  if (!baseUrl) {
-    return url;
-  }
-
-  const normalizedPath = url.startsWith("/") ? url : `/${url}`;
-
-  return baseUrl + normalizedPath;
+  return urlPublica(relativeUrl);
 }
 
 /*

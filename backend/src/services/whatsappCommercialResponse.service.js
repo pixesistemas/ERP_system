@@ -1,5 +1,7 @@
 const path = require("path");
 
+const { basePublica } = require("../utils/url");
+
 /*
  * WhatsAppCommercialResponseService
  *
@@ -348,9 +350,7 @@ class WhatsAppCommercialResponseService {
    * utiliza los headers del proxy.
    */
   getBaseUrl(req) {
-    const configuredBaseUrl = String(process.env.PUBLIC_BASE_URL || "")
-      .trim()
-      .replace(/\/+$/g, "");
+    const configuredBaseUrl = basePublica();
 
     if (configuredBaseUrl) {
       return configuredBaseUrl;
