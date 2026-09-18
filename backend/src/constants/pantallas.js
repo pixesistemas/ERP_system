@@ -19,6 +19,7 @@ const PANTALLAS = [
   "reservations",
   "reserve-funds",
   "orders",
+  "order-returns",
   "remitos",
   // GESTIÓN
   "products",

@@ -165,11 +165,22 @@ export const erpApi = {
     if(!response.ok)throw new Error(payload.error||'No se pudo importar el Excel de compras.');
     return payload;
   },
+  async ocrPurchaseInvoice(file:File){
+    const token=getToken(); const form=new FormData(); form.append('file',file);
+    const response=await fetch(`${API_URL}/erp/compras/ocr`,{method:'POST',headers:token?{Authorization:`Bearer ${token}`}:{},body:form});
+    const payload=await response.json().catch(()=>({}));
+    if(!response.ok)throw new Error(payload.error||'No se pudo leer la factura por OCR.');
+    return payload;
+  },
   getVatBook: (month:number,year:number,pv?:number) => request<any>(`/erp/libro-iva?month=${month}&year=${year}${pv?`&pv=${pv}`:''}`),
   updatePrices: (data:any) => request<any>('/erp/precios/actualizacion-masiva',{method:'POST',body:JSON.stringify(data)}),
   getBorradorIva: (month:number,year:number,pv?:number) => request<any>(`/erp/pos/borrador-iva?month=${month}&year=${year}${pv?`&pv=${pv}`:''}`),
   saveBorradorIvaAjuste: (data:any) => request<any>('/erp/pos/borrador-iva/ajustes',{method:'POST',body:JSON.stringify(data)}),
   renameBorradorIvaRubro: (id:number,nombre:string) => request<any>(`/erp/pos/borrador-iva/rubros/${id}`,{method:'POST',body:JSON.stringify({nombre})}),
+  listPedidosClientes: (q:string='') => request<any>(`/erp/pedidos/clientes?q=${encodeURIComponent(q)}`),
+  listPedidosActivos: (clienteId:number) => request<any>(`/erp/pedidos/activos?cliente_id=${clienteId}`),
+  listDevolucionesPedido: () => request<any>('/erp/pedidos/devoluciones'),
+  devolverItemsPedido: (id:number,data:any) => request<any>(`/erp/pedidos/${id}/devolver`,{method:'POST',body:JSON.stringify(data)}),
   listReserveFunds: () => request<any>('/erp/reservas-monto'),
   createReserveFund: (data:any) => request<any>('/erp/reservas-monto',{method:'POST',body:JSON.stringify(data)}),
   consumeReserveFund: (id:number,data:any) => request<any>(`/erp/reservas-monto/${id}/consumos`,{method:'POST',body:JSON.stringify(data)}),

@@ -54,6 +54,12 @@ export function MoneyInput({
   }, [value]);
 
   function commit() {
+    if (!text.trim()) {
+      setInvalid(false);
+      setText("");
+      onChange(min != null ? Math.max(min, 0) : 0);
+      return;
+    }
     const result = evalMoneyExpression(text);
     if (result === null) {
       setInvalid(true);
@@ -77,12 +83,25 @@ export function MoneyInput({
         value={text}
         onFocus={(e) => {
           focused.current = true;
-          setText(value ? String(value) : "");
+          setText(value ? String(Math.round(value * 100) / 100) : "");
           e.currentTarget.select();
         }}
         onChange={(e) => {
           setInvalid(false);
-          setText(e.target.value);
+          const next = e.target.value;
+          setText(next);
+          /*
+           * Mientras se escribe un número simple se actualiza el valor al
+           * instante (así el total recibido sigue el borrado del campo).
+           * Las expresiones (10+5) se resuelven al salir o con Enter.
+           */
+          const plain = next.trim();
+          if (/^\d+([.,]\d*)?$/.test(plain)) {
+            const parsed = Number(plain.replace(",", "."));
+            if (!Number.isNaN(parsed)) onChange(min != null ? Math.max(min, parsed) : parsed);
+          } else if (!plain) {
+            onChange(min != null ? Math.max(min, 0) : 0);
+          }
         }}
         onKeyDown={(e) => {
           if (e.key === "*" && onCompleteMissing && (!text || Number(text) === 0)) {

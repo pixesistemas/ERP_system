@@ -14,6 +14,7 @@ export const SCREEN_SECTIONS: { section: string; screens: { key: string; label: 
       { key: "reservations", label: "Reservas" },
       { key: "reserve-funds", label: "Reservas por monto" },
       { key: "orders", label: "Notas de pedido" },
+      { key: "order-returns", label: "Anular pedidos" },
       { key: "remitos", label: "Remitos" },
     ],
   },
