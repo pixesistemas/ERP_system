@@ -575,6 +575,77 @@ async function devolverItemsPedido(req,res){
   }
 }
 
+/*
+ * Cartera manual de clientes por vendedor (módulo PREVENTA_MOVIL).
+ */
+function listVendedorClientes(req,res){
+  const e=empresaId(req),vendedorId=Number(req.params.id||req.query.vendedor_id||0);
+  if(!vendedorId)return res.status(400).json({ok:false,error:'Seleccioná un vendedor.'});
+  const q=String(req.query.q||'').trim();
+  let sql=`SELECT c.id,c.razon_social,c.cuit,c.domicilio,c.localidad,c.telefono,c.cliente_pedidos,
+      EXISTS(SELECT 1 FROM vendedor_clientes vc WHERE vc.empresa_id=c.empresa_id AND vc.vendedor_id=? AND vc.cliente_id=c.id AND vc.activo=1) asignado
+    FROM clientes c WHERE c.empresa_id=?`;
+  const params=[vendedorId,e];
+  if(q){sql+=' AND (c.razon_social LIKE ? OR c.cuit LIKE ? OR c.domicilio LIKE ?)';params.push(`%${q}%`,`%${q}%`,`%${q}%`)}
+  sql+=' ORDER BY c.razon_social LIMIT 300';
+  const clientes=db.prepare(sql).all(...params).map(x=>({...x,asignado:Boolean(x.asignado),cliente_pedidos:Boolean(x.cliente_pedidos)}));
+  const asignadosIds=db.prepare('SELECT cliente_id FROM vendedor_clientes WHERE empresa_id=? AND vendedor_id=? AND activo=1').all(e,vendedorId).map(x=>Number(x.cliente_id));
+  res.json({ok:true,clientes,asignadosIds,asignados:asignadosIds.length});
+}
+function guardarVendedorClientes(req,res){
+  const e=empresaId(req),vendedorId=Number(req.params.id||0);
+  if(!vendedorId)return res.status(400).json({ok:false,error:'Seleccioná un vendedor.'});
+  const vendedor=db.prepare('SELECT id FROM vendedores WHERE id=? AND empresa_id=?').get(vendedorId,e);
+  if(!vendedor)return res.status(404).json({ok:false,error:'El vendedor no existe.'});
+  const ids=Array.isArray(req.body?.clientes)?Array.from(new Set(req.body.clientes.map(Number).filter(Boolean))):[];
+  const tx=db.transaction(()=>{
+    db.prepare('UPDATE vendedor_clientes SET activo=0 WHERE empresa_id=? AND vendedor_id=?').run(e,vendedorId);
+    const ins=db.prepare(`INSERT INTO vendedor_clientes(empresa_id,vendedor_id,cliente_id,activo) VALUES(?,?,?,1)
+      ON CONFLICT(empresa_id,vendedor_id,cliente_id) DO UPDATE SET activo=1`);
+    for(const id of ids)ins.run(e,vendedorId,id);
+  });
+  tx();
+  res.json({ok:true,asignados:ids.length});
+}
+
+/*
+ * Visitas de vendedores: registro con GPS y resultado aunque no haya pedido.
+ */
+function crearVisita(req,res){
+  const e=empresaId(req),d=req.body||{};
+  const usuarioId=userId(req);
+  const vendedor=db.prepare('SELECT id FROM vendedores WHERE empresa_id=? AND usuario_id=? AND activo=1').get(e,usuarioId);
+  const vendedorId=Number(d.vendedor_id)||vendedor?.id||null;
+  const clienteId=Number(d.cliente_id)||null;
+  if(!clienteId)return res.status(400).json({ok:false,error:'Seleccioná el cliente de la visita.'});
+  const uuid=String(d.uuid||'').trim()||null;
+  if(uuid){
+    const existente=db.prepare('SELECT * FROM visitas WHERE empresa_id=? AND uuid=?').get(e,uuid);
+    if(existente)return res.json({ok:true,visita:existente,repetida:true});
+  }
+  const fecha=String(d.fecha||nowLocal().slice(0,10));
+  const hora=String(d.hora||nowLocal().slice(11,19));
+  const resultado=String(d.resultado||'SIN_PEDIDO').trim().toUpperCase();
+  const info=db.prepare(`INSERT INTO visitas(empresa_id,vendedor_id,cliente_id,fecha,hora,latitud,longitud,resultado,observaciones,uuid,dispositivo)
+    VALUES(?,?,?,?,?,?,?,?,?,?,?)`).run(e,vendedorId,clienteId,fecha,hora,Number.isFinite(Number(d.latitud))&&d.latitud!=null?Number(d.latitud):null,Number.isFinite(Number(d.longitud))&&d.longitud!=null?Number(d.longitud):null,resultado,String(d.observaciones||''),uuid,String(d.dispositivo||''));
+  res.status(201).json({ok:true,visita:db.prepare('SELECT * FROM visitas WHERE id=?').get(info.lastInsertRowid)});
+}
+function listVisitas(req,res){
+  const e=empresaId(req);
+  const vendedorId=Number(req.query.vendedor_id||0),clienteId=Number(req.query.cliente_id||0);
+  const desde=String(req.query.desde||''),hasta=String(req.query.hasta||'');
+  let sql=`SELECT v.*,c.razon_social cliente,vd.nombre vendedor FROM visitas v
+    LEFT JOIN clientes c ON c.id=v.cliente_id LEFT JOIN vendedores vd ON vd.id=v.vendedor_id
+    WHERE v.empresa_id=?`;
+  const params=[e];
+  if(vendedorId){sql+=' AND v.vendedor_id=?';params.push(vendedorId)}
+  if(clienteId){sql+=' AND v.cliente_id=?';params.push(clienteId)}
+  if(desde){sql+=' AND v.fecha>=?';params.push(desde)}
+  if(hasta){sql+=' AND v.fecha<=?';params.push(hasta)}
+  sql+=' ORDER BY v.fecha DESC, v.hora DESC LIMIT 300';
+  res.json({ok:true,visitas:db.prepare(sql).all(...params)});
+}
+
 function vatBook(req,res){
   const e=empresaId(req),month=Number(req.query.month||new Date().getMonth()+1),year=Number(req.query.year||new Date().getFullYear()),pv=Number(req.query.pv||0);
   const sales=db.prepare(`SELECT d.id,d.fecha,c.razon_social razon_social,c.cuit,d.tipo,d.punto_venta,d.numero,d.importe_neto neto,d.importe_iva iva,d.importe_total total FROM documentos_comerciales d LEFT JOIN clientes c ON c.id=d.cliente_id WHERE d.empresa_id=? AND CAST(strftime('%m',d.fecha) AS INTEGER)=? AND CAST(strftime('%Y',d.fecha) AS INTEGER)=? ${pv?'AND d.punto_venta=? ':''}AND (UPPER(d.tipo) LIKE 'FACTURA%' OR UPPER(d.tipo) LIKE 'NOTA DE CREDITO%' OR UPPER(d.tipo) LIKE 'NOTA DE CRÉDITO%' OR UPPER(d.tipo) LIKE 'NOTA DE DEBITO%' OR UPPER(d.tipo) LIKE 'NOTA DE DÉBITO%') ORDER BY d.fecha,d.id`).all(e,month,year,...(pv?[pv]:[])).map(r=>{const credit=/CREDITO|CRÉDITO/i.test(r.tipo);return {...r,neto:credit?-Math.abs(Number(r.neto||0)):Number(r.neto||0),iva:credit?-Math.abs(Number(r.iva||0)):Number(r.iva||0),total:credit?-Math.abs(Number(r.total||0)):Number(r.total||0)}});
@@ -720,7 +791,7 @@ function updatePrices(req,res){
 function createReserveFund(req,res){const e=empresaId(req),d=req.body,amount=Number(d.importe_original||d.importe||0);if(!d.cliente_id||amount<=0)return res.status(400).json({ok:false,error:'Cliente e importe son obligatorios.'});const count=db.prepare('SELECT COUNT(*) n FROM reservas_monto WHERE empresa_id=?').get(e).n;const number=`RM-${String(count+1).padStart(8,'0')}`;const products=db.prepare('SELECT id,codigo,precio FROM productos WHERE empresa_id=? AND activo=1').all(e);const snapshot=Object.fromEntries(products.map(p=>[String(p.id),{codigo:p.codigo,precio:Number(p.precio)}]));const info=db.prepare(`INSERT INTO reservas_monto(empresa_id,cliente_id,numero,fecha,importe_original,saldo,lista_precio_id,lista_precio_nombre,precios_snapshot,observaciones) VALUES(?,?,?,?,?,?,?,?,?,?)`).run(e,Number(d.cliente_id),number,d.fecha||nowLocal().slice(0,10),amount,amount,d.lista_precio_id||null,d.lista_precio_nombre||'GENERAL',JSON.stringify(snapshot),d.observaciones||'');res.status(201).json({ok:true,reservation:db.prepare('SELECT * FROM reservas_monto WHERE id=?').get(info.lastInsertRowid)})}
 function consumeReserveFund(req,res){const e=empresaId(req),id=Number(req.params.id),amount=Number(req.body.importe||0);const tx=db.transaction(()=>{const r=db.prepare('SELECT * FROM reservas_monto WHERE id=? AND empresa_id=?').get(id,e);if(!r)throw Object.assign(new Error('Reserva inexistente.'),{status:404});if(amount<=0||amount>Number(r.saldo))throw Object.assign(new Error('El importe supera el saldo reservado.'),{status:409});db.prepare('UPDATE reservas_monto SET saldo=saldo-?,estado=CASE WHEN saldo-?<=0 THEN \'AGOTADA\' ELSE \'VIGENTE\' END,updated_at=CURRENT_TIMESTAMP WHERE id=?').run(amount,amount,id);db.prepare('INSERT INTO reserva_monto_consumos(reserva_id,documento_tipo,documento_id,importe,detalle) VALUES(?,?,?,?,?)').run(id,req.body.documento_tipo||'POS',req.body.documento_id||null,amount,req.body.detalle||'Consumo desde punto de venta');return db.prepare('SELECT * FROM reservas_monto WHERE id=?').get(id)});res.json({ok:true,reservation:tx()})}
 
-module.exports={listBanks,saveBank,listPos,savePos,listChecks,createCheck,deleteCajero,depositChecks,listWhatsapp,saveWhatsapp,uploadFiscal,fiscalFiles,listPurchases,savePurchase,deletePurchase,importarComprasExcel,ocrCompraFoto,listPedidosClientes,listPedidosActivos,listDevoluciones,devolverItemsPedido,vatBook,borradorIva,saveBorradorIvaAjuste,renameBorradorIvaRubro,updatePrices,listReserveFunds,createReserveFund,consumeReserveFund};
+module.exports={listBanks,saveBank,listPos,savePos,listChecks,createCheck,deleteCajero,depositChecks,listWhatsapp,saveWhatsapp,uploadFiscal,fiscalFiles,listPurchases,savePurchase,deletePurchase,importarComprasExcel,ocrCompraFoto,listPedidosClientes,listPedidosActivos,listDevoluciones,devolverItemsPedido,listVendedorClientes,guardarVendedorClientes,crearVisita,listVisitas,vatBook,borradorIva,saveBorradorIvaAjuste,renameBorradorIvaRubro,updatePrices,listReserveFunds,createReserveFund,consumeReserveFund};
 
 function userId(req){ return Number(req.usuario?.id || req.user?.id || req.user?.userId || 1); }
 function listPosCatalogs(req,res){

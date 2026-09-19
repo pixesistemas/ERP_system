@@ -17,7 +17,9 @@ function listarEmpresas() {
         ORDER BY l.id DESC LIMIT 1) AS plan_activo,
       (SELECT fecha_vencimiento FROM licencias l
         WHERE l.empresa_id = e.id AND l.estado = 'ACTIVA'
-        ORDER BY l.id DESC LIMIT 1) AS vencimiento_licencia
+        ORDER BY l.id DESC LIMIT 1) AS vencimiento_licencia,
+      (SELECT GROUP_CONCAT(m.modulo) FROM modulos_empresa m
+        WHERE m.empresa_id = e.id AND m.activo = 1) AS modulos_activos
     FROM empresas e
     ORDER BY e.id
   `,
@@ -138,8 +140,12 @@ function crearUsuario({ nombre, email, password, empresaId, rol }) {
     error.statusCode = 400;
     throw error;
   }
-  if (rol !== 1 && rol !== 3) {
-    const error = new Error("El rol debe ser ADMIN (1) o VENDEDOR (3)");
+  const rolRepartidor = db
+    .prepare("SELECT id FROM roles WHERE nombre='REPARTIDOR'")
+    .get()?.id;
+  const rolesValidos = [1, 3, rolRepartidor].filter(Boolean);
+  if (!rolesValidos.includes(rol)) {
+    const error = new Error("El rol debe ser ADMIN (1), VENDEDOR (3) o REPARTIDOR");
     error.statusCode = 400;
     throw error;
   }

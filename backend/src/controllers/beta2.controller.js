@@ -14,7 +14,7 @@ const resourceReaders = {
   afip_expense_categories_v40: e => db.prepare(`SELECT id,nombre,activo FROM rubros_gasto WHERE empresa_id=? AND activo=1 ORDER BY nombre`).all(e),
   afip_payment_terms_v41: e => db.prepare(`SELECT id,nombre,dias,activo FROM condiciones_pago WHERE empresa_id=? AND activo=1 ORDER BY nombre`).all(e),
   afip_purchase_tax_kinds_v41: e => db.prepare(`SELECT id,nombre,naturaleza,activo FROM tipos_impuesto_compra WHERE empresa_id=? AND activo=1 ORDER BY naturaleza,nombre`).all(e),
-  afip_sellers_v31: e => db.prepare(`SELECT id,nombre,telefono,email,comision_porcentaje comision,activo FROM vendedores WHERE empresa_id=? ORDER BY activo DESC,nombre`).all(e).map(x=>({...x,activo:!!x.activo})),
+  afip_sellers_v31: e => db.prepare(`SELECT id,nombre,telefono,email,comision_porcentaje comision,usuario_id usuarioId,activo FROM vendedores WHERE empresa_id=? ORDER BY activo DESC,nombre`).all(e).map(x=>({...x,activo:!!x.activo})),
   afip_branches_v32: e => db.prepare(`SELECT id,codigo,nombre,domicilio,deposito_id depositoId,activo FROM sucursales WHERE empresa_id=? ORDER BY activo DESC,nombre`).all(e).map(x=>({...x,activo:!!x.activo})),
   afip_cashiers_v32: e => db.prepare(`SELECT id,codigo,nombre,usuario_id usuarioId,activo FROM cajeros WHERE empresa_id=? ORDER BY activo DESC,nombre`).all(e).map(x=>({...x,activo:!!x.activo})),
   afip_point_sales_v35: e => db.prepare(`SELECT id,printf('%04d',numero) numero,nombre,sucursal_id sucursalId,fiscal arcaHabilitado,formato_impresion formatoImpresion,activo FROM puntos_venta WHERE empresa_id=? ORDER BY activo DESC,numero`).all(e).map(x=>({...x,arcaHabilitado:!!x.arcaHabilitado,activo:!!x.activo})),
@@ -75,7 +75,7 @@ function writeResource(req,res){
     else if(key==='afip_expense_categories_v40') syncRows('rubros_gasto',e,rows,['nombre','activo'],r=>[r.nombre,yes(r.activo??true)?1:0]);
     else if(key==='afip_payment_terms_v41') syncRows('condiciones_pago',e,rows,['nombre','dias','activo'],r=>[r.nombre,Number(r.dias||0),yes(r.activo??true)?1:0]);
     else if(key==='afip_purchase_tax_kinds_v41') syncRows('tipos_impuesto_compra',e,rows,['nombre','naturaleza','activo'],r=>[r.nombre,String(r.naturaleza||'PERCEPCION').toUpperCase(),yes(r.activo??true)?1:0]);
-    else if(key==='afip_sellers_v31') syncRows('vendedores',e,rows,['nombre','telefono','email','comision_porcentaje','activo'],r=>[r.nombre,r.telefono||'',r.email||'',Number(r.comision||0),yes(r.activo??true)?1:0]);
+    else if(key==='afip_sellers_v31') syncRows('vendedores',e,rows,['nombre','telefono','email','comision_porcentaje','usuario_id','activo'],r=>[r.nombre,r.telefono||'',r.email||'',Number(r.comision||0),r.usuarioId||null,yes(r.activo??true)?1:0]);
     else if(key==='afip_branches_v32') syncRows('sucursales',e,rows,['codigo','nombre','domicilio','deposito_id','activo'],r=>[r.codigo||`S${Date.now()}`,r.nombre,r.domicilio||'',r.depositoId||null,yes(r.activo??true)?1:0]);
     else if(key==='afip_cashiers_v32') syncRows('cajeros',e,rows,['codigo','nombre','usuario_id','activo'],r=>[r.codigo||`C${Date.now()}`,r.nombre,r.usuarioId||null,yes(r.activo??true)?1:0]);
     else if(key==='afip_point_sales_v35') syncRows('puntos_venta',e,rows,['numero','nombre','sucursal_id','fiscal','formato_impresion','activo'],r=>[Number(r.numero),r.nombre,r.sucursalId||null,yes(r.arcaHabilitado)?1:0,r.formatoImpresion||'A4',yes(r.activo??true)?1:0]);

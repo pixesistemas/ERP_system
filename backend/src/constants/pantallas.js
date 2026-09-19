@@ -37,6 +37,7 @@ const PANTALLAS = [
   "promotions",
   "raffles",
   "clients",
+  "vendor-clients",
   "suppliers",
   "product-suppliers",
   "purchases",

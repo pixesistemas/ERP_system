@@ -36,6 +36,7 @@ export const SCREEN_SECTIONS: { section: string; screens: { key: string; label: 
       { key: "promotions", label: "Promociones y regalos" },
       { key: "raffles", label: "Cupones de sorteo" },
       { key: "clients", label: "Clientes" },
+      { key: "vendor-clients", label: "Cartera de clientes" },
       { key: "suppliers", label: "Proveedores" },
       { key: "product-suppliers", label: "Proveedores por producto" },
       { key: "purchases", label: "Compras" },

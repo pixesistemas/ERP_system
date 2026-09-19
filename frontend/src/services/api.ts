@@ -177,6 +177,17 @@ export const erpApi = {
   getBorradorIva: (month:number,year:number,pv?:number) => request<any>(`/erp/pos/borrador-iva?month=${month}&year=${year}${pv?`&pv=${pv}`:''}`),
   saveBorradorIvaAjuste: (data:any) => request<any>('/erp/pos/borrador-iva/ajustes',{method:'POST',body:JSON.stringify(data)}),
   renameBorradorIvaRubro: (id:number,nombre:string) => request<any>(`/erp/pos/borrador-iva/rubros/${id}`,{method:'POST',body:JSON.stringify({nombre})}),
+  listVendedorClientes: (vendedorId:number,q:string='') => request<any>(`/erp/vendedores/${vendedorId}/clientes?q=${encodeURIComponent(q)}`),
+  saveVendedorClientes: (vendedorId:number,clientes:number[]) => request<any>(`/erp/vendedores/${vendedorId}/clientes`,{method:'PUT',body:JSON.stringify({clientes})}),
+  listVisitas: (params?:{vendedor_id?:number;cliente_id?:number;desde?:string;hasta?:string}) => {
+    const qs=new URLSearchParams();
+    if(params?.vendedor_id)qs.set('vendedor_id',String(params.vendedor_id));
+    if(params?.cliente_id)qs.set('cliente_id',String(params.cliente_id));
+    if(params?.desde)qs.set('desde',params.desde);
+    if(params?.hasta)qs.set('hasta',params.hasta);
+    return request<any>(`/erp/visitas?${qs.toString()}`);
+  },
+  createVisita: (data:any) => request<any>('/erp/visitas',{method:'POST',body:JSON.stringify(data)}),
   listPedidosClientes: (q:string='',vendedorId?:number|null) => request<any>(`/erp/pedidos/clientes?q=${encodeURIComponent(q)}${vendedorId?`&vendedor_id=${vendedorId}`:''}`),
   listPedidosActivos: (clienteId:number,vendedorId?:number|null) => request<any>(`/erp/pedidos/activos?cliente_id=${clienteId}${vendedorId?`&vendedor_id=${vendedorId}`:''}`),
   listDevolucionesPedido: () => request<any>('/erp/pedidos/devoluciones'),

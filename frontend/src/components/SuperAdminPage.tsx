@@ -40,7 +40,7 @@ const TEMAS: Record<string, { label: string; swatches: string[] }> = {
 };
 
 export function SuperAdminPage() {
-  const [tab, setTab] = useState<"EMPRESAS" | "USUARIOS" | "LICENCIAS" | "TEMAS" | "FISCALES" | "CHANGELOG" | "ERRORES" | "ALTA">("EMPRESAS");
+  const [tab, setTab] = useState<"EMPRESAS" | "USUARIOS" | "LICENCIAS" | "TEMAS" | "MODULOS" | "FISCALES" | "CHANGELOG" | "ERRORES" | "ALTA">("EMPRESAS");
   const { loading, setLoading, error, setError, ok, setOk, call } = useSuperAdminApi();
   const [empresas, setEmpresas] = useState<any[]>([]);
   const [usuarios, setUsuarios] = useState<any[]>([]);
@@ -429,6 +429,7 @@ export function SuperAdminPage() {
       <button className={tab === "USUARIOS" ? "active" : ""} onClick={() => setTab("USUARIOS")}><Users size={16}/> Usuarios</button>
       <button className={tab === "LICENCIAS" ? "active" : ""} onClick={() => setTab("LICENCIAS")}><KeyRound size={16}/> Licencias</button>
       <button className={tab === "TEMAS" ? "active" : ""} onClick={() => setTab("TEMAS")}><Palette size={16}/> Temas</button>
+      <button className={tab === "MODULOS" ? "active" : ""} onClick={() => setTab("MODULOS")}><Tags size={16}/> Módulos</button>
       <button className={tab === "FISCALES" ? "active" : ""} onClick={() => setTab("FISCALES")}><FileKey2 size={16}/> Fiscales</button>
       <button className={tab === "CHANGELOG" ? "active" : ""} onClick={() => setTab("CHANGELOG")}><Sparkles size={16}/> Novedades</button>
       <button className={tab === "ERRORES" ? "active" : ""} onClick={() => { setTab("ERRORES"); cargarErrores(); cargarAvisos(); }}><AlertTriangle size={16}/> Errores</button>
@@ -542,6 +543,37 @@ export function SuperAdminPage() {
               } catch (err: any) { setError(err.message); } finally { setLoading(false); }
             }}><Pencil size={15}/></button></td>
           </tr>)}</tbody></table>
+          {!empresas.length && <div className="empty-table">No hay empresas.</div>}
+        </div>
+      </div>}
+    {tab === "MODULOS" && <div className="products-page">
+        <div className="products-toolbar">
+          <div><h3>Módulos por empresa</h3><p>Activá funciones opcionales. Si una empresa no tiene el tilde, no ve el módulo en el sistema.</p></div>
+        </div>
+        <div className="products-card"><table>
+          <thead><tr><th>ID</th><th>Empresa</th><th>Sistema de pedidos móviles</th><th>Guardar</th></tr></thead>
+          <tbody>{empresas.map((e) => {
+            const partes = () => String(e.modulos_activos || "").split(",").filter(Boolean);
+            const activo = partes().includes("PREVENTA_MOVIL");
+            return <tr key={e.id}>
+              <td>{e.id}</td>
+              <td><strong>{e.nombre}</strong><small>{e.razon_social}</small></td>
+              <td><label className="toggle-row"><span>Pedidos móviles + reparto</span><input type="checkbox" checked={activo} onChange={(ev) => {
+                const lista = partes().filter((m) => m !== "PREVENTA_MOVIL");
+                if (ev.target.checked) lista.push("PREVENTA_MOVIL");
+                e.modulos_activos = lista.join(",");
+                setEmpresas([...empresas]);
+              }}/></label></td>
+              <td><button className="sa-icon-btn" title="Guardar módulo" onClick={async () => {
+                setLoading(true);
+                try {
+                  await call("PUT", `/empresas/${e.id}/modulos`, { modulo: "PREVENTA_MOVIL", activo: partes().includes("PREVENTA_MOVIL") });
+                  setOk(`Módulos de ${e.nombre} actualizados.`);
+                  await load();
+                } catch (err: any) { setError(err.message); } finally { setLoading(false); }
+              }}><Pencil size={15}/></button></td>
+            </tr>;
+          })}</tbody></table>
           {!empresas.length && <div className="empty-table">No hay empresas.</div>}
         </div>
       </div>}

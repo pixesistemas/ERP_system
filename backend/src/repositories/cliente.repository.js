@@ -40,6 +40,10 @@ function mapCliente(row) {
 
     ultimaActualizacionPadron: row.ultima_actualizacion_padron,
     descuento: Number(row.descuento_porcentaje || 0),
+
+    latitud: row.latitud != null ? Number(row.latitud) : null,
+    longitud: row.longitud != null ? Number(row.longitud) : null,
+    clientePedidos: Number(row.cliente_pedidos || 0) === 1,
   };
 }
 
@@ -717,6 +721,28 @@ function saveCliente(cliente) {
   });
 
   /*
+   * Ubicación para la hoja de ruta y marca de "cliente de pedidos"
+   * (habilitado para que los vendedores le tomen pedidos).
+   */
+  addField({
+    columns, fields, values, params,
+    field: "latitud", parameter: "latitud",
+    value: cliente.latitud != null && cliente.latitud !== "" ? Number(cliente.latitud) : null,
+  });
+
+  addField({
+    columns, fields, values, params,
+    field: "longitud", parameter: "longitud",
+    value: cliente.longitud != null && cliente.longitud !== "" ? Number(cliente.longitud) : null,
+  });
+
+  addField({
+    columns, fields, values, params,
+    field: "cliente_pedidos", parameter: "cliente_pedidos",
+    value: cliente.clientePedidos ?? cliente.cliente_pedidos ? 1 : 0,
+  });
+
+  /*
    * Las fechas se escriben directamente
    * mediante CURRENT_TIMESTAMP.
    */
@@ -901,6 +927,18 @@ function updateCliente(id, empresaId, cliente = {}) {
     provincia: cliente.provincia,
     descuento_porcentaje: Number(cliente.descuento ?? cliente.descuento_porcentaje ?? 0),
   };
+  /*
+   * Ubicación y "cliente de pedidos" solo se actualizan si el llamador
+   * los envía, para no borrarlos desde otras pantallas que editan el
+   * cliente sin esos campos.
+   */
+  if ("latitud" in cliente || "longitud" in cliente) {
+    mappings.latitud = cliente.latitud != null && cliente.latitud !== "" ? Number(cliente.latitud) : null;
+    mappings.longitud = cliente.longitud != null && cliente.longitud !== "" ? Number(cliente.longitud) : null;
+  }
+  if ("clientePedidos" in cliente || "cliente_pedidos" in cliente) {
+    mappings.cliente_pedidos = (cliente.clientePedidos ?? cliente.cliente_pedidos) ? 1 : 0;
+  }
   const sets = [];
   const params = [];
   for (const [column, value] of Object.entries(mappings)) {

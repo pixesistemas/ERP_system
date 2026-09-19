@@ -21,7 +21,12 @@ export type Client = {
   dni?: string;
   condicionIVA?: string;
   domicilio?: string;
+  localidad?: string;
+  provincia?: string;
   telefono?: string;
   email?: string;
   descuento?: number;
+  latitud?: number | null;
+  longitud?: number | null;
+  clientePedidos?: boolean;
 };
