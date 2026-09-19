@@ -5456,3 +5456,31 @@ html,body{height:auto;overflow:visible!important;background:#fff!important}
 .pdf-viewer-frame{width:100%;height:70vh;border:1px solid var(--line-2);border-radius:8px;background:#fff}
 .form-grid label.checkbox-line{flex-direction:row;align-items:center;gap:8px}
 .form-grid .pv-list{padding:10px;border:1px solid var(--line-2);border-radius:9px;background:var(--soft)}
+
+/* ===== Responsive general: monitores chicos y celulares ===== */
+@media(min-width:1001px) and (max-width:1400px){
+  .app-shell{grid-template-columns:225px 1fr}
+}
+@media(max-width:1100px){
+  .workspace{padding:16px}
+  .products-card{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .report-filters{flex-wrap:wrap}
+  .inline-actions{flex-wrap:wrap}
+}
+@media(max-width:650px){
+  .app-shell{display:block}
+  .sidebar{display:flex;position:fixed;top:0;left:0;bottom:0;width:min(84vw,310px);z-index:80;overflow-y:auto;transform:translateX(-100%);transition:transform .18s ease;padding-bottom:20px}
+  .app-shell:not(.menu-hidden) .sidebar{transform:translateX(0);box-shadow:0 12px 40px rgba(20,10,40,.4)}
+  .app-shell:not(.menu-hidden)::after{content:"";position:fixed;inset:0;background:rgba(20,10,40,.45);z-index:70}
+  .workspace{padding:12px;overflow-x:hidden}
+  .products-card table{min-width:560px}
+  .form-grid{grid-template-columns:1fr}
+  .modal{width:96vw!important;max-width:96vw;max-height:92vh;overflow-y:auto}
+  .purchase-columns{grid-template-columns:1fr}
+  .pos-topbar{grid-template-columns:1fr!important}
+  .quick-entry{grid-template-columns:1fr 1fr!important}
+  .sales-grid{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .grid-head,.grid-line{min-width:720px}
+  .sale-summary-panel{display:block}
+  .report-filters label{flex:1 1 100%;min-width:100%}
+}

@@ -99,7 +99,7 @@ export function App() {
   const [page, setPage] = useState<string>("dashboard");
   const [superadminMode, setSuperadminMode] = useState<boolean>(() => window.location.hash.startsWith("#/superadmin"));
   const [recovery, setRecovery] = useState<any>(() => parseRecovery(window.location.hash));
-  const [menuAbierto, setMenuAbierto] = useState(true);
+  const [menuAbierto, setMenuAbierto] = useState(() => (typeof window === "undefined" ? true : window.innerWidth > 650));
   const [, setSaTick] = useState(0);
   useEffect(() => {
     const onChange = () => {
@@ -115,6 +115,15 @@ export function App() {
     if (!canSeeScreen(session.pantallas ?? null, page)) setPage("dashboard");
     if (page === "cobro-temporal" && !session.modulos?.COBRO_TEMPORAL) setPage("dashboard");
   }, [session, page]);
+  /*
+   * En el punto de venta el menú lateral se oculta solo para ganar
+   * espacio de trabajo; se puede volver a abrir con el botón de menú.
+   * En pantallas chicas el menú arranca cerrado y se cierra al navegar.
+   */
+  useEffect(() => {
+    if (page === "pos") setMenuAbierto(false);
+    else if (typeof window !== "undefined" && window.innerWidth <= 650) setMenuAbierto(false);
+  }, [page]);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -191,7 +200,7 @@ export function App() {
   return <div className={"app-shell" + (menuAbierto ? "" : " menu-hidden")}>
     <aside className="sidebar">
       <div className="sidebar-brand"><div className="logo small"><Bot size={20}/></div><div><strong>PixeSistemas</strong><span>ERP Empresarial</span></div></div>
-      <nav className="erp-nav">
+      <nav className="erp-nav" onClick={() => { if (typeof window !== "undefined" && window.innerWidth <= 650) setMenuAbierto(false); }}>
         <span className="nav-title">INICIO</span>
         {canSee("dashboard")&&<a className={page === "dashboard" ? "active" : ""} onClick={()=>setPage("dashboard")}><BarChart3 size={18}/> Resumen</a>}
         <span className="nav-title">VENTAS</span>
@@ -244,8 +253,8 @@ export function App() {
       })()}
     </aside>
 
-    <section className="workspace">
-      <header><div><button className="mobile-menu" onClick={() => setMenuAbierto(v => !v)}><Menu/></button><h2>{pageTitle(page)}</h2><p>{pageSubtitle(page)}</p></div><div className="header-actions">{page==='pos'&&<button className="fullscreen-action" onClick={()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen()}><Maximize2 size={16}/> Pantalla completa</button>}<div className="status"><i/> Backend conectado</div></div></header>
+    <section className="workspace" onClick={() => { if (typeof window !== "undefined" && window.innerWidth <= 650 && menuAbierto) setMenuAbierto(false); }}>
+      <header><div><button className="mobile-menu" onClick={(e) => { e.stopPropagation(); setMenuAbierto(v => !v); }}><Menu/></button><h2>{pageTitle(page)}</h2><p>{pageSubtitle(page)}</p></div><div className="header-actions">{page==='pos'&&<button className="fullscreen-action" onClick={()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen()}><Maximize2 size={16}/> Pantalla completa</button>}<div className="status"><i/> Backend conectado</div></div></header>
       {page==='point-sales'&&<PointPrintSettings/>}
       {page === "cobro-temporal" ? <CobroTemporalPage/> : page === "novedades" ? <ChangelogPage/> : page === "whatsapp-tray" ? <WhatsappTrayPage/> : page === "whatsapp-chat-demo" ? <WhatsappChatDemoPage/> : page === "whatsapp-empleado" ? <WhatsappEmpleadoDemoPage/> : page === "dashboard" ? <DashboardPage onNavigate={setPage}/> : page === "products" ? <ProductsPage/> : page === "pos" ? <AdvancedPosPage pantallas={session.pantallas ?? null} onSendToAssistant={(text)=>{ empleadoEncolarMensaje(text); setPage("whatsapp-empleado"); }}/> : page === "clients" ? <ClientsPage/> : page === "suppliers" ? <SuppliersPage/> : page === "checks" ? <ChecksPage/> : page === "sales-notes" ? <OperationalDocumentsPage tipo="NOTA DE VENTA X" onNavigate={setPage}/> : page === "reservations" ? <OperationalDocumentsPage tipo="RESERVA" onNavigate={setPage}/> : page === "orders" ? <OperationalDocumentsPage tipo="NOTA DE PEDIDO" onNavigate={setPage}/> : page === "order-returns" ? <OrderReturnsPage/> : page === "remitos" ? <OperationalDocumentsPage tipo="REMITO" onNavigate={setPage}/> : page === "categories" ? <CatalogsPage/> : page === "units" ? <UnitsPage/> : page === "price-update" ? <PriceUpdatePage/> : page === "imports" ? <ImportProductsPage/> : page === "shelf-labels" ? <ShelfLabelsPage/> : page === "sellers" ? <SellersPage/> : page === "reports" ? <ReportsPage/> : page === "sales-reports" ? <SalesReportsPage onNavigate={setPage}/> : page === "point-sales" ? <PointOfSalesPage/> : page === "pos-comprobantes" ? <PosComprobantesConfigPage/> : page === "reserve-funds" ? <ReserveFundsPage/> : page === "dynamic-orders-report" ? <DynamicOrdersReportPage/> : page === "document-designer" ? <DocumentDesignerPage/> : page === "company" ? <CompanyPage/> : page === "whatsapp-auth" ? <WhatsappAuthorizedPage/> : page === "whatsapp-orders" ? <WhatsappOrdersPage/> : page === "cards" ? <CardsPage/> : page === "bank-list" ? <BanksPage/> : page === "banks" ? <BankReconciliationPage/> : page === "payment-orders" ? <Beta2PaymentOrdersPage/> : page === "cash-closures" ? <CashClosuresPage/> : page === "currencies" ? <CurrenciesPage/> : page === "branches" ? <SimpleCrudPage kind="SUCURSALES"/> : page === "cashiers" ? <SimpleCrudPage kind="CAJEROS"/> : page === "stock-transfers" ? <StockTransfersPage/> : page === "branch-stock" ? <BranchStockPage/> : page === "combos" ? <CommercialRulesPage kind="COMBOS"/> : page === "quantity-discounts" ? <CommercialRulesPage kind="DESCUENTOS"/> : page === "promotions" ? <CommercialRulesPage kind="PROMOCIONES"/> : page === "raffles" ? <CommercialRulesPage kind="SORTEOS"/> : page === "purchases" ? <PurchasesPage/> : page === "vat-books" ? <VatBooksPage/> : page === "borrador-iva" ? <BorradorIvaPage/> : page === "product-suppliers" ? <ProductSuppliersPage/> : page === "check-deposits" ? <Beta2CheckDepositsPage/> : page === "stock" ? <StockPage/> : page === "stock-moves" ? <StockMovementsPage/> : page === "sales" ? <SalesHistoryPage/> : page === "documents" ? <DocumentsPage/> : page === "budgets" ? <DocumentsPage tipo="PRESUPUESTO"/> : page === "accounts" ? <ClientAccountsPage/> : page === "receipts" ? <ReceiptsPage/> : page === "cash" ? <CashPage onNavigate={setPage}/> : page === "settings" ? <SettingsPage/> : page === "users" ? <UsersPage/> : page === "roles" ? <RolesPermissionsPage/> : page !== "chat" ? <ModulePreview page={page}/> : <div className="content-grid">
         <section className="chat-panel">

@@ -490,8 +490,9 @@ function listPedidosClientes(req,res){
 function listPedidosActivos(req,res){
   const e=empresaId(req),clienteId=Number(req.query.cliente_id||0);
   if(!clienteId)return res.status(400).json({ok:false,error:'Seleccioná un cliente.'});
-  const pedidos=db.prepare(`SELECT v.id,v.tipo,v.subtipo,v.numero,v.punto_venta,v.total,v.fecha,v.estado,v.documento_id
-    FROM ventas_pos v WHERE v.empresa_id=? AND v.cliente_id=? AND v.estado='PENDIENTE'
+  const pedidos=db.prepare(`SELECT v.id,v.tipo,d.subtipo,v.numero,v.punto_venta,v.total,v.fecha,v.estado,v.documento_id
+    FROM ventas_pos v LEFT JOIN documentos_comerciales d ON d.id=v.documento_id
+    WHERE v.empresa_id=? AND v.cliente_id=? AND v.estado='PENDIENTE'
       AND v.tipo IN (${TIPOS_PEDIDO_ACTIVO.map(()=>'?').join(',')}) ORDER BY v.id DESC`).all(e,clienteId,...TIPOS_PEDIDO_ACTIVO);
   const itemsStmt=db.prepare('SELECT id,producto_id,codigo,descripcion,unidad,cantidad,precio_unitario,descuento,iva,subtotal FROM venta_pos_items WHERE venta_id=? ORDER BY id');
   res.json({ok:true,pedidos:pedidos.map(p=>({...p,items:itemsStmt.all(p.id)}))});
