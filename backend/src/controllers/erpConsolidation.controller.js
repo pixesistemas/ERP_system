@@ -478,22 +478,24 @@ async function ocrCompraFoto(req, res) {
  */
 const TIPOS_PEDIDO_ACTIVO = ['NOTA_PEDIDO', 'PRESUPUESTO', 'NOTA_X', 'REMITO', 'RESERVA'];
 function listPedidosClientes(req,res){
-  const e=empresaId(req),q=String(req.query.q||'').trim();
+  const e=empresaId(req),q=String(req.query.q||'').trim(),vendedorId=Number(req.query.vendedor_id||0);
   let sql=`SELECT v.cliente_id,c.razon_social cliente,c.cuit,c.telefono,COUNT(*) pedidos,ROUND(SUM(v.total),2) total
     FROM ventas_pos v JOIN clientes c ON c.id=v.cliente_id
     WHERE v.empresa_id=? AND v.estado='PENDIENTE' AND v.tipo IN (${TIPOS_PEDIDO_ACTIVO.map(()=>'?').join(',')})`;
   const params=[e,...TIPOS_PEDIDO_ACTIVO];
   if(q){sql+=' AND (c.razon_social LIKE ? OR c.cuit LIKE ?)';params.push(`%${q}%`,`%${q}%`)}
+  if(vendedorId){sql+=' AND v.vendedor_id=?';params.push(vendedorId)}
   sql+=' GROUP BY v.cliente_id ORDER BY c.razon_social LIMIT 100';
   res.json({ok:true,clientes:db.prepare(sql).all(...params)});
 }
 function listPedidosActivos(req,res){
-  const e=empresaId(req),clienteId=Number(req.query.cliente_id||0);
+  const e=empresaId(req),clienteId=Number(req.query.cliente_id||0),vendedorId=Number(req.query.vendedor_id||0);
   if(!clienteId)return res.status(400).json({ok:false,error:'Seleccioná un cliente.'});
-  const pedidos=db.prepare(`SELECT v.id,v.tipo,d.subtipo,v.numero,v.punto_venta,v.total,v.fecha,v.estado,v.documento_id
-    FROM ventas_pos v LEFT JOIN documentos_comerciales d ON d.id=v.documento_id
+  const filtroVendedor=vendedorId?' AND v.vendedor_id=?':'';
+  const pedidos=db.prepare(`SELECT v.id,v.tipo,d.subtipo,v.numero,v.punto_venta,v.total,v.fecha,v.estado,v.documento_id,vd.nombre vendedor
+    FROM ventas_pos v LEFT JOIN documentos_comerciales d ON d.id=v.documento_id LEFT JOIN vendedores vd ON vd.id=v.vendedor_id
     WHERE v.empresa_id=? AND v.cliente_id=? AND v.estado='PENDIENTE'
-      AND v.tipo IN (${TIPOS_PEDIDO_ACTIVO.map(()=>'?').join(',')}) ORDER BY v.id DESC`).all(e,clienteId,...TIPOS_PEDIDO_ACTIVO);
+      AND v.tipo IN (${TIPOS_PEDIDO_ACTIVO.map(()=>'?').join(',')})${filtroVendedor} ORDER BY v.id DESC`).all(e,clienteId,...TIPOS_PEDIDO_ACTIVO,...(vendedorId?[vendedorId]:[]));
   const itemsStmt=db.prepare('SELECT id,producto_id,codigo,descripcion,unidad,cantidad,precio_unitario,descuento,iva,subtotal FROM venta_pos_items WHERE venta_id=? ORDER BY id');
   res.json({ok:true,pedidos:pedidos.map(p=>({...p,items:itemsStmt.all(p.id)}))});
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Search, Undo2, FileText } from "lucide-react";
-import { erpApi } from "../../services/api";
+import { erpApi, normalizarUrlArchivo } from "../../services/api";
 import { fmtFecha } from "../../utils/fecha";
 import { PdfViewerModal } from "../shared/PdfViewerModal";
 
@@ -11,6 +11,8 @@ import { PdfViewerModal } from "../shared/PdfViewerModal";
  */
 export function OrderReturnsPage() {
   const [q, setQ] = useState("");
+  const [vendedores, setVendedores] = useState<any[]>([]);
+  const [vendedorId, setVendedorId] = useState<number | null>(null);
   const [clientes, setClientes] = useState<any[]>([]);
   const [cliente, setCliente] = useState<any>(null);
   const [pedidos, setPedidos] = useState<any[]>([]);
@@ -32,10 +34,10 @@ export function OrderReturnsPage() {
     }
   }
 
-  async function buscar(texto = q) {
+  async function buscar(texto = q, vendedor: number | null = vendedorId) {
     setError("");
     try {
-      const r = await erpApi.listPedidosClientes(texto);
+      const r = await erpApi.listPedidosClientes(texto, vendedor);
       setClientes(r.clientes || []);
     } catch (e: any) {
       setError(e.message);
@@ -43,18 +45,19 @@ export function OrderReturnsPage() {
   }
 
   useEffect(() => {
-    buscar("");
+    buscar("", null);
     cargarDevoluciones();
+    erpApi.listPosCatalogs().then((c: any) => setVendedores(c.sellers || [])).catch(() => {});
   }, []);
 
-  async function abrirCliente(c: any) {
+  async function abrirCliente(c: any, vendedor: number | null = vendedorId) {
     setError("");
     setCliente(c);
     setPedido(null);
     setCantidades({});
     setMotivo("");
     try {
-      const r = await erpApi.listPedidosActivos(Number(c.cliente_id));
+      const r = await erpApi.listPedidosActivos(Number(c.cliente_id), vendedor);
       setPedidos(r.pedidos || []);
     } catch (e: any) {
       setError(e.message);
@@ -89,7 +92,7 @@ export function OrderReturnsPage() {
     try {
       const r = await erpApi.devolverItemsPedido(pedido.id, { items, motivo });
       setNotice(r.anulado ? "Devolución registrada: el pedido quedó anulado (sin productos)." : "Devolución registrada y PDF generado.");
-      if (r.devolucion?.pdf_url) setPdfModal({ url: r.devolucion.pdf_url, title: `Devolución N° ${r.devolucion.id}` });
+      if (r.devolucion?.pdf_url) setPdfModal({ url: normalizarUrlArchivo(r.devolucion.pdf_url), title: `Devolución N° ${r.devolucion.id}` });
       await abrirCliente(cliente);
       await cargarDevoluciones();
     } catch (e: any) {
@@ -108,6 +111,7 @@ export function OrderReturnsPage() {
       <h3><Search size={16} /> Clientes con pedidos activos</h3>
       <div className="report-filters">
         <label>Buscar cliente<input value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === "Enter" && buscar()} placeholder="Nombre o CUIT..." /></label>
+        <label>Vendedor<select value={vendedorId || ""} onChange={e => { const v = Number(e.target.value) || null; setVendedorId(v); setCliente(null); setPedidos([]); setPedido(null); buscar(q, v); }}><option value="">Todos los vendedores</option>{vendedores.map((v: any) => <option key={v.id} value={v.id}>{v.nombre}</option>)}</select></label>
         <button className="secondary-action" onClick={() => buscar()}>Buscar</button>
       </div>
       <table><thead><tr><th>Cliente</th><th>CUIT</th><th>Pedidos</th><th>Total</th><th></th></tr></thead><tbody>
@@ -124,10 +128,11 @@ export function OrderReturnsPage() {
 
     {cliente && <div className="products-card">
       <h3>Pedidos activos de {cliente.cliente}</h3>
-      <table><thead><tr><th>Fecha</th><th>Pedido</th><th>Total</th><th></th></tr></thead><tbody>
+      <table><thead><tr><th>Fecha</th><th>Pedido</th><th>Vendedor</th><th>Total</th><th></th></tr></thead><tbody>
         {pedidos.map((p: any) => <tr key={p.id} className={pedido?.id === p.id ? "selected-row" : ""}>
           <td>{fmtFecha(p.fecha)}</td>
           <td><strong>{p.tipo === "NOTA_PEDIDO" ? "Nota de pedido" : p.tipo === "PRESUPUESTO" ? "Presupuesto" : p.tipo === "RESERVA" ? "Reserva" : p.tipo === "REMITO" ? `Remito ${p.subtipo || "X"}` : p.tipo}</strong> {String(p.punto_venta || "").padStart(4, "0")}-{String(p.numero || "").padStart(8, "0")}</td>
+          <td>{p.vendedor || "-"}</td>
           <td className="price">$ {Number(p.total || 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}</td>
           <td><button className="secondary-action" onClick={() => abrirPedido(p)}>Quitar productos</button></td>
         </tr>)}
@@ -168,7 +173,7 @@ export function OrderReturnsPage() {
           <td>{d.documento_id ? `Doc #${d.documento_id}` : `Venta #${d.venta_id}`}</td>
           <td>{d.items}</td>
           <td className="price">$ {Number(d.total || 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}</td>
-          <td>{d.pdf_url ? <button onClick={() => setPdfModal({ url: d.pdf_url, title: `Devolución N° ${d.id}` })}><FileText size={16} /> Ver PDF</button> : "-"}</td>
+          <td>{d.pdf_url ? <button onClick={() => setPdfModal({ url: normalizarUrlArchivo(d.pdf_url), title: `Devolución N° ${d.id}` })}><FileText size={16} /> Ver PDF</button> : "-"}</td>
         </tr>)}
       </tbody></table>
       {!devoluciones.length && <div className="empty-table">Todavía no hay devoluciones registradas.</div>}
