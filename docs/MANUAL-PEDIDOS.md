@@ -26,6 +26,13 @@ VENDEDOR toma el pedido  ->  ADMINISTRADOR revisa y confirma  ->  se arma la RUT
    - **VENDEDOR** (toma pedidos en la calle).
    - **REPARTIDOR** (entrega).
 4. En **Roles y permisos**, marcar las pantallas que verá cada rol (App vendedor, Bandeja de pedidos, Reparto, App repartidor, Reportes de vendedores, Cartera de clientes).
+5. Opcional: tildar **"POS simplificado"** para que en el Punto de venta solo queden **facturar y nota de venta**: se ocultan los checkboxes de Presupuesto, Reserva, Nota de pedido, Remitos y Notas de crédito/débito.
+
+**Direcciones de las apps:**
+- Vendedores: `https://vendedor.pixesistemas.com.ar`
+- Repartidores: `https://repartidor.pixesistemas.com.ar`
+
+Al abrir esas direcciones, el sistema entra directo a la pantalla móvil correspondiente.
 
 ---
 
@@ -60,7 +67,7 @@ Menú **Gestión → Cartera de clientes**:
 ## 4. App del vendedor (celular)
 
 ### 4.1 Instalar la app
-1. Abrir el sistema en el navegador del celular (Chrome o Safari).
+1. Abrir en el navegador del celular (Chrome o Safari): `https://vendedor.pixesistemas.com.ar`.
 2. Menú del navegador → **"Agregar a pantalla de inicio"**.
 3. Queda como una app: se abre a pantalla completa y funciona sin señal.
 
@@ -148,7 +155,7 @@ Menú **Ventas → Reparto**.
 
 ## 7. App del repartidor (celular)
 
-Menú **Ventas → App repartidor** (también se instala en el celular con "Agregar a pantalla de inicio").
+Abrir `https://repartidor.pixesistemas.com.ar` en el celular (o Menú **Ventas → App repartidor** en la computadora) e instalarla con "Agregar a pantalla de inicio".
 
 1. Al entrar, muestra la **ruta del día** asignada a su usuario.
 2. Cada parada muestra: número de orden, cliente, dirección, teléfono, pedido y estado.
