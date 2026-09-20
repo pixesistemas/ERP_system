@@ -9,6 +9,8 @@ export const SCREEN_SECTIONS: { section: string; screens: { key: string; label: 
       { key: "pos", label: "Punto de venta" },
       { key: "mobile-vendor", label: "App vendedor" },
       { key: "mobile-orders", label: "Bandeja de pedidos" },
+      { key: "delivery-routes", label: "Reparto" },
+      { key: "mobile-driver", label: "App repartidor" },
       { key: "sales", label: "Historial de ventas" },
       { key: "documents", label: "Comprobantes" },
       { key: "budgets", label: "Presupuestos" },

@@ -5526,6 +5526,16 @@ html,body{height:auto;overflow:visible!important;background:#fff!important}
 .order-historial-linea span{color:var(--muted-2);min-width:110px}
 .order-historial-linea small{color:var(--muted);flex:1 1 100%}
 .danger-action{background:#FBE7EA;border:1px solid #E8A5B4;color:#B23B58;border-radius:9px;padding:10px 16px;font-weight:700;cursor:pointer}
+.order-move-btns{display:inline-flex;gap:4px}
+.order-move-btns button{width:28px;height:28px;border:1px solid var(--line-2);border-radius:8px;background:#fff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+
+/* ===== App repartidor (PWA) ===== */
+.parada-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.parada-head h3{margin:0;font-size:16px}
+.parada-head p{margin:2px 0 0;font-size:12px;color:var(--muted)}
+.parada-ok{opacity:.85}
+.parada-items{margin-top:6px;border-top:1px dashed var(--line-2);padding-top:6px}
+.parada .mobile-btn-primario{margin-top:10px;height:48px}
 
 /* ===== Responsive general: monitores chicos y celulares ===== */
 @media(min-width:1001px) and (max-width:1400px){

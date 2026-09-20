@@ -14,6 +14,8 @@ const PANTALLAS = [
   "pos",
   "mobile-vendor",
   "mobile-orders",
+  "delivery-routes",
+  "mobile-driver",
   "sales",
   "documents",
   "budgets",

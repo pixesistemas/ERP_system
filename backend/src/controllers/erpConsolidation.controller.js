@@ -711,7 +711,7 @@ function crearPedidoMovil(req,res){
       total=Math.round((total+netoFiscal+ivaLine)*100)/100;
       return {producto_id:prod.id||Number(x.producto_id||x.id),codigo:x.codigo||'',descripcion:x.descripcion||'',unidad:x.unidad||'UN',cantidad:cant,precio,descuento:desc,iva:ivaPorc,netoLine:Math.round(netoLine*100)/100,netoFiscal:Math.round(netoFiscal*100)/100,ivaLine,totalLinea:Math.round((netoFiscal+ivaLine)*100)/100,rubro_id:prod.rubro_id??x.rubro_id??null};
     });
-    const number=nextNumber(e,pv,'NOTA_PEDIDO');
+    const number=nextNumberLibre(e,pv,'NOTA_PEDIDO');
     const doc=db.prepare(`INSERT INTO documentos_comerciales(empresa_id,cliente_id,vendedor_id,tipo,estado,punto_venta,numero,fecha,condicion_venta,observaciones,importe_neto,importe_iva,importe_total,importe_bruto,descuento_general,descuento_importe,canal,subtipo) VALUES(?,?,?,'NOTA_PEDIDO','BORRADOR',?,?,?,'CONTADO',?,?,?,?,?,0,0,'MOVIL','X')`).run(e,clienteId,vendedor.id,pv,number,fecha,String(d.observaciones||''),subtotal,importeIva,total,subtotal);
     const insDoc=db.prepare('INSERT INTO documento_items(documento_id,producto_id,codigo,descripcion,unidad,cantidad,precio_unitario,descuento,iva,subtotal,iva_importe,total,rubro_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)');
     for(const l of lineas)insDoc.run(doc.lastInsertRowid,l.producto_id,l.codigo,l.descripcion,l.unidad,l.cantidad,l.precio,l.descuento,l.iva,l.netoFiscal,l.ivaLine,l.totalLinea,l.rubro_id);
@@ -833,6 +833,143 @@ function cambiarEstadoPedidoMovil(req,res){
   db.prepare('UPDATE ventas_pos SET estado_pedido=? WHERE id=?').run(estado,id);
   db.prepare('INSERT INTO pedido_estado_historial(empresa_id,venta_id,documento_id,estado,estado_anterior,usuario_id,usuario_nombre,detalle) VALUES(?,?,?,?,?,?,?,?)').run(e,id,pedido.documento_id||null,estado,pedido.estado_pedido||'PENDIENTE',usuarioId,usuario?.nombre||'ADMIN',String(d.detalle||'').trim()||null);
   res.json({ok:true});
+}
+
+/*
+ * Reparto (Etapa 4): pedidos listos para armar la ruta, rutas manuales o
+ * sugeridas por zona, hoja de ruta del repartidor, carga del vehículo y
+ * registro de entregas con hora y ubicación.
+ */
+function listPedidosParaRuta(req,res){
+  const e=empresaId(req);
+  const rows=db.prepare(`SELECT v.id,v.numero,v.punto_venta,v.total,v.fecha,v.latitud,v.longitud,
+      c.razon_social cliente,c.domicilio,c.localidad,c.telefono,c.latitud clat,c.longitud clng,vd.nombre vendedor,
+      (SELECT COUNT(1) FROM venta_pos_items i WHERE i.venta_id=v.id) items,
+      EXISTS(SELECT 1 FROM ruta_pedidos rp JOIN rutas_reparto r ON r.id=rp.ruta_id WHERE rp.venta_id=v.id AND r.estado<>'CERRADA') en_ruta
+    FROM ventas_pos v LEFT JOIN clientes c ON c.id=v.cliente_id LEFT JOIN vendedores vd ON vd.id=v.vendedor_id
+    WHERE v.empresa_id=? AND v.tipo IN ('NOTA_PEDIDO','PRESUPUESTO') AND v.estado<>'ANULADO'
+      AND COALESCE(v.estado_pedido,'PENDIENTE') IN ('CONFIRMADO','PARCIAL','PREPARANDO')
+    ORDER BY v.fecha DESC,v.id DESC LIMIT 300`).all(e);
+  res.json({ok:true,pedidos:rows.map(r=>({...r,en_ruta:Boolean(r.en_ruta)}))});
+}
+function crearRutaReparto(req,res){
+  const e=empresaId(req),d=req.body||{},usuarioId=userId(req);
+  const ids=Array.isArray(d.pedido_ids)?Array.from(new Set(d.pedido_ids.map(Number).filter(Boolean))):[];
+  if(!ids.length)return res.status(400).json({ok:false,error:'Seleccioná al menos un pedido confirmado.'});
+  const fecha=String(d.fecha||nowLocal().slice(0,10));
+  const repartidorId=Number(d.repartidor_id)||null;
+  const pedidos=db.prepare(`SELECT v.id,v.latitud,v.longitud,c.localidad,c.razon_social,c.latitud clat,c.longitud clng
+    FROM ventas_pos v LEFT JOIN clientes c ON c.id=v.cliente_id
+    WHERE v.empresa_id=? AND v.id IN (${ids.map(()=>'?').join(',')}) AND v.estado<>'ANULADO'`).all(e,...ids);
+  if(pedidos.length!==ids.length)return res.status(400).json({ok:false,error:'Uno o más pedidos no existen.'});
+  const auto=String(d.orden||'MANUAL').toUpperCase()==='ZONA';
+  let ordenados=pedidos;
+  if(auto){
+    const grupos={};
+    for(const p of pedidos){const k=p.localidad||'SIN LOCALIDAD';(grupos[k]=grupos[k]||[]).push(p)}
+    ordenados=[];
+    for(const k of Object.keys(grupos).sort()){
+      const rest=[...grupos[k]];
+      const conGeo=rest.filter(p=>(p.clat??p.latitud)!=null&&(p.clng??p.longitud)!=null);
+      const sinGeo=rest.filter(p=>(p.clat??p.latitud)==null||(p.clng??p.longitud)==null);
+      if(conGeo.length){
+        const ruta=[conGeo.shift()];
+        while(conGeo.length){
+          const last=ruta[ruta.length-1];
+          const lastLat=last.clat??last.latitud,lastLng=last.clng??last.longitud;
+          let mejor=0,mejorDist=Infinity;
+          conGeo.forEach((p,i)=>{const la=p.clat??p.latitud,ln=p.clng??p.longitud;const dist=(la-lastLat)**2+(ln-lastLng)**2;if(dist<mejorDist){mejorDist=dist;mejor=i}});
+          ruta.push(conGeo.splice(mejor,1)[0]);
+        }
+        ordenados.push(...ruta);
+      }
+      ordenados.push(...sinGeo.sort((a,b)=>String(a.razon_social||'').localeCompare(String(b.razon_social||''))));
+    }
+  }
+  const count=db.prepare('SELECT COUNT(1) n FROM rutas_reparto WHERE empresa_id=?').get(e).n;
+  const numero=`R-${String(count+1).padStart(6,'0')}`;
+  const tx=db.transaction(()=>{
+    const info=db.prepare('INSERT INTO rutas_reparto(empresa_id,numero,fecha,repartidor_id,usuario_id,estado,observaciones) VALUES(?,?,?,?,?,?,?)').run(e,numero,fecha,repartidorId,usuarioId,'ARMADA',String(d.observaciones||''));
+    const ins=db.prepare('INSERT INTO ruta_pedidos(empresa_id,ruta_id,venta_id,orden) VALUES(?,?,?,?)');
+    ordenados.forEach((p,idx)=>ins.run(e,info.lastInsertRowid,p.id,idx+1));
+    const upd=db.prepare("UPDATE ventas_pos SET estado_pedido='PREPARANDO' WHERE id=? AND COALESCE(estado_pedido,'PENDIENTE') IN ('CONFIRMADO','PARCIAL')");
+    for(const p of ordenados)upd.run(p.id);
+    return Number(info.lastInsertRowid);
+  });
+  res.status(201).json({ok:true,rutaId:tx()});
+}
+function datosRutaReparto(e,id){
+  const ruta=db.prepare('SELECT r.*,u.nombre repartidor_nombre FROM rutas_reparto r LEFT JOIN usuarios u ON u.id=r.repartidor_id WHERE r.id=? AND r.empresa_id=?').get(id,e);
+  if(!ruta)return null;
+  const pedidos=db.prepare(`SELECT rp.id ruta_pedido_id,rp.orden,rp.estado_entrega,rp.fecha_entrega,rp.hora_entrega,rp.observaciones,
+      v.id,v.numero,v.punto_venta,v.total,v.fecha,v.latitud,v.longitud,
+      c.razon_social cliente,c.domicilio,c.localidad,c.telefono,c.latitud clat,c.longitud clng
+    FROM ruta_pedidos rp JOIN ventas_pos v ON v.id=rp.venta_id LEFT JOIN clientes c ON c.id=v.cliente_id
+    WHERE rp.ruta_id=? ORDER BY rp.orden,rp.id`).all(id);
+  const items=db.prepare(`SELECT i.venta_id,i.producto_id,i.codigo,i.descripcion,SUM(i.cantidad) cantidad
+    FROM venta_pos_items i JOIN ruta_pedidos rp ON rp.venta_id=i.venta_id
+    WHERE rp.ruta_id=? GROUP BY i.producto_id,i.codigo,i.descripcion ORDER BY i.descripcion`).all(id);
+  const porPedido={};
+  for(const it of items)(porPedido[it.venta_id]=porPedido[it.venta_id]||[]).push(it);
+  const carga={};
+  for(const it of items){const k=`${it.codigo}|${it.descripcion}`;carga[k]=carga[k]||{codigo:it.codigo,descripcion:it.descripcion,cantidad:0};(carga[k].cantidad+=Number(it.cantidad||0))}
+  return {ruta,pedidos:pedidos.map(p=>({...p,items:porPedido[p.id]||[]})),carga:Object.values(carga)};
+}
+function listRutasReparto(req,res){
+  const e=empresaId(req);
+  const rows=db.prepare(`SELECT r.*,u.nombre repartidor_nombre,
+      (SELECT COUNT(1) FROM ruta_pedidos rp WHERE rp.ruta_id=r.id) pedidos,
+      (SELECT COALESCE(SUM(v.total),0) FROM ruta_pedidos rp JOIN ventas_pos v ON v.id=rp.venta_id WHERE rp.ruta_id=r.id) total
+    FROM rutas_reparto r LEFT JOIN usuarios u ON u.id=r.repartidor_id
+    WHERE r.empresa_id=? ORDER BY r.id DESC LIMIT 100`).all(e);
+  res.json({ok:true,rutas:rows});
+}
+function detalleRutaReparto(req,res){
+  const datos=datosRutaReparto(empresaId(req),Number(req.params.id));
+  if(!datos)return res.status(404).json({ok:false,error:'La ruta no existe.'});
+  res.json({ok:true,...datos});
+}
+function reordenarRutaReparto(req,res){
+  const e=empresaId(req),id=Number(req.params.id);
+  const orden=Array.isArray(req.body?.orden)?req.body.orden.map(Number).filter(Boolean):[];
+  if(!orden.length)return res.status(400).json({ok:false,error:'Falta el nuevo orden.'});
+  const tx=db.transaction(()=>{
+    const upd=db.prepare('UPDATE ruta_pedidos SET orden=? WHERE id=? AND ruta_id=? AND empresa_id=?');
+    orden.forEach((rutaPedidoId,idx)=>upd.run(idx+1,rutaPedidoId,id,e));
+  });
+  tx();
+  res.json({ok:true});
+}
+function marcarEntregaRuta(req,res){
+  const e=empresaId(req),rutaId=Number(req.params.id),rutaPedidoId=Number(req.params.idEntrega),d=req.body||{},usuarioId=userId(req);
+  const rp=db.prepare('SELECT rp.*,v.documento_id FROM ruta_pedidos rp JOIN ventas_pos v ON v.id=rp.venta_id WHERE rp.id=? AND rp.ruta_id=? AND rp.empresa_id=?').get(rutaPedidoId,rutaId,e);
+  if(!rp)return res.status(404).json({ok:false,error:'La entrega no existe en esa ruta.'});
+  const estado=String(d.estado_entrega||'ENTREGADO').toUpperCase();
+  if(!['ENTREGADO','PARCIAL','NO_ENTREGADO'].includes(estado))return res.status(400).json({ok:false,error:'Estado de entrega inválido.'});
+  const usuario=db.prepare('SELECT nombre FROM usuarios WHERE id=?').get(usuarioId);
+  const fecha=nowLocal().slice(0,10),hora=nowLocal().slice(11,19);
+  const lat=d.latitud!=null&&Number.isFinite(Number(d.latitud))?Number(d.latitud):null;
+  const lng=d.longitud!=null&&Number.isFinite(Number(d.longitud))?Number(d.longitud):null;
+  const tx=db.transaction(()=>{
+    db.prepare(`UPDATE ruta_pedidos SET estado_entrega=?,fecha_entrega=?,hora_entrega=?,latitud=?,longitud=?,observaciones=? WHERE id=?`).run(estado,fecha,hora,lat,lng,String(d.observaciones||''),rutaPedidoId);
+    if(estado==='ENTREGADO')db.prepare("UPDATE ventas_pos SET estado_pedido='ENTREGADO' WHERE id=?").run(rp.venta_id);
+    db.prepare('INSERT INTO pedido_estado_historial(empresa_id,venta_id,documento_id,estado,estado_anterior,usuario_id,usuario_nombre,detalle) VALUES(?,?,?,?,?,?,?,?)').run(e,rp.venta_id,rp.documento_id||null,estado==='ENTREGADO'?'ENTREGADO':'DESPACHADO',null,usuarioId,usuario?.nombre||'REPARTIDOR',`Entrega ${estado}${d.observaciones?`: ${String(d.observaciones)}`:''}`);
+  });
+  tx();
+  res.json({ok:true});
+}
+function cerrarRutaReparto(req,res){
+  const e=empresaId(req),id=Number(req.params.id);
+  const ruta=db.prepare('SELECT id FROM rutas_reparto WHERE id=? AND empresa_id=?').get(id,e);
+  if(!ruta)return res.status(404).json({ok:false,error:'La ruta no existe.'});
+  db.prepare("UPDATE rutas_reparto SET estado='CERRADA',updated_at=CURRENT_TIMESTAMP WHERE id=?").run(id);
+  res.json({ok:true});
+}
+function miRutaReparto(req,res){
+  const e=empresaId(req),usuarioId=userId(req);
+  const ruta=db.prepare("SELECT id FROM rutas_reparto WHERE empresa_id=? AND repartidor_id=? AND estado<>'CERRADA' ORDER BY id DESC LIMIT 1").get(e,usuarioId);
+  if(!ruta)return res.json({ok:true,ruta:null});
+  res.json({ok:true,...datosRutaReparto(e,ruta.id)});
 }
 
 function vatBook(req,res){
@@ -980,7 +1117,7 @@ function updatePrices(req,res){
 function createReserveFund(req,res){const e=empresaId(req),d=req.body,amount=Number(d.importe_original||d.importe||0);if(!d.cliente_id||amount<=0)return res.status(400).json({ok:false,error:'Cliente e importe son obligatorios.'});const count=db.prepare('SELECT COUNT(*) n FROM reservas_monto WHERE empresa_id=?').get(e).n;const number=`RM-${String(count+1).padStart(8,'0')}`;const products=db.prepare('SELECT id,codigo,precio FROM productos WHERE empresa_id=? AND activo=1').all(e);const snapshot=Object.fromEntries(products.map(p=>[String(p.id),{codigo:p.codigo,precio:Number(p.precio)}]));const info=db.prepare(`INSERT INTO reservas_monto(empresa_id,cliente_id,numero,fecha,importe_original,saldo,lista_precio_id,lista_precio_nombre,precios_snapshot,observaciones) VALUES(?,?,?,?,?,?,?,?,?,?)`).run(e,Number(d.cliente_id),number,d.fecha||nowLocal().slice(0,10),amount,amount,d.lista_precio_id||null,d.lista_precio_nombre||'GENERAL',JSON.stringify(snapshot),d.observaciones||'');res.status(201).json({ok:true,reservation:db.prepare('SELECT * FROM reservas_monto WHERE id=?').get(info.lastInsertRowid)})}
 function consumeReserveFund(req,res){const e=empresaId(req),id=Number(req.params.id),amount=Number(req.body.importe||0);const tx=db.transaction(()=>{const r=db.prepare('SELECT * FROM reservas_monto WHERE id=? AND empresa_id=?').get(id,e);if(!r)throw Object.assign(new Error('Reserva inexistente.'),{status:404});if(amount<=0||amount>Number(r.saldo))throw Object.assign(new Error('El importe supera el saldo reservado.'),{status:409});db.prepare('UPDATE reservas_monto SET saldo=saldo-?,estado=CASE WHEN saldo-?<=0 THEN \'AGOTADA\' ELSE \'VIGENTE\' END,updated_at=CURRENT_TIMESTAMP WHERE id=?').run(amount,amount,id);db.prepare('INSERT INTO reserva_monto_consumos(reserva_id,documento_tipo,documento_id,importe,detalle) VALUES(?,?,?,?,?)').run(id,req.body.documento_tipo||'POS',req.body.documento_id||null,amount,req.body.detalle||'Consumo desde punto de venta');return db.prepare('SELECT * FROM reservas_monto WHERE id=?').get(id)});res.json({ok:true,reservation:tx()})}
 
-module.exports={listBanks,saveBank,listPos,savePos,listChecks,createCheck,deleteCajero,depositChecks,listWhatsapp,saveWhatsapp,uploadFiscal,fiscalFiles,listPurchases,savePurchase,deletePurchase,importarComprasExcel,ocrCompraFoto,listPedidosClientes,listPedidosActivos,listDevoluciones,devolverItemsPedido,listVendedorClientes,guardarVendedorClientes,crearVisita,listVisitas,movilBootstrap,crearPedidoMovil,listPedidosMovil,listBandejaPedidos,detallePedidoMovil,revisarPedidoMovil,cambiarEstadoPedidoMovil,vatBook,borradorIva,saveBorradorIvaAjuste,renameBorradorIvaRubro,updatePrices,listReserveFunds,createReserveFund,consumeReserveFund};
+module.exports={listBanks,saveBank,listPos,savePos,listChecks,createCheck,deleteCajero,depositChecks,listWhatsapp,saveWhatsapp,uploadFiscal,fiscalFiles,listPurchases,savePurchase,deletePurchase,importarComprasExcel,ocrCompraFoto,listPedidosClientes,listPedidosActivos,listDevoluciones,devolverItemsPedido,listVendedorClientes,guardarVendedorClientes,crearVisita,listVisitas,movilBootstrap,crearPedidoMovil,listPedidosMovil,listBandejaPedidos,detallePedidoMovil,revisarPedidoMovil,cambiarEstadoPedidoMovil,listPedidosParaRuta,crearRutaReparto,listRutasReparto,detalleRutaReparto,reordenarRutaReparto,marcarEntregaRuta,cerrarRutaReparto,miRutaReparto,vatBook,borradorIva,saveBorradorIvaAjuste,renameBorradorIvaRubro,updatePrices,listReserveFunds,createReserveFund,consumeReserveFund};
 
 function userId(req){ return Number(req.usuario?.id || req.user?.id || req.user?.userId || 1); }
 function listPosCatalogs(req,res){
@@ -1029,6 +1166,18 @@ function nextNumber(e,pv,type){
     return db.prepare('SELECT ultimo_numero n FROM pos_numeradores WHERE empresa_id=? AND punto_venta=? AND tipo=?').get(e,pv,type).n;
   });
   return tx();
+}
+/*
+ * Número libre para la venta: si el numerador quedó atrás de ventas ya
+ * existentes (bases migradas), avanza hasta encontrar uno sin usar.
+ */
+function nextNumberLibre(e,pv,type){
+  for(let intento=0;intento<100;intento++){
+    const n=nextNumber(e,pv,type);
+    const usado=db.prepare('SELECT 1 FROM ventas_pos WHERE empresa_id=? AND punto_venta=? AND tipo=? AND numero=? LIMIT 1').get(e,pv,type,n);
+    if(!usado)return n;
+  }
+  return nextNumber(e,pv,type);
 }
 function openOrGetCashSession(e,d,uid){
   const pv=Number(d.punto_venta)||null;
