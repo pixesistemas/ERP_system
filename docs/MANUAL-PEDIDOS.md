@@ -34,6 +34,8 @@ VENDEDOR toma el pedido  ->  ADMINISTRADOR revisa y confirma  ->  se arma la RUT
 
 Al abrir esas direcciones, el sistema entra directo a la pantalla móvil correspondiente.
 
+**Qué se imprime en los comprobantes:** en Superadmin → **Comprobantes** podés elegir, por empresa y por comprobante (factura, nota de venta, presupuesto, nota de pedido, remito, notas de crédito/débito), qué datos salen en el PDF A4 y en el ticket de 80 mm: Logo, Dirección, Teléfono, WhatsApp, Mail, Vendedor, Observaciones, Pie y QR/CAE fiscal.
+
 ---
 
 ## 3. Configuración inicial (administrador de la empresa)

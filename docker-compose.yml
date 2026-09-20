@@ -20,7 +20,8 @@ services:
       - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-8h}
       - DEMO_MODE=${DEMO_MODE:-false}
       - AFIP_PRODUCTION=${AFIP_PRODUCTION:-true}
-      - OPENSSL=${OPENSSL:-openssl}
+      # Ruta COMPLETA al ejecutable (el SDK de AFIP no acepta "openssl" a secas).
+      - OPENSSL=${OPENSSL:-/usr/bin/openssl}
       # URL pública (para QR, PDF y webhooks). Ej: https://erp.midominio.com.ar
       - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-http://localhost:3000}
       # MercadoPago (opcional). Vacíos = QR simulado (modo demo).

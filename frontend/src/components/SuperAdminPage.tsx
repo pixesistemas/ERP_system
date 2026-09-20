@@ -63,10 +63,22 @@ export function SuperAdminPage() {
     } catch (e: any) { setError(e.message); }
   }
 
-  async function cargarComprobConfigs() {
+  const [comprobTipo, setComprobTipo] = useState("GENERAL");
+  const TIPOS_COMPROBANTE_CONFIG = [
+    { key: "GENERAL", label: "General (todos)" },
+    { key: "FACTURA", label: "Factura" },
+    { key: "NOTA_X", label: "Nota de venta X" },
+    { key: "PRESUPUESTO", label: "Presupuesto" },
+    { key: "NOTA_PEDIDO", label: "Nota de pedido" },
+    { key: "REMITO", label: "Remito" },
+    { key: "NOTA_CREDITO", label: "Nota de crédito" },
+    { key: "NOTA_DEBITO", label: "Nota de débito" },
+  ];
+
+  async function cargarComprobConfigs(tipo = comprobTipo) {
     try {
       const entradas = await Promise.all(empresas.map(async (e: any) => {
-        const r = await call<any>("GET", `/empresas/${e.id}/comprobantes-config`);
+        const r = await call<any>("GET", `/empresas/${e.id}/comprobantes-config?tipo=${encodeURIComponent(tipo)}`);
         return [e.id, r.config || {}];
       }));
       setComprobConfigs(Object.fromEntries(entradas));
@@ -618,18 +630,19 @@ export function SuperAdminPage() {
       </div>}
     {tab === "COMPROBANTES" && <div className="products-page">
         <div className="products-toolbar">
-          <div><h3>Qué se muestra en los comprobantes</h3><p>Destildá lo que no querés que salga en los PDF (A4) y en los tickets de 80 mm de cada empresa.</p></div>
+          <div><h3>Qué se muestra en los comprobantes</h3><p>Elegí la empresa y el comprobante, y destildá lo que no querés que salga en los PDF (A4) y en los tickets de 80 mm.</p></div>
+          <label>Comprobante<select value={comprobTipo} onChange={(e) => { setComprobTipo(e.target.value); cargarComprobConfigs(e.target.value); }}>{TIPOS_COMPROBANTE_CONFIG.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}</select></label>
         </div>
         {empresas.map((e) => {
           const cfg = comprobConfigs[e.id] || {};
           return <div className="products-card" key={e.id} style={{ marginBottom: 10 }}>
             <div className="products-toolbar">
-              <div><strong>{e.nombre}</strong><small>{e.razon_social}</small></div>
+              <div><strong>{e.nombre}</strong><small>{e.razon_social} · {TIPOS_COMPROBANTE_CONFIG.find((t) => t.key === comprobTipo)?.label}</small></div>
               <button className="secondary-action" onClick={async () => {
                 setLoading(true);
                 try {
-                  await call("PUT", `/empresas/${e.id}/comprobantes-config`, cfg);
-                  setOk(`Comprobantes de ${e.nombre} actualizados.`);
+                  await call("PUT", `/empresas/${e.id}/comprobantes-config`, { tipo: comprobTipo, ...cfg });
+                  setOk(`Comprobante ${comprobTipo} de ${e.nombre} actualizado.`);
                 } catch (err: any) { setError(err.message); } finally { setLoading(false); }
               }}>Guardar</button>
             </div>

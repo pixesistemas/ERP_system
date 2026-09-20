@@ -129,6 +129,9 @@ export const api = {
   saveUserPointsOfSale(id: number, data: any) { return request<any>(`/users/${id}/puntos-venta`, { method: "PUT", body: JSON.stringify(data) }); },
   listUserCashiers(id: number) { return request<any>(`/users/${id}/cajas`); },
   saveUserCashiers(id: number, data: any) { return request<any>(`/users/${id}/cajas`, { method: "PUT", body: JSON.stringify(data) }); },
+  reportUserIssue(data: { tipo: string; mensaje: string; pagina?: string }) {
+    return request<any>("/erp/reportes-usuario", { method: "POST", body: JSON.stringify(data) });
+  },
   listRoles() { return request<any>("/roles"); },
   createRole(data: any) { return request<any>("/roles", { method: "POST", body: JSON.stringify(data) }); },
   deleteRole(id: number) { return request<any>(`/roles/${id}`, { method: "DELETE" }); },
@@ -188,7 +191,6 @@ export const erpApi = {
     return request<any>(`/erp/visitas?${qs.toString()}`);
   },
   createVisita: (data:any) => request<any>('/erp/visitas',{method:'POST',body:JSON.stringify(data)}),
-  reportUserIssue: (data:{tipo:string;mensaje:string;pagina?:string}) => request<any>('/erp/reportes-usuario',{method:'POST',body:JSON.stringify(data)}),
   movilBootstrap: () => request<any>('/erp/movil/bootstrap'),
   listMobileOrders: () => request<any>('/erp/movil/pedidos'),
   createMobileOrder: (data:any) => request<any>('/erp/movil/pedidos',{method:'POST',body:JSON.stringify(data)}),

@@ -53,9 +53,9 @@ class TicketDocumentEngine {
     const assets = CompanyAssetsLoader.load(emp, {
       puntoVenta: sale.punto_venta,
     });
-    const plantilla = getPlantillaComprobante(emp.id) || {};
+    const plantilla = getPlantillaComprobante(emp.id, sale.tipo) || {};
     const pieTexto = plantilla.pie || emp.pieFactura || "";
-    /* Bloques que el superadmin puede ocultar en los comprobantes. */
+    /* Bloques que el superadmin puede ocultar por comprobante. */
     const ver = (clave) => plantilla[clave] !== false;
     const fontSize = Number(plantilla.fontSize) || null;
     const fontFamily = String(plantilla.fontFamily || "Arial").trim() || "Arial";

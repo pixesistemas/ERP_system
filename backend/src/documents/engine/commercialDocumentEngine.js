@@ -41,9 +41,9 @@ class CommercialDocumentEngine {
     const assets = CompanyAssetsLoader.load(emp, {
       puntoVenta: documento.punto_venta,
     });
-    const plantilla = getPlantillaComprobante(emp.id) || {};
+    const plantilla = getPlantillaComprobante(emp.id, documento.tipo) || {};
     const pieTexto = plantilla.pie || emp.pieFactura || "";
-    /* Bloques que el superadmin puede ocultar en los comprobantes. */
+    /* Bloques que el superadmin puede ocultar por comprobante. */
     const ver = (clave) => plantilla[clave] !== false;
 
     const tipo = this.normalizeDocumentType(documento.tipo);

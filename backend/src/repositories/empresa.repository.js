@@ -61,20 +61,31 @@ function getEmpresaById(id) {
 
   return mapEmpresa(row);
 }
-function getPlantillaComprobante(empresaId) {
-  const row = db
-    .prepare(
-      "SELECT configuracion_json FROM comprobante_plantillas WHERE empresa_id = ? AND tipo = 'GENERAL'",
-    )
-    .get(empresaId);
+/*
+ * Plantilla/configuración de un comprobante. Si se pasa un tipo
+ * (FACTURA, NOTA_X, PRESUPUESTO, ...) y no tiene configuración propia,
+ * hereda la GENERAL.
+ */
+function getPlantillaComprobante(empresaId, tipo = "GENERAL") {
+  const leer = (clave) => {
+    const row = db
+      .prepare(
+        "SELECT configuracion_json FROM comprobante_plantillas WHERE empresa_id = ? AND tipo = ?",
+      )
+      .get(empresaId, clave);
 
-  if (!row) return null;
+    if (!row) return null;
 
-  try {
-    return JSON.parse(row.configuracion_json || "null");
-  } catch {
-    return null;
-  }
+    try {
+      return JSON.parse(row.configuracion_json || "null");
+    } catch {
+      return null;
+    }
+  };
+
+  const clave = String(tipo || "GENERAL").toUpperCase();
+
+  return leer(clave) || (clave !== "GENERAL" ? leer("GENERAL") : null);
 }
 function getEmpresaByApiKey(apiKey) {
   const row = db

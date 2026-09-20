@@ -771,16 +771,28 @@ const CLAVES_COMPROBANTE = [
 function getComprobantesConfigEmpresa(req, res, next) {
   try {
     const db = require("../db/database");
-    const row = db
-      .prepare(
-        "SELECT configuracion_json FROM comprobante_plantillas WHERE empresa_id=? AND tipo='GENERAL'",
-      )
-      .get(Number(req.params.id));
-    let config = {};
-    try {
-      config = JSON.parse(row?.configuracion_json || "{}") || {};
-    } catch {}
-    res.json({ ok: true, config });
+    const empresaId = Number(req.params.id);
+    const tipo = String(req.query.tipo || "GENERAL").toUpperCase();
+    const leer = (clave) => {
+      const row = db
+        .prepare(
+          "SELECT configuracion_json FROM comprobante_plantillas WHERE empresa_id=? AND tipo=?",
+        )
+        .get(empresaId, clave);
+      try {
+        return JSON.parse(row?.configuracion_json || "{}") || {};
+      } catch {
+        return {};
+      }
+    };
+    const propio = leer(tipo);
+    const general = leer("GENERAL");
+    res.json({
+      ok: true,
+      tipo,
+      config: Object.keys(propio).length ? propio : general,
+      heredado: !Object.keys(propio).length && Object.keys(general).length > 0,
+    });
   } catch (e) {
     next(e);
   }
@@ -790,11 +802,12 @@ function setComprobantesConfigEmpresa(req, res, next) {
   try {
     const db = require("../db/database");
     const empresaId = Number(req.params.id);
+    const tipo = String(req.body?.tipo || "GENERAL").toUpperCase();
     const row = db
       .prepare(
-        "SELECT configuracion_json FROM comprobante_plantillas WHERE empresa_id=? AND tipo='GENERAL'",
+        "SELECT configuracion_json FROM comprobante_plantillas WHERE empresa_id=? AND tipo=?",
       )
-      .get(empresaId);
+      .get(empresaId, tipo);
     let actual = {};
     try {
       actual = JSON.parse(row?.configuracion_json || "{}") || {};
@@ -803,10 +816,10 @@ function setComprobantesConfigEmpresa(req, res, next) {
       if (req.body && clave in req.body) actual[clave] = Boolean(req.body[clave]);
     }
     db.prepare(
-      `INSERT INTO comprobante_plantillas(empresa_id,tipo,configuracion_json) VALUES(?,'GENERAL',?)
+      `INSERT INTO comprobante_plantillas(empresa_id,tipo,configuracion_json) VALUES(?,?,?)
        ON CONFLICT(empresa_id,tipo) DO UPDATE SET configuracion_json=excluded.configuracion_json,updated_at=CURRENT_TIMESTAMP`,
-    ).run(empresaId, JSON.stringify(actual));
-    res.json({ ok: true, config: actual });
+    ).run(empresaId, tipo, JSON.stringify(actual));
+    res.json({ ok: true, tipo, config: actual });
   } catch (e) {
     next(e);
   }

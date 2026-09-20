@@ -996,17 +996,21 @@ function reporteVendedoresDetalle(req,res){
     "v.empresa_id=?",
     "v.estado<>'ANULADO'",
     "COALESCE(v.estado_pedido,'')<>'RECHAZADO'",
-    "v.tipo IN ('FACTURA','NOTA_PEDIDO','NOTA_X')",
+    "v.tipo IN ('FACTURA','NOTA_PEDIDO','NOTA_X','PRESUPUESTO')",
     "date(v.fecha) BETWEEN ? AND ?",
   ];
   const params=[e,desde,hasta];
   if(vendedorId){where.push('v.vendedor_id=?');params.push(vendedorId)}
+  /*
+   * Precio con IVA incluido (igual que el total del pedido/ruta) para que
+   * los montos coincidan con la bandeja, los repartos y el POS.
+   */
   const filas=db.prepare(`SELECT COALESCE(NULLIF(vd.nombre,''),'MOSTRADOR') vendedor, v.vendedor_id,
       COALESCE(NULLIF(c.razon_social,''),'CONSUMIDOR FINAL') cliente, c.domicilio, c.localidad,
       COALESCE(i.codigo,'') codigo, i.descripcion,
       ROUND(SUM(i.cantidad),3) cantidad,
-      ROUND(SUM(i.subtotal),2) precio,
-      ROUND(SUM(i.subtotal)*COALESCE(vd.comision_porcentaje,0)/100,2) comision
+      ROUND(SUM(i.subtotal*(1+i.iva/100.0)),2) precio,
+      ROUND(SUM(i.subtotal*(1+i.iva/100.0))*COALESCE(vd.comision_porcentaje,0)/100,2) comision
     FROM ventas_pos v
     JOIN venta_pos_items i ON i.venta_id=v.id
     LEFT JOIN vendedores vd ON vd.id=v.vendedor_id

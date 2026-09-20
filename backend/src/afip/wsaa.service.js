@@ -9,6 +9,39 @@ const { XMLParser } = require("fast-xml-parser");
 
 const constants = require("./constants");
 
+/*
+ * Ubica el ejecutable de OpenSSL.
+ *
+ * OPENSSL puede venir como ruta completa ("/usr/bin/openssl") o como
+ * nombre del ejecutable ("openssl"). Si es un nombre simple se deja que
+ * el sistema lo busque en el PATH; si es una ruta se verifica que exista
+ * y, si no, se prueban las ubicaciones habituales. Así funciona tanto en
+ * desarrollo (Windows/Linux) como en el contenedor Docker.
+ */
+function resolverOpenssl() {
+  const env = String(process.env.OPENSSL || "").trim();
+  const esRuta = (valor) => valor.includes("/") || valor.includes("\\");
+  const candidatos = [];
+
+  if (env) candidatos.push(env);
+  candidatos.push("openssl", "/usr/bin/openssl", "/usr/local/bin/openssl", "/bin/openssl");
+
+  for (const candidato of candidatos) {
+    if (!candidato) continue;
+    if (esRuta(candidato)) {
+      try {
+        if (fs.existsSync(candidato)) return candidato;
+      } catch {
+        /* sigue con el próximo */
+      }
+    } else {
+      return candidato;
+    }
+  }
+
+  return "openssl";
+}
+
 class WSAAService {
   constructor(client) {
     this.client = client;
@@ -60,15 +93,7 @@ class WSAAService {
     const tra = path.join(this.company.cache, `TRA-${service}.xml`);
     const tmp = path.join(this.company.cache, `TRA-${service}.tmp`);
 
-    // Si no está configurada la variable de entorno OPENSSL, usamos
-    // "openssl" a secas y dejamos que el sistema operativo lo busque en el
-    // PATH (funciona en Linux/Mac con OpenSSL instalado de fábrica). Antes,
-    // sin la variable seteada, esto fallaba con un error de Node poco claro
-    // ("paths[0] argument must be of type string") en vez de avisar
-    // específicamente que falta configurar OpenSSL.
-    const openssl = process.env.OPENSSL
-      ? path.resolve(process.env.OPENSSL)
-      : "openssl";
+    const openssl = resolverOpenssl();
 
     try {
       execFileSync(openssl, [
