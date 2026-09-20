@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Manual - Sistema de pedidos móviles, reparto y reportes</title>
+<style>
+  @page { size: A4; margin: 14mm; }
+  * { box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; font-size: 11.5px; color: #222; line-height: 1.45; max-width: 900px; margin: 0 auto; padding: 18px; }
+  h1 { font-size: 21px; margin: 0 0 4px; color: #4a3d8f; }
+  .sub { color: #666; font-size: 12px; margin-bottom: 14px; }
+  h2 { font-size: 15px; color: #4a3d8f; border-bottom: 2px solid #ded8f2; padding-bottom: 3px; margin: 18px 0 8px; }
+  h3 { font-size: 12.5px; margin: 12px 0 4px; }
+  p, li { margin: 3px 0; }
+  ol, ul { padding-left: 20px; margin: 4px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 10.5px; }
+  th, td { border: 1px solid #bbb; padding: 4px 6px; text-align: left; }
+  th { background: #2E3A59; color: #fff; }
+  .flujo { background: #F4F1FB; border: 1px solid #D8D2EE; border-radius: 8px; padding: 10px; font-family: Consolas, monospace; font-size: 10.5px; white-space: pre-line; }
+  .nota { background: #FFF8E6; border: 1px solid #F0C36D; border-radius: 8px; padding: 8px 10px; margin: 6px 0; }
+  .paso { background: #F7F9FD; border-left: 3px solid #6952C4; padding: 6px 10px; margin: 6px 0; }
+  footer { margin-top: 18px; color: #777; font-size: 10px; text-align: center; }
+  @media print { body { padding: 0; } h2 { break-after: avoid; } }
+</style>
+</head>
+<body>
+
+<h1>Manual del sistema de pedidos móviles, reparto y reportes</h1>
+<div class="sub">Guía para vendedores, administradores y repartidores · PixeSistemas</div>
+
+<h2>1. ¿Qué hace este sistema?</h2>
+<p>Los <strong>vendedores</strong> toman pedidos desde el celular (funciona sin señal), el <strong>administrador</strong> los revisa y confirma, se arman <strong>rutas de reparto</strong> y el <strong>repartidor</strong> entrega registrando hora y ubicación. Todo queda trazado y se consulta en <strong>reportes</strong> por vendedor, cliente y producto.</p>
+<div class="flujo">VENDEDOR toma el pedido → ADMINISTRADOR revisa y confirma → se arma la RUTA → REPARTIDOR entrega → REPORTES</div>
+
+<h2>2. Activación (PixeSistemas, una sola vez)</h2>
+<ol>
+  <li>Entrar al panel de Superadmin con el usuario <strong>superadmin</strong>.</li>
+  <li>Solapa <strong>Módulos</strong> → tildar <strong>"Pedidos móviles + reparto"</strong> en la empresa. Sin el tilde, el módulo no se ve.</li>
+  <li>Crear usuarios con rol <strong>ADMIN</strong>, <strong>VENDEDOR</strong> o <strong>REPARTIDOR</strong>.</li>
+  <li>En <strong>Roles y permisos</strong>, marcar las pantallas de cada rol.</li>
+</ol>
+
+<h2>3. Configuración inicial (administrador)</h2>
+<h3>3.1 Vincular usuario y vendedor</h3>
+<p>Menú <strong>Vendedores y comisiones</strong> → editar el vendedor → elegir <strong>Usuario del sistema</strong> → Guardar. La comisión % se usa en los reportes.</p>
+<h3>3.2 Marcar clientes para pedidos</h3>
+<p>Menú <strong>Clientes</strong> → editar → completar Localidad/Provincia/Latitud/Longitud (recomendado) → tildar <strong>"Cliente de pedidos"</strong> → Guardar.</p>
+<h3>3.3 Cargar la cartera de cada vendedor</h3>
+<p>Menú <strong>Cartera de clientes</strong> → elegir vendedor → buscar y tildar clientes → <strong>Guardar cartera</strong>. El vendedor solo ve su cartera.</p>
+
+<h2>4. App del vendedor (celular)</h2>
+<h3>4.1 Instalar</h3>
+<p>Abrir el sistema en el navegador del celular → menú del navegador → <strong>"Agregar a pantalla de inicio"</strong>. Queda como app y funciona sin señal.</p>
+<h3>4.2 Inicio</h3>
+<ul>
+  <li>Estado <strong>🟢 Online</strong> / <strong>📴 Sin conexión</strong> y cantidad de pendientes de sincronizar.</li>
+  <li>Botones: <strong>Pedidos de hoy · Clientes · Ruta · Visitas</strong>.</li>
+</ul>
+<h3>4.3 Tomar un pedido</h3>
+<div class="paso">Clientes → buscar el cliente → <strong>NUEVO PEDIDO</strong> → buscar producto (código, descripción o código de barras) → tocar para agregar → ajustar con <strong>− / +</strong> → (opcional) observación → <strong>ENVIAR PEDIDO</strong>.</div>
+<p>Se guardan automáticamente vendedor, cliente, fecha, hora, <strong>ubicación GPS</strong>, productos, cantidades y dispositivo.</p>
+<div class="nota"><strong>Sin señal:</strong> el pedido queda guardado en el celular ("📴 Pedido guardado. Se enviará cuando vuelva Internet") y se sincroniza solo. <strong>Nunca se pierde ni se duplica.</strong></div>
+<h3>4.4 Registrar una visita (aunque no compre)</h3>
+<p>Entrar al cliente → <strong>REGISTRAR VISITA</strong> → resultado: Pedido realizado / No compró / Local cerrado / No estaba / Reprogramar → observación opcional → <strong>Guardar visita</strong> (con fecha, hora y GPS).</p>
+<h3>4.5 Pedidos y ruta</h3>
+<p><strong>Pedidos de hoy</strong>: enviados y pendientes de sincronizar. <strong>Ruta</strong>: la cartera ordenada por localidad.</p>
+
+<h2>5. Bandeja de pedidos (administrador)</h2>
+<p>Menú <strong>Bandeja de pedidos</strong>. Filtros por estado, vendedor, fechas y búsqueda. Chips de resumen por estado.</p>
+<h3>5.1 Revisar y confirmar</h3>
+<ol>
+  <li><strong>Abrir</strong> el pedido (se ve vendedor, cliente, hora, ubicación en mapa y productos).</li>
+  <li>Ajustar la <strong>cantidad final</strong> de un producto, o marcarlo <strong>"No disponible"</strong> (queda tachado y se quita).</li>
+  <li>Escribir una observación de la revisión (ej.: "faltaba stock").</li>
+  <li>Elegir: <strong>Confirmar pedido</strong> · <strong>Dejar parcial</strong> · <strong>Rechazar</strong>.</li>
+</ol>
+<h3>5.2 Estados y trazabilidad</h3>
+<p><strong>PENDIENTE → REVISANDO → CONFIRMADO / PARCIAL / RECHAZADO → PREPARANDO → DESPACHADO → ENTREGADO</strong>. Cada movimiento queda con fecha, usuario y detalle en <strong>Trazabilidad</strong>.</p>
+
+<h2>6. Preparación y reparto (administrador)</h2>
+<p>Menú <strong>Reparto</strong>.</p>
+<h3>6.1 Armar ruta</h3>
+<ol>
+  <li>Solapa <strong>Armar ruta</strong>: aparecen los pedidos confirmados.</li>
+  <li>Elegir <strong>Repartidor</strong> y <strong>Fecha</strong>, tildar los pedidos.</li>
+  <li><strong>Crear ruta manual</strong> (orden a elección) o <strong>Crear ruta ordenada por zona</strong> (agrupa por localidad y ordena por cercanía GPS).</li>
+</ol>
+<h3>6.2 Rutas armadas</h3>
+<ul>
+  <li>Reordenar paradas con ↑↓ y <strong>Guardar orden</strong>.</li>
+  <li><strong>Carga del vehículo</strong>: suma automática de todos los productos de la ruta.</li>
+  <li><strong>Imprimir hoja</strong>: A4 con recorrido y carga para el camión.</li>
+  <li><strong>Cerrar ruta</strong>: el repartidor deja de verla.</li>
+</ul>
+
+<h2>7. App del repartidor (celular)</h2>
+<ol>
+  <li>Muestra la <strong>ruta del día</strong> asignada a su usuario.</li>
+  <li>Cada parada: cliente, dirección, teléfono, pedido y estado.</li>
+  <li>Botones: <strong>Navegar</strong> (Google Maps), <strong>Llamar</strong>, <strong>Productos</strong>.</li>
+  <li><strong>Ver carga del vehículo</strong>: lista total de mercadería.</li>
+  <li><strong>REGISTRAR ENTREGA</strong>: Entregado / Entrega parcial / No entregado + observación (guarda hora y GPS). Se puede corregir con "Cambiar entrega".</li>
+</ol>
+
+<h2>8. Reportes de vendedores</h2>
+<p>Menú <strong>Reportes de vendedores</strong>.</p>
+<ul>
+  <li><strong>Filtros</strong>: Desde/Hasta (por defecto <strong>hoy</strong>) y Vendedor. Búsqueda rápida dentro del reporte.</li>
+  <li><strong>Vistas fijas</strong>: Por vendedor · Vendedor y cliente · Vendedor y producto · Por cliente · Cliente y producto · Por producto · Detalle (expandible Vendedor → Cliente → Productos).</li>
+  <li><strong>Total Acumulado</strong> al pie.</li>
+  <li><strong>Exportar</strong>: PDF/imprimir (A4, letra chica, encabezado repetido), Excel (.xls) y CSV.</li>
+</ul>
+
+<h2>9. Preguntas frecuentes</h2>
+<table>
+  <tr><th>Problema</th><th>Solución</th></tr>
+  <tr><td>No veo el módulo</td><td>El Superadmin debe tildarlo en Módulos y hay que volver a iniciar sesión.</td></tr>
+  <tr><td>El vendedor no ve clientes</td><td>Cargar la cartera y tildar "Cliente de pedidos".</td></tr>
+  <tr><td>"Ese cliente no está en tu cartera"</td><td>Agregarlo a la cartera del vendedor.</td></tr>
+  <tr><td>No aparece el pedido en la bandeja</td><td>Revisar filtro de estado (nuevo = PENDIENTE) y fechas.</td></tr>
+  <tr><td>El repartidor no ve la ruta</td><td>Asignarla a su usuario y que no esté cerrada.</td></tr>
+  <tr><td>Trabajó sin señal</td><td>El pedido queda pendiente y se sincroniza solo al volver Internet.</td></tr>
+  <tr><td>¿Quién cambió un pedido?</td><td>Trazabilidad dentro del detalle del pedido.</td></tr>
+</table>
+
+<h2>10. Resumen del proceso</h2>
+<table>
+  <tr><th>Paso</th><th>Quién</th><th>Dónde</th></tr>
+  <tr><td>Activar módulo</td><td>PixeSistemas</td><td>Superadmin → Módulos</td></tr>
+  <tr><td>Crear usuarios y roles</td><td>Admin</td><td>Usuarios / Roles</td></tr>
+  <tr><td>Vincular vendedor</td><td>Admin</td><td>Vendedores y comisiones</td></tr>
+  <tr><td>Marcar cliente de pedidos</td><td>Admin</td><td>Clientes</td></tr>
+  <tr><td>Cargar cartera</td><td>Admin</td><td>Cartera de clientes</td></tr>
+  <tr><td>Tomar pedido / visita</td><td>Vendedor</td><td>App vendedor (celular)</td></tr>
+  <tr><td>Revisar y confirmar</td><td>Admin</td><td>Bandeja de pedidos</td></tr>
+  <tr><td>Armar ruta</td><td>Admin</td><td>Reparto</td></tr>
+  <tr><td>Entregar</td><td>Repartidor</td><td>App repartidor (celular)</td></tr>
+  <tr><td>Medir y exportar</td><td>Admin</td><td>Reportes de vendedores</td></tr>
+</table>
+
+<footer>PixeSistemas · ERP Empresarial · Ante cualquier duda, contactar a soporte.</footer>
+
+</body>
+</html>

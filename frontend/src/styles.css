@@ -5537,6 +5537,24 @@ html,body{height:auto;overflow:visible!important;background:#fff!important}
 .parada-items{margin-top:6px;border-top:1px dashed var(--line-2);padding-top:6px}
 .parada .mobile-btn-primario{margin-top:10px;height:48px}
 
+/* ===== Reportes fijos por vendedor ===== */
+.reporte-fijo-card{padding:10px}
+.reporte-fijo-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:2px 4px 8px}
+.reporte-fijo-head strong{font-size:13px;letter-spacing:.4px}
+.reporte-fijo-head span{font-size:11px;color:var(--muted)}
+table.reporte-fijo{font-size:11px}
+table.reporte-fijo th{background:#2E3A59;color:#fff;font-size:10px;text-transform:uppercase;letter-spacing:.3px}
+table.reporte-fijo td,table.reporte-fijo th{padding:4px 6px;border:1px solid var(--line-2)}
+table.reporte-fijo td:not(:first-child){text-align:right;white-space:nowrap}
+table.reporte-fijo tr.grupo td{background:#EDEFF7;font-weight:700}
+table.reporte-fijo tr.grupo.clickeable{cursor:pointer}
+table.reporte-fijo tr.grupo.clickeable svg{vertical-align:-2px;margin-right:4px}
+table.reporte-fijo tr.grupo .muted{color:var(--muted);font-weight:400;margin-left:8px;font-size:10px}
+table.reporte-fijo tr.grupo b{float:right}
+table.reporte-fijo tr.subtotal td{background:#FBF3DC;font-weight:700}
+table.reporte-fijo tr.total td{background:#DCE7F7;font-weight:800}
+.reporte-fijo-total{display:flex;justify-content:flex-end;gap:16px;padding:8px 6px 2px;font-size:12px}
+
 /* ===== Responsive general: monitores chicos y celulares ===== */
 @media(min-width:1001px) and (max-width:1400px){
   .app-shell{grid-template-columns:225px 1fr}

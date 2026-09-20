@@ -203,6 +203,11 @@ export const erpApi = {
   getPedidoMovil: (id:number) => request<any>(`/erp/movil/admin/pedidos/${id}`),
   revisarPedidoMovil: (id:number,data:any) => request<any>(`/erp/movil/admin/pedidos/${id}/revisar`,{method:'POST',body:JSON.stringify(data)}),
   cambiarEstadoPedidoMovil: (id:number,estado:string,detalle?:string) => request<any>(`/erp/movil/admin/pedidos/${id}/estado`,{method:'POST',body:JSON.stringify({estado,detalle})}),
+  reporteVendedores: (params:{desde:string;hasta:string;vendedor_id?:number|null}) => {
+    const qs=new URLSearchParams({desde:params.desde,hasta:params.hasta});
+    if(params.vendedor_id)qs.set('vendedor_id',String(params.vendedor_id));
+    return request<any>(`/erp/reportes/vendedores?${qs.toString()}`);
+  },
   listPedidosParaRuta: () => request<any>('/erp/reparto/pedidos'),
   listRutasReparto: () => request<any>('/erp/reparto/rutas'),
   createRutaReparto: (data:any) => request<any>('/erp/reparto/rutas',{method:'POST',body:JSON.stringify(data)}),
