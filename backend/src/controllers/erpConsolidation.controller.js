@@ -665,7 +665,7 @@ function movilBootstrap(req,res){
   }catch{}
   const packsPorProducto={};
   for(const p of packs){const k=String(p.producto_id);(packsPorProducto[k]=packsPorProducto[k]||[]).push({codigoBarra:p.codigo_barra,cantidad:Number(p.cantidad||1)})}
-  const pedidos=vendedor?db.prepare(`SELECT v.id,v.tipo,v.estado,v.numero,v.punto_venta,v.total,v.fecha,v.fecha_visita,v.hora_visita,c.razon_social cliente
+  const pedidos=vendedor?db.prepare(`SELECT v.id,v.tipo,v.estado,v.estado_pedido,v.numero,v.punto_venta,v.total,v.fecha,v.fecha_visita,v.hora_visita,c.razon_social cliente
     FROM ventas_pos v LEFT JOIN clientes c ON c.id=v.cliente_id
     WHERE v.empresa_id=? AND v.vendedor_id=? ORDER BY v.id DESC LIMIT 100`).all(e,vendedor.id):[];
   res.json({ok:true,vendedor,clientes,productos:productos.map(p=>({...p,codigosBarras:packsPorProducto[String(p.id)]||[]})),pedidos});
@@ -732,10 +732,107 @@ function listPedidosMovil(req,res){
   const e=empresaId(req),usuarioId=userId(req);
   const vendedor=db.prepare('SELECT id FROM vendedores WHERE empresa_id=? AND usuario_id=? AND activo=1').get(e,usuarioId);
   if(!vendedor)return res.json({ok:true,pedidos:[]});
-  const rows=db.prepare(`SELECT v.id,v.tipo,v.estado,v.numero,v.punto_venta,v.total,v.fecha,v.fecha_visita,v.hora_visita,v.latitud,v.longitud,c.razon_social cliente,d.afip_estado
+  const rows=db.prepare(`SELECT v.id,v.tipo,v.estado,v.estado_pedido,v.numero,v.punto_venta,v.total,v.fecha,v.fecha_visita,v.hora_visita,v.latitud,v.longitud,c.razon_social cliente,d.afip_estado
     FROM ventas_pos v LEFT JOIN clientes c ON c.id=v.cliente_id LEFT JOIN documentos_comerciales d ON d.id=v.documento_id
     WHERE v.empresa_id=? AND v.vendedor_id=? ORDER BY v.id DESC LIMIT 100`).all(e,vendedor.id);
   res.json({ok:true,pedidos:rows});
+}
+
+/*
+ * Bandeja de pedidos del administrador (Etapa 3): listar, ver el detalle
+ * con trazabilidad, revisar (confirmar total/parcial/rechazar quitando o
+ * ajustando productos) y avanzar el estado del flujo.
+ */
+function listBandejaPedidos(req,res){
+  const e=empresaId(req);
+  const estado=String(req.query.estado||'').trim().toUpperCase();
+  const vendedorId=Number(req.query.vendedor_id||0);
+  const desde=String(req.query.desde||''),hasta=String(req.query.hasta||'');
+  const q=String(req.query.q||'').trim();
+  let where="v.empresa_id=? AND v.tipo IN ('NOTA_PEDIDO','PRESUPUESTO')";
+  const params=[e];
+  if(estado){where+=" AND COALESCE(v.estado_pedido,'PENDIENTE')=?";params.push(estado)}
+  if(vendedorId){where+=' AND v.vendedor_id=?';params.push(vendedorId)}
+  if(desde){where+=' AND v.fecha>=?';params.push(desde)}
+  if(hasta){where+=' AND v.fecha<=?';params.push(hasta)}
+  if(q){where+=' AND (c.razon_social LIKE ? OR vd.nombre LIKE ? OR CAST(v.numero AS TEXT) LIKE ?)';params.push(`%${q}%`,`%${q}%`,`%${q}%`)}
+  const pedidos=db.prepare(`SELECT v.id,v.tipo,v.estado,v.estado_pedido,v.numero,v.punto_venta,v.total,v.fecha,v.fecha_visita,v.hora_visita,v.latitud,v.longitud,c.razon_social cliente,vd.nombre vendedor,d.canal
+    FROM ventas_pos v LEFT JOIN clientes c ON c.id=v.cliente_id LEFT JOIN vendedores vd ON vd.id=v.vendedor_id LEFT JOIN documentos_comerciales d ON d.id=v.documento_id
+    WHERE ${where} ORDER BY v.id DESC LIMIT 300`).all(...params);
+  const resumen=db.prepare(`SELECT COALESCE(v.estado_pedido,'PENDIENTE') estado,COUNT(1) n FROM ventas_pos v WHERE v.empresa_id=? AND v.tipo IN ('NOTA_PEDIDO','PRESUPUESTO') GROUP BY COALESCE(v.estado_pedido,'PENDIENTE')`).all(e);
+  res.json({ok:true,pedidos,resumen});
+}
+function detallePedidoMovil(req,res){
+  const e=empresaId(req),id=Number(req.params.id);
+  const pedido=db.prepare(`SELECT v.*,c.razon_social cliente,c.cuit,c.domicilio,c.localidad,c.telefono,vd.nombre vendedor,d.canal,d.estado documento_estado
+    FROM ventas_pos v LEFT JOIN clientes c ON c.id=v.cliente_id LEFT JOIN vendedores vd ON vd.id=v.vendedor_id LEFT JOIN documentos_comerciales d ON d.id=v.documento_id
+    WHERE v.id=? AND v.empresa_id=?`).get(id,e);
+  if(!pedido)return res.status(404).json({ok:false,error:'El pedido no existe.'});
+  const ventaItems=db.prepare('SELECT * FROM venta_pos_items WHERE venta_id=? ORDER BY id').all(id);
+  const docItems=pedido.documento_id?db.prepare('SELECT * FROM documento_items WHERE documento_id=? ORDER BY id').all(pedido.documento_id):[];
+  const items=ventaItems.map((vi,idx)=>({...vi,doc_item_id:docItems[idx]?.id||null}));
+  const historial=db.prepare('SELECT * FROM pedido_estado_historial WHERE empresa_id=? AND venta_id=? ORDER BY id DESC').all(e,id);
+  res.json({ok:true,pedido,items,historial});
+}
+function revisarPedidoMovil(req,res){
+  const e=empresaId(req),id=Number(req.params.id),d=req.body||{},usuarioId=userId(req);
+  const pedido=db.prepare("SELECT * FROM ventas_pos WHERE id=? AND empresa_id=? AND tipo IN ('NOTA_PEDIDO','PRESUPUESTO')").get(id,e);
+  if(!pedido)return res.status(404).json({ok:false,error:'El pedido no existe.'});
+  if(['CONFIRMADO','PARCIAL','RECHAZADO'].includes(String(pedido.estado_pedido||'PENDIENTE')))return res.status(409).json({ok:false,error:'El pedido ya fue revisado.'});
+  const estado=String(d.estado||'CONFIRMADO').toUpperCase();
+  if(!['CONFIRMADO','PARCIAL','RECHAZADO'].includes(estado))return res.status(400).json({ok:false,error:'Estado de revisión inválido.'});
+  const usuario=db.prepare('SELECT nombre FROM usuarios WHERE id=?').get(usuarioId);
+  const ventaItems=db.prepare('SELECT * FROM venta_pos_items WHERE venta_id=? ORDER BY id').all(id);
+  const docItems=pedido.documento_id?db.prepare('SELECT * FROM documento_items WHERE documento_id=? ORDER BY id').all(pedido.documento_id):[];
+  const cambios=[];
+  const tx=db.transaction(()=>{
+    if(estado!=='RECHAZADO'&&Array.isArray(d.items)){
+      const deseados=new Map(d.items.map(x=>[Number(x.venta_item_id),Math.max(0,Number(x.cantidad||0))]));
+      ventaItems.forEach((vi,idx)=>{
+        const di=docItems[idx];
+        const cantidadFinal=deseados.has(Number(vi.id))?deseados.get(Number(vi.id)):Number(vi.cantidad);
+        if(cantidadFinal<=0){
+          db.prepare('DELETE FROM venta_pos_items WHERE id=?').run(vi.id);
+          if(di)db.prepare('DELETE FROM documento_items WHERE id=?').run(di.id);
+          cambios.push(`quitó ${vi.descripcion}`);
+        }else if(cantidadFinal<Number(vi.cantidad)){
+          const ratio=cantidadFinal/Number(vi.cantidad||1);
+          db.prepare('UPDATE venta_pos_items SET cantidad=?,subtotal=? WHERE id=?').run(cantidadFinal,Math.round(Number(vi.subtotal||0)*ratio*100)/100,vi.id);
+          if(di)db.prepare('UPDATE documento_items SET cantidad=?,subtotal=?,iva_importe=?,total=? WHERE id=?').run(cantidadFinal,Math.round(Number(di.subtotal||0)*ratio*100)/100,Math.round(Number(di.iva_importe||0)*ratio*100)/100,Math.round(Number(di.total||0)*ratio*100)/100,di.id);
+          cambios.push(`${vi.descripcion}: ${Number(vi.cantidad)} → ${cantidadFinal}`);
+        }
+      });
+      if(pedido.documento_id){
+        const sum=db.prepare('SELECT COALESCE(SUM(subtotal),0) neto,COALESCE(SUM(iva_importe),0) iva,COALESCE(SUM(total),0) total FROM documento_items WHERE documento_id=?').get(pedido.documento_id);
+        db.prepare('UPDATE documentos_comerciales SET importe_neto=?,importe_iva=?,importe_total=?,importe_bruto=?,updated_at=CURRENT_TIMESTAMP WHERE id=?').run(sum.neto,sum.iva,sum.total,sum.neto,pedido.documento_id);
+      }
+      const ventaSum=db.prepare('SELECT COALESCE(SUM(subtotal),0) subtotal FROM venta_pos_items WHERE venta_id=?').get(id);
+      const docTotal=pedido.documento_id?db.prepare('SELECT importe_total FROM documentos_comerciales WHERE id=?').get(pedido.documento_id)?.importe_total:ventaSum.subtotal;
+      db.prepare('UPDATE ventas_pos SET subtotal=?,total=? WHERE id=?').run(ventaSum.subtotal,docTotal,id);
+    }
+    if(estado==='RECHAZADO'){
+      db.prepare("UPDATE ventas_pos SET estado='ANULADO',estado_pedido='RECHAZADO',subtotal=0,total=0 WHERE id=?").run(id);
+      if(pedido.documento_id)db.prepare("UPDATE documentos_comerciales SET estado='ANULADO',importe_neto=0,importe_iva=0,importe_total=0,importe_bruto=0,updated_at=CURRENT_TIMESTAMP WHERE id=?").run(pedido.documento_id);
+    }else{
+      db.prepare('UPDATE ventas_pos SET estado_pedido=? WHERE id=?').run(estado,id);
+    }
+    const detalle=String(d.detalle||'').trim();
+    db.prepare('INSERT INTO pedido_estado_historial(empresa_id,venta_id,documento_id,estado,estado_anterior,usuario_id,usuario_nombre,detalle) VALUES(?,?,?,?,?,?,?,?)').run(e,id,pedido.documento_id||null,estado,pedido.estado_pedido||'PENDIENTE',usuarioId,usuario?.nombre||'ADMIN',[...cambios,detalle].filter(Boolean).join(' · ')||'Revisión del pedido');
+  });
+  tx();
+  res.json({ok:true});
+}
+function cambiarEstadoPedidoMovil(req,res){
+  const e=empresaId(req),id=Number(req.params.id),d=req.body||{},usuarioId=userId(req);
+  const pedido=db.prepare('SELECT * FROM ventas_pos WHERE id=? AND empresa_id=?').get(id,e);
+  if(!pedido)return res.status(404).json({ok:false,error:'El pedido no existe.'});
+  const estado=String(d.estado||'').toUpperCase();
+  const permitidos=['REVISANDO','PREPARANDO','DESPACHADO','ENTREGADO'];
+  if(!permitidos.includes(estado))return res.status(400).json({ok:false,error:'Estado inválido.'});
+  const usuario=db.prepare('SELECT nombre FROM usuarios WHERE id=?').get(usuarioId);
+  db.prepare('UPDATE ventas_pos SET estado_pedido=? WHERE id=?').run(estado,id);
+  db.prepare('INSERT INTO pedido_estado_historial(empresa_id,venta_id,documento_id,estado,estado_anterior,usuario_id,usuario_nombre,detalle) VALUES(?,?,?,?,?,?,?,?)').run(e,id,pedido.documento_id||null,estado,pedido.estado_pedido||'PENDIENTE',usuarioId,usuario?.nombre||'ADMIN',String(d.detalle||'').trim()||null);
+  res.json({ok:true});
 }
 
 function vatBook(req,res){
@@ -883,7 +980,7 @@ function updatePrices(req,res){
 function createReserveFund(req,res){const e=empresaId(req),d=req.body,amount=Number(d.importe_original||d.importe||0);if(!d.cliente_id||amount<=0)return res.status(400).json({ok:false,error:'Cliente e importe son obligatorios.'});const count=db.prepare('SELECT COUNT(*) n FROM reservas_monto WHERE empresa_id=?').get(e).n;const number=`RM-${String(count+1).padStart(8,'0')}`;const products=db.prepare('SELECT id,codigo,precio FROM productos WHERE empresa_id=? AND activo=1').all(e);const snapshot=Object.fromEntries(products.map(p=>[String(p.id),{codigo:p.codigo,precio:Number(p.precio)}]));const info=db.prepare(`INSERT INTO reservas_monto(empresa_id,cliente_id,numero,fecha,importe_original,saldo,lista_precio_id,lista_precio_nombre,precios_snapshot,observaciones) VALUES(?,?,?,?,?,?,?,?,?,?)`).run(e,Number(d.cliente_id),number,d.fecha||nowLocal().slice(0,10),amount,amount,d.lista_precio_id||null,d.lista_precio_nombre||'GENERAL',JSON.stringify(snapshot),d.observaciones||'');res.status(201).json({ok:true,reservation:db.prepare('SELECT * FROM reservas_monto WHERE id=?').get(info.lastInsertRowid)})}
 function consumeReserveFund(req,res){const e=empresaId(req),id=Number(req.params.id),amount=Number(req.body.importe||0);const tx=db.transaction(()=>{const r=db.prepare('SELECT * FROM reservas_monto WHERE id=? AND empresa_id=?').get(id,e);if(!r)throw Object.assign(new Error('Reserva inexistente.'),{status:404});if(amount<=0||amount>Number(r.saldo))throw Object.assign(new Error('El importe supera el saldo reservado.'),{status:409});db.prepare('UPDATE reservas_monto SET saldo=saldo-?,estado=CASE WHEN saldo-?<=0 THEN \'AGOTADA\' ELSE \'VIGENTE\' END,updated_at=CURRENT_TIMESTAMP WHERE id=?').run(amount,amount,id);db.prepare('INSERT INTO reserva_monto_consumos(reserva_id,documento_tipo,documento_id,importe,detalle) VALUES(?,?,?,?,?)').run(id,req.body.documento_tipo||'POS',req.body.documento_id||null,amount,req.body.detalle||'Consumo desde punto de venta');return db.prepare('SELECT * FROM reservas_monto WHERE id=?').get(id)});res.json({ok:true,reservation:tx()})}
 
-module.exports={listBanks,saveBank,listPos,savePos,listChecks,createCheck,deleteCajero,depositChecks,listWhatsapp,saveWhatsapp,uploadFiscal,fiscalFiles,listPurchases,savePurchase,deletePurchase,importarComprasExcel,ocrCompraFoto,listPedidosClientes,listPedidosActivos,listDevoluciones,devolverItemsPedido,listVendedorClientes,guardarVendedorClientes,crearVisita,listVisitas,movilBootstrap,crearPedidoMovil,listPedidosMovil,vatBook,borradorIva,saveBorradorIvaAjuste,renameBorradorIvaRubro,updatePrices,listReserveFunds,createReserveFund,consumeReserveFund};
+module.exports={listBanks,saveBank,listPos,savePos,listChecks,createCheck,deleteCajero,depositChecks,listWhatsapp,saveWhatsapp,uploadFiscal,fiscalFiles,listPurchases,savePurchase,deletePurchase,importarComprasExcel,ocrCompraFoto,listPedidosClientes,listPedidosActivos,listDevoluciones,devolverItemsPedido,listVendedorClientes,guardarVendedorClientes,crearVisita,listVisitas,movilBootstrap,crearPedidoMovil,listPedidosMovil,listBandejaPedidos,detallePedidoMovil,revisarPedidoMovil,cambiarEstadoPedidoMovil,vatBook,borradorIva,saveBorradorIvaAjuste,renameBorradorIvaRubro,updatePrices,listReserveFunds,createReserveFund,consumeReserveFund};
 
 function userId(req){ return Number(req.usuario?.id || req.user?.id || req.user?.userId || 1); }
 function listPosCatalogs(req,res){

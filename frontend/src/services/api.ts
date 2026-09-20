@@ -191,6 +191,18 @@ export const erpApi = {
   movilBootstrap: () => request<any>('/erp/movil/bootstrap'),
   listMobileOrders: () => request<any>('/erp/movil/pedidos'),
   createMobileOrder: (data:any) => request<any>('/erp/movil/pedidos',{method:'POST',body:JSON.stringify(data)}),
+  listBandejaPedidos: (params?:{estado?:string;vendedor_id?:number;desde?:string;hasta?:string;q?:string}) => {
+    const qs=new URLSearchParams();
+    if(params?.estado)qs.set('estado',params.estado);
+    if(params?.vendedor_id)qs.set('vendedor_id',String(params.vendedor_id));
+    if(params?.desde)qs.set('desde',params.desde);
+    if(params?.hasta)qs.set('hasta',params.hasta);
+    if(params?.q)qs.set('q',params.q);
+    return request<any>(`/erp/movil/admin/pedidos?${qs.toString()}`);
+  },
+  getPedidoMovil: (id:number) => request<any>(`/erp/movil/admin/pedidos/${id}`),
+  revisarPedidoMovil: (id:number,data:any) => request<any>(`/erp/movil/admin/pedidos/${id}/revisar`,{method:'POST',body:JSON.stringify(data)}),
+  cambiarEstadoPedidoMovil: (id:number,estado:string,detalle?:string) => request<any>(`/erp/movil/admin/pedidos/${id}/estado`,{method:'POST',body:JSON.stringify({estado,detalle})}),
   listPedidosClientes: (q:string='',vendedorId?:number|null) => request<any>(`/erp/pedidos/clientes?q=${encodeURIComponent(q)}${vendedorId?`&vendedor_id=${vendedorId}`:''}`),
   listPedidosActivos: (clienteId:number,vendedorId?:number|null) => request<any>(`/erp/pedidos/activos?cliente_id=${clienteId}${vendedorId?`&vendedor_id=${vendedorId}`:''}`),
   listDevolucionesPedido: () => request<any>('/erp/pedidos/devoluciones'),

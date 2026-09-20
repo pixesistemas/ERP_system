@@ -13,6 +13,7 @@ const PANTALLAS = [
   // VENTAS
   "pos",
   "mobile-vendor",
+  "mobile-orders",
   "sales",
   "documents",
   "budgets",
