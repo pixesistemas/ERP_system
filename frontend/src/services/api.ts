@@ -188,6 +188,9 @@ export const erpApi = {
     return request<any>(`/erp/visitas?${qs.toString()}`);
   },
   createVisita: (data:any) => request<any>('/erp/visitas',{method:'POST',body:JSON.stringify(data)}),
+  movilBootstrap: () => request<any>('/erp/movil/bootstrap'),
+  listMobileOrders: () => request<any>('/erp/movil/pedidos'),
+  createMobileOrder: (data:any) => request<any>('/erp/movil/pedidos',{method:'POST',body:JSON.stringify(data)}),
   listPedidosClientes: (q:string='',vendedorId?:number|null) => request<any>(`/erp/pedidos/clientes?q=${encodeURIComponent(q)}${vendedorId?`&vendedor_id=${vendedorId}`:''}`),
   listPedidosActivos: (clienteId:number,vendedorId?:number|null) => request<any>(`/erp/pedidos/activos?cliente_id=${clienteId}${vendedorId?`&vendedor_id=${vendedorId}`:''}`),
   listDevolucionesPedido: () => request<any>('/erp/pedidos/devoluciones'),

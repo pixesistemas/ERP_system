@@ -5457,6 +5457,61 @@ html,body{height:auto;overflow:visible!important;background:#fff!important}
 .form-grid label.checkbox-line{flex-direction:row;align-items:center;gap:8px}
 .form-grid .pv-list{padding:10px;border:1px solid var(--line-2);border-radius:9px;background:var(--soft)}
 
+/* ===== App móvil del vendedor (PWA) ===== */
+.mobile-app{max-width:520px;margin:0 auto;padding:12px 12px 40px;display:flex;flex-direction:column;gap:12px}
+.mobile-cargando{padding:40px;text-align:center;color:var(--muted)}
+.mobile-topbar{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.mobile-back{width:40px;height:40px;border-radius:12px;border:1px solid var(--line-2);background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.mobile-estado{display:flex;align-items:center;gap:8px}
+.mobile-online{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:#2F9E67}
+.mobile-offline{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:#C2536B}
+.mobile-pendientes{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:800;border:1px solid #F0C36D;background:#FDF3E0;color:#8A5B00;border-radius:999px;padding:6px 10px;cursor:pointer}
+.mobile-hero{padding:6px 4px}
+.mobile-hero h2{margin:0;font-size:22px}
+.mobile-hero p{margin:4px 0 0;color:var(--muted);font-size:13px}
+.mobile-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mobile-action{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:16px;border-radius:16px;border:1px solid var(--line-2);background:#fff;cursor:pointer;text-align:left}
+.mobile-action strong{font-size:15px}
+.mobile-action span{font-size:11.5px;color:var(--muted)}
+.mobile-search input{width:100%;height:48px;border-radius:14px;border:1px solid var(--line-2);padding:0 14px;font-size:16px;background:#fff}
+.mobile-list{display:flex;flex-direction:column;gap:8px}
+.mobile-cliente{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-radius:14px;border:1px solid var(--line-2);background:#fff;cursor:pointer;text-align:left}
+.mobile-cliente div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.mobile-cliente strong{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mobile-cliente span{font-size:11.5px;color:var(--muted)}
+.mobile-cliente small{font-size:10.5px;color:var(--muted-2);white-space:nowrap}
+.mobile-cliente.pendiente{border-color:#F0C36D;background:#FFFBF2}
+.mobile-card{background:#fff;border:1px solid var(--line-2);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:6px}
+.mobile-card h3{margin:0;font-size:17px}
+.mobile-card h4{margin:8px 0 2px;font-size:14px}
+.mobile-card p{margin:0;font-size:12.5px;color:var(--muted)}
+.mobile-acciones-cliente{display:flex;gap:8px;margin-top:6px}
+.mobile-btn-primario{display:flex;align-items:center;justify-content:center;gap:8px;height:54px;border-radius:16px;border:0;background:var(--brand);color:#fff;font-size:15px;font-weight:800;cursor:pointer}
+.mobile-btn-sec{display:flex;align-items:center;justify-content:center;gap:8px;height:46px;border-radius:14px;border:1px solid var(--line-2);background:#fff;color:var(--ink);font-size:14px;font-weight:700;cursor:pointer;padding:0 14px;text-decoration:none}
+.mobile-btn-sec.full{width:100%}
+.mobile-producto{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-radius:12px;border:1px solid var(--line-2);background:#fff;cursor:pointer;text-align:left}
+.mobile-producto div{display:flex;flex-direction:column;gap:2px}
+.mobile-producto strong{font-size:13.5px}
+.mobile-producto span{font-size:11.5px;color:var(--muted)}
+.mobile-carrito{background:#fff;border:1px solid var(--line-2);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.mobile-carrito h4{margin:0;font-size:15px}
+.mobile-vacio{color:var(--muted);font-size:12.5px;margin:0}
+.mobile-linea{display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px dashed var(--line-2);padding:8px 0}
+.mobile-linea div{display:flex;flex-direction:column;gap:2px}
+.mobile-linea strong{font-size:13px}
+.mobile-linea span{font-size:11px;color:var(--muted)}
+.mobile-cantidad{display:flex;align-items:center;gap:10px}
+.mobile-cantidad button{width:34px;height:34px;border-radius:10px;border:1px solid var(--line-2);background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.mobile-cantidad b{min-width:22px;text-align:center}
+.mobile-obs{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700}
+.mobile-obs input{height:42px;border-radius:12px;border:1px solid var(--line-2);padding:0 12px;font-size:14px}
+.mobile-total{display:flex;justify-content:space-between;font-size:13px;font-weight:800}
+.mobile-aviso{background:#FDF3E0;border:1px solid #F0C36D;color:#8A5B00;border-radius:12px;padding:10px 12px;font-size:12.5px}
+.mobile-resultados{display:flex;flex-direction:column;gap:6px}
+.mobile-resultados label{display:flex;align-items:center;gap:8px;border:1px solid var(--line-2);border-radius:12px;padding:10px 12px;font-size:14px;cursor:pointer}
+.mobile-resultados label.activo{border-color:var(--brand);background:var(--line-soft,#EFEAFB);font-weight:700}
+.mobile-visita{max-width:460px}
+
 /* ===== Responsive general: monitores chicos y celulares ===== */
 @media(min-width:1001px) and (max-width:1400px){
   .app-shell{grid-template-columns:225px 1fr}

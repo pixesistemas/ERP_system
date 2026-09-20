@@ -1,0 +1,15 @@
+{
+  "name": "PixeSistemas ERP - Vendedores",
+  "short_name": "ERP Vendedores",
+  "description": "Toma de pedidos, visitas y ruta para vendedores en la calle.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f5f3fb",
+  "theme_color": "#6952C4",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
