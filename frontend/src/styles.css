@@ -5286,7 +5286,7 @@ padding:0 12px;
 .sa-user{display:flex;align-items:center;gap:8px;color:#CFC7F0;font-size:12.5px}
 .sa-salir{display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer}
 .sa-salir:hover{background:rgba(255,255,255,.16)}
-.sa-tabs{display:flex;gap:8px;padding:12px 20px 0;background:#211B3C}
+.sa-tabs{display:flex;flex-wrap:wrap;gap:8px;padding:12px 20px 0;background:#211B3C}
 .sa-tabs button{display:flex;align-items:center;gap:7px;background:transparent;border:none;color:#B9AFE0;font-size:13.5px;padding:9px 16px;cursor:pointer;border-radius:9px 9px 0 0;font-weight:600}
 .sa-tabs button.active{background:#F4F2FB;color:#2A2540}
 .sa-main{padding:20px;max-width:1200px;width:100%;margin:0 auto;box-sizing:border-box}
