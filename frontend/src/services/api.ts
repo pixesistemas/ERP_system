@@ -188,6 +188,7 @@ export const erpApi = {
     return request<any>(`/erp/visitas?${qs.toString()}`);
   },
   createVisita: (data:any) => request<any>('/erp/visitas',{method:'POST',body:JSON.stringify(data)}),
+  reportUserIssue: (data:{tipo:string;mensaje:string;pagina?:string}) => request<any>('/erp/reportes-usuario',{method:'POST',body:JSON.stringify(data)}),
   movilBootstrap: () => request<any>('/erp/movil/bootstrap'),
   listMobileOrders: () => request<any>('/erp/movil/pedidos'),
   createMobileOrder: (data:any) => request<any>('/erp/movil/pedidos',{method:'POST',body:JSON.stringify(data)}),

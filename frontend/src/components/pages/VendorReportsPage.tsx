@@ -229,6 +229,7 @@ export function VendorReportsPage() {
       </div>
     </div>
     {error && <div className="error-box">{error}</div>}
+    <div className="info-note"><strong>Cómo funciona:</strong> elegí la solapa del reporte (por vendedor, por cliente, por producto o detalle), ajustá el período (viene con el día de hoy) y el vendedor, y tocá <strong>Aplicar</strong>. En Detalle, cada fila se expande (Vendedor → Cliente → Productos). Exportá con <strong>PDF/imprimir</strong>, <strong>Excel</strong> o <strong>CSV</strong>.</div>
 
     <div className="report-filters">
       <label>Desde<input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} /></label>

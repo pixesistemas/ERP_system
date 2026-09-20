@@ -115,6 +115,10 @@ export function App() {
   const [superadminMode, setSuperadminMode] = useState<boolean>(() => window.location.hash.startsWith("#/superadmin"));
   const [recovery, setRecovery] = useState<any>(() => parseRecovery(window.location.hash));
   const [menuAbierto, setMenuAbierto] = useState(() => (typeof window === "undefined" ? true : window.innerWidth > 650));
+  const [reporteOpen, setReporteOpen] = useState(false);
+  const [reporteTipo, setReporteTipo] = useState("ERROR");
+  const [reporteMsg, setReporteMsg] = useState("");
+  const [reporteEstado, setReporteEstado] = useState("");
   const [, setSaTick] = useState(0);
   useEffect(() => {
     const onChange = () => {
@@ -270,6 +274,7 @@ export function App() {
           <div className="sai-line">{appInfo.actualizado ? <><span className="badge success">Actualizado</span><span>v{appInfo.version}</span></> : <><span className="badge warning">Actualización v{appInfo.version}</span><span>Tenés v{appInfo.versionInstalada}. {appInfo.licencia?.actualizacionesIncluidas ? 'Incluida en tu licencia.' : 'Renová la licencia.'}</span></>}</div>
           <div className="sai-line">{!l ? <span className="badge danger">Sin licencia activa</span> : l.definitiva ? <><span className="badge success">Licencia definitiva</span><span>No vence.</span></> : vencida ? <><span className="badge danger">Licencia vencida</span><span>Venció el {fmt(l.fechaVencimiento)}.</span></> : proxima ? <><span className="badge warning">Licencia {l.plan}</span><span>Vence el {fmt(l.fechaVencimiento)} ({dias} día{dias === 1 ? '' : 's'}).</span></> : <><span className="badge">Licencia {l.plan}</span><span>Vence el {fmt(l.fechaVencimiento)}.</span></>}</div>
           <button className="chg-link" onClick={() => setPage("novedades")}>Ver novedades</button>
+          <button className="chg-link" onClick={() => { setReporteEstado(""); setReporteOpen(true); }}>Reportar problema</button>
         </div>;
       })()}
     </aside>
@@ -318,5 +323,26 @@ export function App() {
       </div>}
     </section>
     <WhatsappBell onNavigate={setPage} />
+    {reporteOpen && <div className="modal-backdrop"><div className="modal reporte-usuario-modal">
+      <div className="modal-head"><div><h3>Reportar error o sugerencia</h3><p>Contanos qué pasó o qué te gustaría mejorar. Lo revisa PixeSistemas.</p></div><button onClick={()=>setReporteOpen(false)}><X/></button></div>
+      <div className="form-grid">
+        <label className="full">Tipo<select value={reporteTipo} onChange={e=>setReporteTipo(e.target.value)}><option value="ERROR">Error / algo no funciona</option><option value="SUGERENCIA">Sugerencia / mejora</option></select></label>
+        <label className="full">Mensaje<textarea rows={4} value={reporteMsg} onChange={e=>setReporteMsg(e.target.value)} placeholder="Ej.: en la pantalla de clientes el buscador no encuentra por CUIT..."/></label>
+      </div>
+      {reporteEstado && <div className={reporteEstado.startsWith("¡Gracias")?"success-box":"error-box"}>{reporteEstado}</div>}
+      <div className="modal-actions">
+        <button type="button" onClick={()=>setReporteOpen(false)}>Cerrar</button>
+        <button className="primary-action" disabled={reporteEstado==="Enviando..."} onClick={async ()=>{
+          if(!reporteMsg.trim())return setReporteEstado("Escribí el mensaje.");
+          setReporteEstado("Enviando...");
+          try{
+            await api.reportUserIssue({tipo:reporteTipo,mensaje:reporteMsg.trim(),pagina:page});
+            setReporteEstado("¡Gracias! Tu reporte fue enviado.");
+            setReporteMsg("");
+            setTimeout(()=>{setReporteOpen(false);setReporteEstado("")},1200);
+          }catch(e:any){ setReporteEstado(e.message); }
+        }}>Enviar reporte</button>
+      </div>
+    </div></div>}
   </div>
 }

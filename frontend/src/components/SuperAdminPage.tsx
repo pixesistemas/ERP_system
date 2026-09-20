@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Building2, FileKey2, KeyRound, LogOut, Pencil, Plus, ShieldCheck, Sparkles, Tags, Trash2, TrendingUp, Users, X, Palette, AlertTriangle, RefreshCw } from "lucide-react";
+import { Building2, FileKey2, KeyRound, LogOut, Pencil, Plus, ShieldCheck, Sparkles, Tags, Trash2, TrendingUp, Users, X, Palette, AlertTriangle, RefreshCw, MessageSquareText, Receipt } from "lucide-react";
 
 const API_URL = (import.meta as any).env?.VITE_API_URL || "http://localhost:3000/api/v1";
 
@@ -40,7 +40,38 @@ const TEMAS: Record<string, { label: string; swatches: string[] }> = {
 };
 
 export function SuperAdminPage() {
-  const [tab, setTab] = useState<"EMPRESAS" | "USUARIOS" | "LICENCIAS" | "TEMAS" | "MODULOS" | "FISCALES" | "CHANGELOG" | "ERRORES" | "ALTA">("EMPRESAS");
+  const [tab, setTab] = useState<"EMPRESAS" | "USUARIOS" | "LICENCIAS" | "TEMAS" | "MODULOS" | "COMPROBANTES" | "REPORTES" | "FISCALES" | "CHANGELOG" | "ERRORES" | "ALTA">("EMPRESAS");
+  const [reportesUsuarios, setReportesUsuarios] = useState<any[]>([]);
+  const [filtroReporte, setFiltroReporte] = useState("");
+  const [comprobConfigs, setComprobConfigs] = useState<Record<number, any>>({});
+  const CLAVES_COMPROBANTE: { key: string; label: string }[] = [
+    { key: "mostrarLogo", label: "Logo" },
+    { key: "mostrarDireccion", label: "Dirección" },
+    { key: "mostrarTelefono", label: "Teléfono" },
+    { key: "mostrarWhatsapp", label: "WhatsApp" },
+    { key: "mostrarEmail", label: "Mail" },
+    { key: "mostrarVendedor", label: "Vendedor" },
+    { key: "mostrarObservaciones", label: "Observaciones" },
+    { key: "mostrarPie", label: "Pie del comprobante" },
+    { key: "mostrarQR", label: "QR / CAE fiscal" },
+  ];
+
+  async function cargarReportesUsuarios(estado = filtroReporte) {
+    try {
+      const r = await call<any>("GET", `/reportes-usuarios${estado ? `?estado=${estado}` : ""}`);
+      setReportesUsuarios(r.reportes || []);
+    } catch (e: any) { setError(e.message); }
+  }
+
+  async function cargarComprobConfigs() {
+    try {
+      const entradas = await Promise.all(empresas.map(async (e: any) => {
+        const r = await call<any>("GET", `/empresas/${e.id}/comprobantes-config`);
+        return [e.id, r.config || {}];
+      }));
+      setComprobConfigs(Object.fromEntries(entradas));
+    } catch (e: any) { setError(e.message); }
+  }
   const { loading, setLoading, error, setError, ok, setOk, call } = useSuperAdminApi();
   const [empresas, setEmpresas] = useState<any[]>([]);
   const [usuarios, setUsuarios] = useState<any[]>([]);
@@ -430,6 +461,8 @@ export function SuperAdminPage() {
       <button className={tab === "LICENCIAS" ? "active" : ""} onClick={() => setTab("LICENCIAS")}><KeyRound size={16}/> Licencias</button>
       <button className={tab === "TEMAS" ? "active" : ""} onClick={() => setTab("TEMAS")}><Palette size={16}/> Temas</button>
       <button className={tab === "MODULOS" ? "active" : ""} onClick={() => setTab("MODULOS")}><Tags size={16}/> Módulos</button>
+      <button className={tab === "COMPROBANTES" ? "active" : ""} onClick={() => { setTab("COMPROBANTES"); cargarComprobConfigs(); }}><Receipt size={16}/> Comprobantes</button>
+      <button className={tab === "REPORTES" ? "active" : ""} onClick={() => { setTab("REPORTES"); cargarReportesUsuarios(); }}><MessageSquareText size={16}/> Reportes</button>
       <button className={tab === "FISCALES" ? "active" : ""} onClick={() => setTab("FISCALES")}><FileKey2 size={16}/> Fiscales</button>
       <button className={tab === "CHANGELOG" ? "active" : ""} onClick={() => setTab("CHANGELOG")}><Sparkles size={16}/> Novedades</button>
       <button className={tab === "ERRORES" ? "active" : ""} onClick={() => { setTab("ERRORES"); cargarErrores(); cargarAvisos(); }}><AlertTriangle size={16}/> Errores</button>
@@ -581,6 +614,63 @@ export function SuperAdminPage() {
             </tr>;
           })}</tbody></table>
           {!empresas.length && <div className="empty-table">No hay empresas.</div>}
+        </div>
+      </div>}
+    {tab === "COMPROBANTES" && <div className="products-page">
+        <div className="products-toolbar">
+          <div><h3>Qué se muestra en los comprobantes</h3><p>Destildá lo que no querés que salga en los PDF (A4) y en los tickets de 80 mm de cada empresa.</p></div>
+        </div>
+        {empresas.map((e) => {
+          const cfg = comprobConfigs[e.id] || {};
+          return <div className="products-card" key={e.id} style={{ marginBottom: 10 }}>
+            <div className="products-toolbar">
+              <div><strong>{e.nombre}</strong><small>{e.razon_social}</small></div>
+              <button className="secondary-action" onClick={async () => {
+                setLoading(true);
+                try {
+                  await call("PUT", `/empresas/${e.id}/comprobantes-config`, cfg);
+                  setOk(`Comprobantes de ${e.nombre} actualizados.`);
+                } catch (err: any) { setError(err.message); } finally { setLoading(false); }
+              }}>Guardar</button>
+            </div>
+            <div className="comprob-config-grid">
+              {CLAVES_COMPROBANTE.map((c) => <label key={c.key} className="toggle-row"><span>{c.label}</span><input type="checkbox" checked={cfg[c.key] !== false} onChange={(ev) => setComprobConfigs({ ...comprobConfigs, [e.id]: { ...cfg, [c.key]: ev.target.checked } })} /></label>)}
+            </div>
+          </div>;
+        })}
+        {!empresas.length && <div className="empty-table">No hay empresas.</div>}
+      </div>}
+    {tab === "REPORTES" && <div className="products-page">
+        <div className="products-toolbar">
+          <div><h3>Reportes de usuarios</h3><p>Errores y sugerencias enviados desde el botón "Reportar problema" del sistema.</p></div>
+          <div className="inline-actions">
+            <select value={filtroReporte} onChange={(e) => { setFiltroReporte(e.target.value); cargarReportesUsuarios(e.target.value); }}><option value="">Todos</option><option value="NUEVO">Nuevos</option><option value="VISTO">Vistos</option><option value="RESUELTO">Resueltos</option></select>
+            <button className="secondary-action" onClick={() => cargarReportesUsuarios()}><RefreshCw size={16}/> Actualizar</button>
+          </div>
+        </div>
+        <div className="products-card"><table>
+          <thead><tr><th>Fecha</th><th>Empresa</th><th>Usuario</th><th>Tipo</th><th>Mensaje</th><th>Pantalla</th><th>Estado / respuesta</th><th></th></tr></thead>
+          <tbody>{reportesUsuarios.map((r) => <tr key={r.id}>
+            <td>{String(r.created_at || "").slice(0, 16)}</td>
+            <td>{r.empresa_nombre}</td>
+            <td>{r.usuario_nombre}</td>
+            <td><span className={r.tipo === "ERROR" ? "badge danger" : "badge"}>{r.tipo}</span></td>
+            <td>{r.mensaje}</td>
+            <td>{r.pagina || "-"}</td>
+            <td>
+              <select value={r.estado} onChange={(e) => { const estado = e.target.value; setReportesUsuarios(reportesUsuarios.map((x) => x.id === r.id ? { ...x, estado } : x)); }}><option value="NUEVO">NUEVO</option><option value="VISTO">VISTO</option><option value="RESUELTO">RESUELTO</option></select>
+              <input value={r.respuesta || ""} onChange={(e) => { const respuesta = e.target.value; setReportesUsuarios(reportesUsuarios.map((x) => x.id === r.id ? { ...x, respuesta } : x)); }} placeholder="Respuesta interna" />
+            </td>
+            <td><button className="sa-icon-btn" title="Guardar" onClick={async () => {
+              setLoading(true);
+              try {
+                await call("PATCH", `/reportes-usuarios/${r.id}`, { estado: r.estado, respuesta: r.respuesta || "" });
+                setOk("Reporte actualizado.");
+              } catch (err: any) { setError(err.message); } finally { setLoading(false); }
+            }}><Pencil size={15}/></button></td>
+          </tr>)}</tbody>
+        </table>
+        {!reportesUsuarios.length && <div className="empty-table">No hay reportes cargados.</div>}
         </div>
       </div>}
     {tab === "FISCALES" && <div className="products-page">

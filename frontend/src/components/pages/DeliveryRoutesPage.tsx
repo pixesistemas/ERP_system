@@ -11,6 +11,9 @@ export function DeliveryRoutesPage() {
   const [vista, setVista] = useState<"ARMAR" | "RUTAS">("ARMAR");
   const [pedidos, setPedidos] = useState<any[]>([]);
   const [rutas, setRutas] = useState<any[]>([]);
+  const [filtroEstado, setFiltroEstado] = useState("");
+  const [filtroDesde, setFiltroDesde] = useState("");
+  const [filtroHasta, setFiltroHasta] = useState("");
   const [repartidores, setRepartidores] = useState<any[]>([]);
   const [seleccion, setSeleccion] = useState<Set<number>>(new Set());
   const [repartidorId, setRepartidorId] = useState<number | null>(null);
@@ -161,9 +164,21 @@ export function DeliveryRoutesPage() {
       </div>
     </>}
 
-    {vista === "RUTAS" && <div className="products-card"><table>
+    {vista === "RUTAS" && <>
+      <div className="report-filters">
+        <label>Estado<select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}><option value="">Todas</option><option value="ARMADA">ARMADA</option><option value="CERRADA">CERRADA</option></select></label>
+        <label>Desde<input type="date" value={filtroDesde} onChange={(e) => setFiltroDesde(e.target.value)} /></label>
+        <label>Hasta<input type="date" value={filtroHasta} onChange={(e) => setFiltroHasta(e.target.value)} /></label>
+      </div>
+      <div className="products-card"><table>
       <thead><tr><th>Ruta</th><th>Fecha</th><th>Repartidor</th><th>Paradas</th><th>Total</th><th>Estado</th><th></th></tr></thead>
-      <tbody>{rutas.map((r: any) => <tr key={r.id}>
+      <tbody>{rutas.filter((r: any) => {
+        if (filtroEstado && r.estado !== filtroEstado) return false;
+        const f = String(r.fecha || "").slice(0, 10);
+        if (filtroDesde && f < filtroDesde) return false;
+        if (filtroHasta && f > filtroHasta) return false;
+        return true;
+      }).map((r: any) => <tr key={r.id}>
         <td><strong>{r.numero}</strong></td>
         <td>{String(r.fecha || "").slice(0, 10)}</td>
         <td>{r.repartidor_nombre || "Sin asignar"}</td>
@@ -174,7 +189,7 @@ export function DeliveryRoutesPage() {
       </tr>)}</tbody>
     </table>
     {!rutas.length && <div className="empty-table">Todavía no hay rutas armadas.</div>}
-    </div>}
+    </div></>}
 
     {detalle && <div className="modal-backdrop"><div className="modal polished-modal order-review-modal">
       <div className="modal-head">

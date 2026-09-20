@@ -55,6 +55,8 @@ class TicketDocumentEngine {
     });
     const plantilla = getPlantillaComprobante(emp.id) || {};
     const pieTexto = plantilla.pie || emp.pieFactura || "";
+    /* Bloques que el superadmin puede ocultar en los comprobantes. */
+    const ver = (clave) => plantilla[clave] !== false;
     const fontSize = Number(plantilla.fontSize) || null;
     const fontFamily = String(plantilla.fontFamily || "Arial").trim() || "Arial";
     let footerPegado = plantilla.footerPegado !== false;
@@ -93,21 +95,21 @@ class TicketDocumentEngine {
       "{{FOOTER_MARGIN_TOP}}": esTicket80 || footerPegado ? "6px" : "auto",
       "{{TOTALS_WIDTH}}": esTicket80 ? "100%" : "70mm",
 
-      "{{LOGO}}": assets.logoHtml || "",
+      "{{LOGO}}": ver("mostrarLogo") ? assets.logoHtml || "" : "",
       "{{EMPRESA_NOMBRE}}": this.escape(
         emp.nombreFantasia || emp.razonSocial || emp.nombre || "EMPRESA",
       ),
       "{{EMPRESA_RAZON}}": this.escape(emp.razonSocial || ""),
-      "{{EMPRESA_EMAIL}}": this.escape(emp.email || ""),
-      "{{EMPRESA_DIRECCION}}": this.escape(emp.direccion || ""),
-      "{{EMPRESA_TELEFONO}}": this.escape(emp.telefono || ""),
-      "{{EMPRESA_WHATSAPP}}": this.escape(emp.whatsapp || ""),
+      "{{EMPRESA_EMAIL}}": ver("mostrarEmail") ? this.escape(emp.email || "") : "",
+      "{{EMPRESA_DIRECCION}}": ver("mostrarDireccion") ? this.escape(emp.direccion || "") : "",
+      "{{EMPRESA_TELEFONO}}": ver("mostrarTelefono") ? this.escape(emp.telefono || "") : "",
+      "{{EMPRESA_WHATSAPP}}": ver("mostrarWhatsapp") ? this.escape(emp.whatsapp || "") : "",
       "{{EMPRESA_CUIT}}": this.escape(emp.cuit || ""),
       "{{EMPRESA_IVA}}": this.escape(emp.condicionIVA || ""),
       "{{EMPRESA_IIBB}}": this.escape(emp.ingresosBrutos || ""),
       "{{EMPRESA_INICIO}}": this.escape(this.formatFecha(emp.inicioActividad)),
 
-      "{{VENDEDOR}}": this.escape(sale.vendedor || ""),
+      "{{VENDEDOR}}": ver("mostrarVendedor") ? this.escape(sale.vendedor || "") : "",
       "{{VENDEDOR_FOOTER}}": "",
       "{{LETRA}}": this.getLetra(sale),
       "{{CODIGO_COMPROBANTE}}": this.getCodigo(sale),
@@ -146,7 +148,7 @@ class TicketDocumentEngine {
       "{{DOC_RELACIONADO}}": sale.documento_origen_tipo
         ? `<div>DOCUMENTO RELACIONADO: <strong>${this.escape(sale.documento_origen_tipo)} ${String(sale.documento_origen_punto_venta || "").padStart(4, "0")}-${String(sale.documento_origen_numero || "").padStart(8, "0")}</strong></div>`
         : "",
-      "{{FOOTER_TEXT}}": this.escape(pieTexto),
+      "{{FOOTER_TEXT}}": ver("mostrarPie") ? this.escape(pieTexto) : "",
     };
 
     if (sale.tipo === "REMITO") {
@@ -161,7 +163,7 @@ class TicketDocumentEngine {
           <div class="signature-line">Recibí conforme</div>
         </div>
       `;
-    } else if (sale.cae) {
+    } else if (sale.cae && ver("mostrarQR")) {
       replacements["{{FISCAL_BLOCK}}"] = await this.renderFiscalBlock({
         empresa,
         sale,

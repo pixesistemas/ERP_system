@@ -152,9 +152,10 @@ export function MobileOrdersAdminPage() {
     </div>
 
     <div className="products-card"><table>
-      <thead><tr><th>Fecha</th><th>Vendedor</th><th>Cliente</th><th>Ubicación</th><th>Total</th><th>Estado</th><th></th></tr></thead>
+      <thead><tr><th>Fecha</th><th>Canal</th><th>Vendedor</th><th>Cliente</th><th>Ubicación</th><th>Total</th><th>Estado</th><th></th></tr></thead>
       <tbody>{pedidos.map((p: any) => <tr key={p.id}>
         <td>{String(p.fecha || "").slice(0, 10)}<small>{p.hora_visita || ""}</small></td>
+        <td><span className="badge">{p.canal || "POS"}</span></td>
         <td>{p.vendedor || "-"}</td>
         <td><strong>{p.cliente || "CONSUMIDOR FINAL"}</strong><small>{p.tipo === "PRESUPUESTO" ? "Presupuesto" : "Nota de pedido"} {String(p.punto_venta || "").padStart(4, "0")}-{String(p.numero || "").padStart(8, "0")}</small></td>
         <td>{p.latitud != null && p.longitud != null ? <a className="link-button" href={`https://www.google.com/maps?q=${p.latitud},${p.longitud}`} target="_blank" rel="noreferrer"><MapPin size={14} /> Ver mapa</a> : "—"}</td>

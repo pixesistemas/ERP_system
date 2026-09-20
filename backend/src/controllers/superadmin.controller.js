@@ -717,6 +717,101 @@ function setAvisos(req, res, next) {
   }
 }
 
+/*
+ * Reportes de errores/sugerencias de los usuarios del ERP.
+ */
+function listarReportesUsuarios(req, res, next) {
+  try {
+    const db = require("../db/database");
+    const estado = String(req.query.estado || "").trim().toUpperCase();
+    const rows = db
+      .prepare(
+        `SELECT * FROM reportes_usuarios ${estado ? "WHERE estado=?" : ""} ORDER BY id DESC LIMIT 300`,
+      )
+      .all(...(estado ? [estado] : []));
+    res.json({ ok: true, reportes: rows });
+  } catch (e) {
+    next(e);
+  }
+}
+
+function actualizarReporteUsuario(req, res, next) {
+  try {
+    const db = require("../db/database");
+    const id = Number(req.params.id);
+    const row = db.prepare("SELECT id FROM reportes_usuarios WHERE id=?").get(id);
+    if (!row) return res.status(404).json({ ok: false, error: "Reporte no encontrado." });
+    const estado = String(req.body?.estado || "").trim().toUpperCase() || null;
+    const respuesta = req.body?.respuesta != null ? String(req.body.respuesta) : null;
+    db.prepare(
+      "UPDATE reportes_usuarios SET estado=COALESCE(?,estado),respuesta=COALESCE(?,respuesta) WHERE id=?",
+    ).run(estado, respuesta, id);
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+}
+
+/*
+ * Bloques visibles en los comprobantes de la empresa (PDF y 80mm).
+ * Se guardan dentro de la plantilla GENERAL que ya usan los motores.
+ */
+const CLAVES_COMPROBANTE = [
+  "mostrarLogo",
+  "mostrarDireccion",
+  "mostrarTelefono",
+  "mostrarWhatsapp",
+  "mostrarEmail",
+  "mostrarVendedor",
+  "mostrarObservaciones",
+  "mostrarPie",
+  "mostrarQR",
+];
+
+function getComprobantesConfigEmpresa(req, res, next) {
+  try {
+    const db = require("../db/database");
+    const row = db
+      .prepare(
+        "SELECT configuracion_json FROM comprobante_plantillas WHERE empresa_id=? AND tipo='GENERAL'",
+      )
+      .get(Number(req.params.id));
+    let config = {};
+    try {
+      config = JSON.parse(row?.configuracion_json || "{}") || {};
+    } catch {}
+    res.json({ ok: true, config });
+  } catch (e) {
+    next(e);
+  }
+}
+
+function setComprobantesConfigEmpresa(req, res, next) {
+  try {
+    const db = require("../db/database");
+    const empresaId = Number(req.params.id);
+    const row = db
+      .prepare(
+        "SELECT configuracion_json FROM comprobante_plantillas WHERE empresa_id=? AND tipo='GENERAL'",
+      )
+      .get(empresaId);
+    let actual = {};
+    try {
+      actual = JSON.parse(row?.configuracion_json || "{}") || {};
+    } catch {}
+    for (const clave of CLAVES_COMPROBANTE) {
+      if (req.body && clave in req.body) actual[clave] = Boolean(req.body[clave]);
+    }
+    db.prepare(
+      `INSERT INTO comprobante_plantillas(empresa_id,tipo,configuracion_json) VALUES(?,'GENERAL',?)
+       ON CONFLICT(empresa_id,tipo) DO UPDATE SET configuracion_json=excluded.configuracion_json,updated_at=CURRENT_TIMESTAMP`,
+    ).run(empresaId, JSON.stringify(actual));
+    res.json({ ok: true, config: actual });
+  } catch (e) {
+    next(e);
+  }
+}
+
 module.exports = {
   loginSuperAdmin,
   recuperarSuperadmin,
@@ -750,4 +845,8 @@ module.exports = {
   limpiarErrores,
   getAvisos,
   setAvisos,
+  listarReportesUsuarios,
+  actualizarReporteUsuario,
+  getComprobantesConfigEmpresa,
+  setComprobantesConfigEmpresa,
 };

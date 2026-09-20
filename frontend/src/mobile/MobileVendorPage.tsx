@@ -182,6 +182,15 @@ export function MobileVendorPage() {
       .slice(0, 20);
   }, [qProd, productos]);
 
+  const rutaPorLocalidad = useMemo(() => {
+    const grupos: Record<string, any[]> = {};
+    for (const c of clientes) {
+      const key = c.localidad || "SIN LOCALIDAD";
+      (grupos[key] = grupos[key] || []).push(c);
+    }
+    return Object.entries(grupos).sort(([a], [b]) => a.localeCompare(b));
+  }, [clientes]);
+
   function agregarProducto(p: any) {
     setCarrito((actual) => {
       const existe = actual.find((i) => Number(i.id) === Number(p.id));
@@ -296,15 +305,6 @@ export function MobileVendorPage() {
       </div>
     </div>;
   }
-
-  const rutaPorLocalidad = useMemo(() => {
-    const grupos: Record<string, any[]> = {};
-    for (const c of clientes) {
-      const key = c.localidad || "SIN LOCALIDAD";
-      (grupos[key] = grupos[key] || []).push(c);
-    }
-    return Object.entries(grupos).sort(([a], [b]) => a.localeCompare(b));
-  }, [clientes]);
 
   return <div className="mobile-app">
     <div className="mobile-topbar">

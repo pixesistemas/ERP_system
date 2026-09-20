@@ -43,6 +43,8 @@ class CommercialDocumentEngine {
     });
     const plantilla = getPlantillaComprobante(emp.id) || {};
     const pieTexto = plantilla.pie || emp.pieFactura || "";
+    /* Bloques que el superadmin puede ocultar en los comprobantes. */
+    const ver = (clave) => plantilla[clave] !== false;
 
     const tipo = this.normalizeDocumentType(documento.tipo);
 
@@ -86,7 +88,7 @@ class CommercialDocumentEngine {
     });
 
     const replacements = {
-      "{{LOGO}}": assets.logoHtml || "",
+      "{{LOGO}}": ver("mostrarLogo") ? assets.logoHtml || "" : "",
 
       "{{EMPRESA_NOMBRE}}": emp.nombreFantasia || emp.nombre || "",
 
@@ -102,13 +104,13 @@ class CommercialDocumentEngine {
         this.formatDate(emp.inicioActividad),
       ),
 
-      "{{EMPRESA_DIRECCION}}": this.formatEmpresaDireccion(emp),
+      "{{EMPRESA_DIRECCION}}": ver("mostrarDireccion") ? this.formatEmpresaDireccion(emp) : "",
 
-      "{{EMPRESA_TELEFONO}}": emp.telefono || "",
+      "{{EMPRESA_TELEFONO}}": ver("mostrarTelefono") ? emp.telefono || "" : "",
 
-      "{{EMPRESA_WHATSAPP}}": emp.whatsapp || "",
+      "{{EMPRESA_WHATSAPP}}": ver("mostrarWhatsapp") ? emp.whatsapp || "" : "",
 
-      "{{EMPRESA_EMAIL}}": emp.email || "",
+      "{{EMPRESA_EMAIL}}": ver("mostrarEmail") ? emp.email || "" : "",
 
       "{{LETRA}}": this.getDocumentLetter(tipo, documento),
 
@@ -164,13 +166,13 @@ class CommercialDocumentEngine {
         this.formatProvincia(cliente),
       ),
 
-      "{{VENDEDOR}}": this.escape(vendedor?.nombre || "SIN VENDEDOR"),
+      "{{VENDEDOR}}": ver("mostrarVendedor") ? this.escape(vendedor?.nombre || "SIN VENDEDOR") : "",
 
       "{{COMMERCIAL_INFO}}": commercialInfoHtml,
 
-      "{{OBSERVACIONES}}": this.formatMultilineText(
-        documento.observaciones || "",
-      ),
+      "{{OBSERVACIONES}}": ver("mostrarObservaciones")
+        ? this.formatMultilineText(documento.observaciones || "")
+        : "",
 
       "{{DETAIL_HEADER}}": detailHeaderHtml,
 
@@ -181,7 +183,7 @@ class CommercialDocumentEngine {
       "{{DECLARED_VALUE}}": declaredValueHtml,
 
       "{{LEYENDA_NO_FISCAL}}": this.getNonFiscalLegend(tipo),
-      "{{PIE}}": pieTexto,
+      "{{PIE}}": ver("mostrarPie") ? pieTexto : "",
     };
 
     for (const [key, value] of Object.entries(replacements)) {

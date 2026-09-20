@@ -5555,6 +5555,12 @@ table.reporte-fijo tr.subtotal td{background:#FBF3DC;font-weight:700}
 table.reporte-fijo tr.total td{background:#DCE7F7;font-weight:800}
 .reporte-fijo-total{display:flex;justify-content:flex-end;gap:16px;padding:8px 6px 2px;font-size:12px}
 
+/* ===== Reportes de usuarios y configuración de comprobantes ===== */
+.reporte-usuario-modal{max-width:540px}
+.reporte-usuario-modal textarea{width:100%;border:1px solid var(--line-2);border-radius:9px;padding:9px;font:inherit;resize:vertical}
+.comprob-config-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px 14px;padding:4px 2px}
+.comprob-config-grid .toggle-row{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px;border:1px solid var(--line-2);border-radius:9px;padding:7px 10px;background:#fff}
+
 /* ===== Responsive general: monitores chicos y celulares ===== */
 @media(min-width:1001px) and (max-width:1400px){
   .app-shell{grid-template-columns:225px 1fr}

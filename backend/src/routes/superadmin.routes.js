@@ -54,6 +54,11 @@ router.post(
   controller.importarRubrosMarcasEmpresa,
 );
 
+router.get("/reportes-usuarios", controller.listarReportesUsuarios);
+router.patch("/reportes-usuarios/:id", controller.actualizarReporteUsuario);
+router.get("/empresas/:id/comprobantes-config", controller.getComprobantesConfigEmpresa);
+router.put("/empresas/:id/comprobantes-config", controller.setComprobantesConfigEmpresa);
+
 router.get("/usuarios", controller.listarUsuarios);
 router.post("/usuarios", controller.crearUsuario);
 router.patch("/usuarios/:id", controller.actualizarUsuario);
