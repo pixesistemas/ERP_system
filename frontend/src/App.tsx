@@ -216,6 +216,30 @@ export function App() {
   const pantallas: string[] | null = session.pantallas ?? null;
   function canSee(key: string) { return canSeeScreen(pantallas, key); }
 
+  /*
+   * Los subdominios de las apps móviles quedan restringidos a su propia
+   * pantalla: no se puede navegar al resto del sistema desde ahí.
+   */
+  const host = typeof window !== "undefined" ? window.location.hostname : "";
+  const hostApp = host.startsWith("vendedor.") ? "vendedor" : host.startsWith("repartidor.") ? "repartidor" : null;
+
+  if (hostApp) {
+    const titulo = hostApp === "vendedor" ? "App vendedor" : "App repartidor";
+    const subtitulo = hostApp === "vendedor" ? "Pedidos, clientes y visitas" : "Ruta del día y entregas";
+    return <div className="app-shell menu-hidden">
+      <section className="workspace">
+        <header>
+          <div><h2>{titulo}</h2><p>{subtitulo}</p></div>
+          <div className="header-actions">
+            <div className="status"><i/> Backend conectado</div>
+            <button className="secondary-action" onClick={logout}><LogOut size={16}/> Salir</button>
+          </div>
+        </header>
+        {hostApp === "vendedor" ? <MobileVendorPage/> : <MobileDriverPage/>}
+      </section>
+    </div>;
+  }
+
   return <div className={"app-shell" + (menuAbierto ? "" : " menu-hidden")}>
     <aside className="sidebar">
       <div className="sidebar-brand"><div className="logo small"><Bot size={20}/></div><div><strong>PixeSistemas</strong><span>ERP Empresarial</span></div></div>

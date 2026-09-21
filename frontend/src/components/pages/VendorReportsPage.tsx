@@ -47,19 +47,20 @@ function agrupar(filas: Fila[], clave: (f: Fila) => string) {
   return mapa;
 }
 
-function construir(filas: Fila[], tipo: Tipo, expandidos: Set<string>, todoAbierto = false): { headers: string[]; rows: Salida[] } {
+function construir(filas: Fila[], tipo: Tipo, expandidos: Set<string>, todoAbierto = false, conComision = true): { headers: string[]; rows: Salida[] } {
   const rows: Salida[] = [];
   const abierto = (k: string) => todoAbierto || expandidos.has(k);
-  const t = suma(filas);
+  const colComision = conComision ? ["Comisión (Suma)"] : [];
+  const celdaComision = (valor: number) => (conComision ? [`$ ${fmtMon(valor)}`] : []);
 
   if (tipo === "VENDEDOR" || tipo === "CLIENTE" || tipo === "PRODUCTO") {
     const clave = tipo === "VENDEDOR" ? (f: Fila) => f.vendedor : tipo === "CLIENTE" ? (f: Fila) => etiquetaCliente(f) : (f: Fila) => f.descripcion;
     let n = 0;
     for (const [k, grupo] of agrupar(filas, clave)) {
       const s = suma(grupo);
-      rows.push({ kind: "fila", key: k, numero: ++n, cells: [k, fmtCant(s.cantidad), `$ ${fmtMon(s.precio)}`, `$ ${fmtMon(s.comision)}`] });
+      rows.push({ kind: "fila", key: k, numero: ++n, cells: [k, fmtCant(s.cantidad), `$ ${fmtMon(s.precio)}`, ...celdaComision(s.comision)] });
     }
-    return { headers: [tipo === "VENDEDOR" ? "Vendedor" : tipo === "CLIENTE" ? "Cliente" : "Descripción", "Cantidad (Suma)", "Precio (Suma)", "Comisión (Suma)"], rows };
+    return { headers: [tipo === "VENDEDOR" ? "Vendedor" : tipo === "CLIENTE" ? "Cliente" : "Descripción", "Cantidad (Suma)", "Precio (Suma)", ...colComision], rows };
   }
 
   if (tipo === "VENDEDOR_CLIENTE" || tipo === "VENDEDOR_PRODUCTO" || tipo === "CLIENTE_PRODUCTO") {
@@ -71,12 +72,12 @@ function construir(filas: Fila[], tipo: Tipo, expandidos: Set<string>, todoAbier
       if (porVendedor) rows.push({ kind: "grupo", key: `g:${grupo}`, cells: [grupo] });
       for (const [sub, items] of agrupar(lista, interna)) {
         const s = suma(items);
-        rows.push({ kind: "fila", key: `${grupo}|${sub}`, numero: ++n, cells: [sub, fmtCant(s.cantidad), `$ ${fmtMon(s.precio)}`, `$ ${fmtMon(s.comision)}`], nivel: porVendedor ? 1 : 0 });
+        rows.push({ kind: "fila", key: `${grupo}|${sub}`, numero: ++n, cells: [sub, fmtCant(s.cantidad), `$ ${fmtMon(s.precio)}`, ...celdaComision(s.comision)], nivel: porVendedor ? 1 : 0 });
       }
       const sg = suma(lista);
-      rows.push({ kind: "subtotal", key: `s:${grupo}`, cells: [`Total ${grupo}`, fmtCant(sg.cantidad), `$ ${fmtMon(sg.precio)}`, `$ ${fmtMon(sg.comision)}`] });
+      rows.push({ kind: "subtotal", key: `s:${grupo}`, cells: [`Total ${grupo}`, fmtCant(sg.cantidad), `$ ${fmtMon(sg.precio)}`, ...celdaComision(sg.comision)] });
     }
-    return { headers: [porVendedor ? "Cliente" : "Descripción", "Cantidad (Suma)", "Precio (Suma)", "Comisión (Suma)"], rows };
+    return { headers: [porVendedor ? "Cliente" : "Descripción", "Cantidad (Suma)", "Precio (Suma)", ...colComision], rows };
   }
 
   // DETALLE: vendedor -> cliente -> productos, expandible.
@@ -156,6 +157,7 @@ export function VendorReportsPage() {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
   const [expandidos, setExpandidos] = useState<Set<string>>(new Set());
+  const [verComision, setVerComision] = useState(true);
 
   async function cargar() {
     setCargando(true);
@@ -181,14 +183,14 @@ export function VendorReportsPage() {
     return filas.filter((f) => `${f.vendedor} ${f.cliente} ${f.domicilio} ${f.codigo} ${f.descripcion}`.toLowerCase().includes(texto));
   }, [filas, q]);
 
-  const reporte = useMemo(() => construir(filtradas, tipo, expandidos), [filtradas, tipo, expandidos]);
-  const completo = useMemo(() => construir(filtradas, tipo, expandidos, true), [filtradas, tipo]);
+  const reporte = useMemo(() => construir(filtradas, tipo, expandidos, false, verComision), [filtradas, tipo, expandidos, verComision]);
+  const completo = useMemo(() => construir(filtradas, tipo, expandidos, true, verComision), [filtradas, tipo, verComision]);
   const total = useMemo(() => suma(filtradas), [filtradas]);
 
   const titulo = `REPORTES DE VENTAS ${TIPOS.find((t) => t.key === tipo)?.label.toUpperCase()}`;
   const subtitulo = `Desde ${desde} hasta ${hasta}${vendedorId ? ` · Vendedor: ${sellers.find((s: any) => Number(s.id) === vendedorId)?.nombre || ""}` : ""}`;
 
-  const rowsConTotal = (rows: Salida[]) => [...rows, { kind: "total" as const, key: "total", cells: [`Total Acumulado (${filas.length} líneas)`, fmtCant(total.cantidad), `$ ${fmtMon(total.precio)}`, `$ ${fmtMon(total.comision)}`] }];
+  const rowsConTotal = (rows: Salida[]) => [...rows, { kind: "total" as const, key: "total", cells: [`Total Acumulado (${filas.length} líneas)`, fmtCant(total.cantidad), `$ ${fmtMon(total.precio)}`, ...(verComision ? [`$ ${fmtMon(total.comision)}`] : [])] }];
 
   function exportarExcel() {
     const matriz = filasExportables(completo.rows, completo.headers, `${titulo} - ${subtitulo}`);
@@ -236,6 +238,7 @@ export function VendorReportsPage() {
       <label>Hasta<input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} /></label>
       <label>Vendedor<select value={vendedorId || ""} onChange={(e) => setVendedorId(Number(e.target.value) || null)}><option value="">Todos</option>{sellers.filter((s: any) => s.activo !== false).map((s: any) => <option key={s.id} value={s.id}>{s.nombre}</option>)}</select></label>
       <label>Búsqueda rápida<input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cliente, producto, código..." /></label>
+      <label className="toggle-row"><span>Mostrar comisión</span><input type="checkbox" checked={verComision} onChange={(e) => setVerComision(e.target.checked)} /></label>
       <button className="primary-action" onClick={cargar} disabled={cargando}><Search size={16} /> Aplicar</button>
     </div>
 
@@ -276,7 +279,7 @@ export function VendorReportsPage() {
       <div className="reporte-fijo-total">
         <span>Total Acumulado · {fmtCant(total.cantidad)} unidades</span>
         <strong>$ {fmtMon(total.precio)}</strong>
-        <strong>Comisión $ {fmtMon(total.comision)}</strong>
+        {verComision && <strong>Comisión $ {fmtMon(total.comision)}</strong>}
       </div>
     </div>
   </div>;
