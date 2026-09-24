@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Manual del Vendedor - App de pedidos</title>
+<style>
+  @page { size: A4; margin: 12mm; }
+  * { box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; font-size: 13px; color: #222; line-height: 1.5; max-width: 900px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 24px; margin: 0 0 2px; color: #4a3d8f; }
+  .sub { color: #666; font-size: 13px; margin-bottom: 16px; }
+  h2 { font-size: 17px; color: #4a3d8f; border-bottom: 2px solid #ded8f2; padding-bottom: 3px; margin: 20px 0 10px; }
+  h3 { font-size: 14px; margin: 12px 0 4px; }
+  p, li { margin: 4px 0; }
+  ol, ul { padding-left: 22px; margin: 6px 0; }
+  .paso { background: #F7F9FD; border-left: 4px solid #6952C4; border-radius: 6px; padding: 8px 12px; margin: 8px 0; }
+  .nota { background: #FFF8E6; border: 1px solid #F0C36D; border-radius: 8px; padding: 8px 12px; margin: 8px 0; }
+  .clave { background: #EAF7EF; border: 1px solid #8FD3A8; border-radius: 8px; padding: 8px 12px; margin: 8px 0; }
+  .boton { display: inline-block; background: #6952C4; color: #fff; border-radius: 6px; padding: 1px 7px; font-weight: bold; font-size: 12px; }
+  .boton-borde { display: inline-block; border: 1px solid #bbb; border-radius: 6px; padding: 1px 7px; font-weight: bold; font-size: 12px; }
+  .circuito { background: #F4F1FB; border: 1px solid #D8D2EE; border-radius: 8px; padding: 10px 12px; font-family: Consolas, monospace; font-size: 12px; white-space: pre-line; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 12px; }
+  th, td { border: 1px solid #bbb; padding: 5px 7px; text-align: left; }
+  th { background: #2E3A59; color: #fff; }
+  footer { margin-top: 20px; color: #777; font-size: 11px; text-align: center; }
+  @media print { body { padding: 0; } h2 { break-after: avoid; } .paso, .nota, .clave { break-inside: avoid; } }
+</style>
+</head>
+<body>
+
+<h1>Manual del Vendedor</h1>
+<div class="sub">App de pedidos en el celular · PixeSistemas</div>
+
+<h2>1. Instalar la app en el celular (una sola vez)</h2>
+<div class="paso">
+  <strong>Android:</strong> abrí <strong>https://vendedor.pixesistemas.com.ar</strong> en Chrome → tocá el menú de los tres puntos (arriba a la derecha) → <strong>"Instalar aplicación"</strong> o <strong>"Agregar a pantalla de inicio"</strong> → confirmar.
+</div>
+<div class="paso">
+  <strong>iPhone:</strong> abrí la misma dirección en <strong>Safari</strong> → tocá <strong>Compartir</strong> (el cuadradito con la flecha) → <strong>"Agregar a pantalla de inicio"</strong> → Agregar.
+</div>
+<p>Queda el ícono <strong>ERP Vendedores</strong> en el celular. Cada vez que la abras te va a pedir el usuario y la clave.</p>
+
+<h2>2. Ingresar</h2>
+<ol>
+  <li>Abrí la app desde el ícono.</li>
+  <li>Escribí tu <strong>usuario</strong> (el que te dio la oficina) y tu <strong>clave</strong>.</li>
+  <li>Listo: ya estás dentro de tu cartera de clientes.</li>
+</ol>
+
+<h2>3. Pantalla de inicio</h2>
+<ul>
+  <li>Arriba dice <strong>ONLINE</strong> (con conexión) o <strong>SIN CONEXIÓN</strong>.</li>
+  <li>Si hay pedidos sin enviar, aparece un botón amarillo <strong>"3 pendiente(s)"</strong>: tocalo para sincronizar (o se sincroniza solo cuando vuelve Internet).</li>
+  <li>Botones grandes: <strong>Pedidos de hoy · Clientes · Ruta · Visitas</strong>.</li>
+</ul>
+
+<h2>4. Tomar un pedido (paso a paso)</h2>
+<div class="paso">
+  <strong>1.</strong> Tocá <strong>Clientes</strong> y buscá por nombre, CUIT, teléfono o dirección.<br/>
+  <strong>2.</strong> Tocá el cliente. Vas a ver su dirección y los botones <strong>Llamar</strong> y <strong>Mapa</strong>.<br/>
+  <strong>3.</strong> Tocá <span class="boton">NUEVO PEDIDO</span>.<br/>
+  <strong>4.</strong> Buscá el producto por código, descripción o código de barras.<br/>
+  <strong>5.</strong> Tocá el producto para agregarlo y ajustá la cantidad con <strong>−</strong> y <strong>+</strong>.<br/>
+  <strong>6.</strong> (Opcional) Escribí una observación.<br/>
+  <strong>7.</strong> Tocá <span class="boton">ENVIAR PEDIDO</span>.
+</div>
+<div class="clave">
+  <strong>Se guarda solo:</strong> tu nombre, el cliente, la fecha, la hora, la ubicación GPS, los productos y las cantidades. No hace falta anotar nada aparte.
+</div>
+
+<h2>5. Registrar una visita (aunque no compre)</h2>
+<div class="paso">
+  Entrá al cliente → <span class="boton-borde">REGISTRAR VISITA</span> → elegí el resultado:<br/>
+  <strong>Pedido realizado · No compró · Local cerrado · No estaba · Reprogramar</strong><br/>
+  (Opcional) Escribí una observación → <strong>Guardar visita</strong>.
+</div>
+
+<h2>6. Cuando no hay señal</h2>
+<ul>
+  <li>Podés seguir trabajando normalmente: buscar clientes, cargar pedidos y registrar visitas.</li>
+  <li>El pedido queda guardado en el celular con el cartel <strong>"Pedido guardado. Se enviará cuando vuelva Internet."</strong></li>
+  <li>Cuando vuelve la señal, la app sincroniza sola y avisa <strong>"Todo sincronizado"</strong>.</li>
+  <li><strong>Nunca se pierde un pedido y nunca se duplica.</strong></li>
+</ul>
+
+<h2>7. Ver mis pedidos</h2>
+<p>Tocá <strong>Pedidos de hoy</strong>: ahí ves los pedidos que enviaste con su estado (PENDIENTE, CONFIRMADO, PARCIAL, PREPARANDO, DESPACHADO, ENTREGADO) y los que están pendientes de sincronizar.</p>
+
+<h2>8. Ruta del día</h2>
+<p>Tocá <strong>Ruta</strong>: tu cartera ordenada por localidad/zona para recorrer sin dar vueltas. Desde cada cliente podés abrir el <strong>Mapa</strong> para navegar.</p>
+
+<h2>9. Problemas comunes</h2>
+<table>
+  <tr><th>Qué pasa</th><th>Qué hacer</th></tr>
+  <tr><td>No veo un cliente</td><td>No está en tu cartera: pedile a la oficina que te lo asigne.</td></tr>
+  <tr><td>Dice "Ese cliente no está en tu cartera"</td><td>Misma solución: pedí que lo agreguen a tu cartera.</td></tr>
+  <tr><td>Quedó un pedido sin enviar</td><td>Es normal si no había señal. Cuando vuelve Internet se envía solo (mirá el botón amarillo "pendiente").</td></tr>
+  <tr><td>No me toma la ubicación</td><td>Activá el GPS del celular y permití la ubicación para el navegador. El pedido se envía igual.</td></tr>
+  <tr><td>Me equivoqué en un pedido</td><td>Avisá a la oficina antes de que lo confirmen: ellos pueden corregir cantidades o quitar productos desde la Bandeja de pedidos.</td></tr>
+  <tr><td>Se cerró la app</td><td>Volvé a abrirla e iniciá sesión de nuevo.</td></tr>
+</table>
+
+<h2>10. El circuito, en resumen</h2>
+<div class="circuito">VOS tomás el pedido en el celular
+        ↓
+LA OFICINA lo revisa y lo confirma (o lo deja parcial)
+        ↓
+SE ARMA LA RUTA DE REPARTO
+        ↓
+EL REPARTIDOR entrega
+        ↓
+LA OFICINA mide y exporta los reportes</div>
+<p>Tu parte es la primera: <strong>visitar al cliente, cargar el pedido y enviarlo</strong>. Lo demás lo sigue la oficina.</p>
+
+<footer>PixeSistemas · ERP Empresarial · Ante cualquier duda, comunicate con la oficina.</footer>
+
+</body>
+</html>
