@@ -1,0 +1,145 @@
+{
+  "name": "ERP - Pedidos por WhatsApp (clientes)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "whatsapp-pedidos",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-verificacion",
+      "name": "Webhook verificacion Meta",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-460, -220],
+      "webhookId": "whatsapp-pedidos"
+    },
+    {
+      "parameters": {
+        "jsCode": "const q = $input.first().json.query || {};\nconst esperado = $env.WHATSAPP_VERIFY_TOKEN || '';\nconst ok = q['hub.mode'] === 'subscribe' && String(q['hub.verify_token'] || '') === String(esperado);\nreturn [{ json: { code: ok ? 200 : 403, body: ok ? String(q['hub.challenge'] || '') : 'verify_token invalido' } }];"
+      },
+      "id": "code-verificacion",
+      "name": "Validar token",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-240, -220]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.body }}",
+        "options": {
+          "responseCode": "={{ $json.code }}"
+        }
+      },
+      "id": "respond-verificacion",
+      "name": "Responder verificacion",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [-20, -220]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-pedidos",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "wh-mensajes",
+      "name": "Webhook mensajes Meta",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-460, 40],
+      "webhookId": "whatsapp-pedidos"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = [];\nconst body = $input.first().json.body || {};\nfor (const entry of body.entry || []) {\n  for (const change of entry.changes || []) {\n    const value = change.value || {};\n    for (const msg of value.messages || []) {\n      if (msg.type !== 'text' || !msg.text || !msg.text.body) continue;\n      items.push({ json: {\n        from: String(msg.from || ''),\n        mensaje: String(msg.text.body || ''),\n        messageId: String(msg.id || ''),\n        nombre: value.contacts && value.contacts[0] && value.contacts[0].profile ? value.contacts[0].profile.name || null : null,\n        displayPhone: value.metadata ? value.metadata.display_phone_number || null : null\n      } });\n    }\n  }\n}\nreturn items;"
+      },
+      "id": "code-mensajes",
+      "name": "Extraer mensajes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-240, 40]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ERP_BASE_URL }}/api/v1/whatsapp/pedidos/message",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "={{ $env.ERP_API_KEY }}" },
+            { "name": "x-whatsapp-phone", "value": "={{ $json.from }}" },
+            { "name": "Idempotency-Key", "value": "={{ $json.messageId }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "telefonoOrigen", "value": "={{ $json.from }}" },
+            { "name": "mensaje", "value": "={{ $json.mensaje }}" },
+            { "name": "nombre", "value": "={{ $json.nombre }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-erp",
+      "name": "ERP pedido",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-20, 40]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $env.WHATSAPP_PHONE_ID }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.WHATSAPP_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "messaging_product", "value": "whatsapp" },
+            { "name": "to", "value": "={{ $('Extraer mensajes').item.json.from }}" },
+            { "name": "type", "value": "text" },
+            { "name": "text.body", "value": "={{ $json.respuesta || 'No pudimos procesar tu mensaje. Probá de nuevo en un momento.' }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-meta",
+      "name": "Responder por Meta",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [200, 40]
+    }
+  ],
+  "connections": {
+    "Webhook verificacion Meta": {
+      "main": [[{ "node": "Validar token", "type": "main", "index": 0 }]]
+    },
+    "Validar token": {
+      "main": [[{ "node": "Responder verificacion", "type": "main", "index": 0 }]]
+    },
+    "Webhook mensajes Meta": {
+      "main": [[{ "node": "Extraer mensajes", "type": "main", "index": 0 }]]
+    },
+    "Extraer mensajes": {
+      "main": [[{ "node": "ERP pedido", "type": "main", "index": 0 }]]
+    },
+    "ERP pedido": {
+      "main": [[{ "node": "Responder por Meta", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

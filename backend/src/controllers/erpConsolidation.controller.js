@@ -1944,7 +1944,8 @@ module.exports.verificarPago=verificarPago;
 function getWhatsappConfig(req,res){
   const e=empresaId(req);
   const row=db.prepare('SELECT empresa_id,token,phone_id,numero,verify_token,activo,enviar_saldo_vencido,updated_at FROM whatsapp_config WHERE empresa_id=?').get(e);
-  res.json({ok:true,config:row?{empresaId:row.empresa_id,token:row.token,phoneId:row.phone_id,numero:row.numero,verifyToken:row.verify_token,activo:!!row.activo,enviarSaldoVencido:row.enviar_saldo_vencido===null||row.enviar_saldo_vencido===undefined?true:Number(row.enviar_saldo_vencido)!==0,updatedAt:row.updated_at,configurado:Boolean(row.token&&row.phone_id)}:null});
+  const empresaApi=db.prepare('SELECT api_key FROM empresas WHERE id=?').get(e);
+  res.json({ok:true,config:row?{empresaId:row.empresa_id,token:row.token,phoneId:row.phone_id,numero:row.numero,verifyToken:row.verify_token,activo:!!row.activo,enviarSaldoVencido:row.enviar_saldo_vencido===null||row.enviar_saldo_vencido===undefined?true:Number(row.enviar_saldo_vencido)!==0,apiKey:empresaApi?.api_key||'',updatedAt:row.updated_at,configurado:Boolean(row.token&&row.phone_id)}:null});
 }
 function saveWhatsappConfig(req,res){
   const e=empresaId(req),d=req.body||{};

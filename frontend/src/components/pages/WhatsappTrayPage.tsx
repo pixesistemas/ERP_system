@@ -49,7 +49,7 @@ export function WhatsappTrayPage() {
   async function loadCfg() {
     try {
       const r = await api.getWhatsappConfig();
-      if (r.config) setCfg({ token: r.config.token || "", phoneId: r.config.phoneId || "", numero: r.config.numero || "", verifyToken: r.config.verifyToken || "", activo: !!r.config.activo, enviarSaldoVencido: r.config.enviarSaldoVencido !== false });
+      if (r.config) setCfg({ token: r.config.token || "", phoneId: r.config.phoneId || "", numero: r.config.numero || "", verifyToken: r.config.verifyToken || "", activo: !!r.config.activo, enviarSaldoVencido: r.config.enviarSaldoVencido !== false, apiKey: r.config.apiKey || "" });
     } catch (e: any) { setError(e.message); }
   }
   async function guardarCfg() {
@@ -222,13 +222,14 @@ export function WhatsappTrayPage() {
 
     <div className="products-card wa-tray-cards">
       <h3><Phone size={16} /> Conexión WhatsApp Cloud (Meta)</h3>
-      <p className="wa-ayuda">Completá los datos de la API oficial de Meta y el sistema envía y recibe mensajes reales. Webhook para configurar en Meta: <code>{window.location.origin}/api/v1/whatsapp/webhook</code></p>
+      <p className="wa-ayuda">Completá los datos de la API oficial de Meta y el sistema envía y recibe mensajes reales. Hay dos formas de recibir mensajes: <strong>directo</strong> (Meta → <code>{window.location.origin}/api/v1/whatsapp/webhook</code>) o <strong>por n8n</strong> (Meta → <code>https://n8n.pixesistemas.com.ar/webhook/whatsapp-pedidos</code>, workflow "ERP - Pedidos por WhatsApp (clientes)").</p>
       {cfgMsg && <div className="success-box">{cfgMsg}</div>}
       <div className="form-grid">
         <label className="full">Token de acceso (Meta)<input type="password" value={cfg.token} onChange={e => setCfg({ ...cfg, token: e.target.value })} placeholder="EAA... token permanente de la app" /></label>
         <label>Phone number ID<input value={cfg.phoneId} onChange={e => setCfg({ ...cfg, phoneId: e.target.value })} placeholder="123456789012345" /></label>
         <label>Número de WhatsApp de la empresa<input value={cfg.numero} onChange={e => setCfg({ ...cfg, numero: e.target.value })} placeholder="5493412345678" /></label>
         <label className="full">Token de verificación del webhook<input value={cfg.verifyToken} onChange={e => setCfg({ ...cfg, verifyToken: e.target.value })} placeholder="Cualquier texto secreto" /></label>
+        <label className="full">API Key para n8n (ERP_API_KEY)<input readOnly value={cfg.apiKey || ""} onFocus={e => e.currentTarget.select()} title="Copiala y pegala en la variable ERP_API_KEY de n8n" placeholder="Se genera al crear la empresa" /></label>
       </div>
       <div className="modal-actions">
         <label className="toggle-row"><div><strong>Activo</strong></div><input type="checkbox" checked={cfg.activo} onChange={e => setCfg({ ...cfg, activo: e.target.checked })} /></label>
