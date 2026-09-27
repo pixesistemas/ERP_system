@@ -104,6 +104,7 @@ export const api = {
   listCuponesSorteo(){return request<any>(`/erp/sorteos/cupones`);},
   updateCuponSorteo(id:number,estado:string){return request<any>(`/erp/sorteos/cupones/${id}`,{method:'PATCH',body:JSON.stringify({estado})});},
   getWhatsappConfig(){return request<any>(`/erp/whatsapp/config`);},
+  getTelegramEstado(){return request<any>(`/erp/telegram/estado`);},
   saveWhatsappConfig(data:any){return request<any>(`/erp/whatsapp/config`,{method:'PUT',body:JSON.stringify(data)});},
   probarWhatsappConfig(){return request<any>(`/erp/whatsapp/config/probar`,{method:'POST'});},
   enviarNotificacionWhatsapp(id:number){return request<any>(`/erp/whatsapp/notificaciones/${id}/enviar`,{method:'POST'});},

@@ -16,6 +16,7 @@ export function WhatsappTrayPage() {
   const [cfg, setCfg] = useState<any>({ token: "", phoneId: "", numero: "", verifyToken: "", activo: false, enviarSaldoVencido: true });
   const [cfgMsg, setCfgMsg] = useState("");
   const [pedidos, setPedidos] = useState<any[]>([]);
+  const [telegram, setTelegram] = useState<any>(null);
 
   async function loadPedidos() {
     try {
@@ -44,6 +45,12 @@ export function WhatsappTrayPage() {
       setNotice("Pago marcado como verificado.");
       await load();
     } catch (e: any) { setError(e.message); }
+  }
+
+  async function loadTelegram() {
+    try {
+      setTelegram(await api.getTelegramEstado());
+    } catch { /* canal opcional de pruebas */ }
   }
 
   async function loadCfg() {
@@ -77,7 +84,7 @@ export function WhatsappTrayPage() {
   async function load() {
     setError("");
     try {
-      const [r, n] = await Promise.all([api.listWhatsappConversations(), api.listWhatsappNotificaciones()]); loadCfg(); loadPedidos();
+      const [r, n] = await Promise.all([api.listWhatsappConversations(), api.listWhatsappNotificaciones()]); loadCfg(); loadPedidos(); loadTelegram();
       setConvs(r.conversaciones || []);
       setNotis(n.notificaciones || []);
     } catch (e: any) { setError(e.message); }
@@ -237,6 +244,20 @@ export function WhatsappTrayPage() {
         <button className="secondary-action" onClick={guardarCfg}>Guardar conexión</button>
         <button className="primary-action" onClick={probarCfg}>Probar conexión</button>
       </div>
+    </div>
+
+    <div className="products-card wa-tray-cards">
+      <h3><Send size={16} /> Canal de pruebas por Telegram (gratis)</h3>
+      <p className="wa-ayuda">Para probar el circuito de pedidos sin conectar Meta en producción. Usa el mismo motor que WhatsApp: el cliente pide, el bot arma el pedido y queda la solicitud/nota de pedido en el sistema.</p>
+      {telegram && <>
+        <p className="wa-ayuda">Estado: {telegram.configurado ? <span className="badge success">Configurado</span> : <span className="badge warning">Falta TELEGRAM_BOT_TOKEN en el servidor</span>} · Empresa que atiende: <strong>{telegram.empresaNombre || telegram.empresaId}</strong></p>
+        <div className="form-grid">
+          <label className="full">1) Creá un bot con <strong>@BotFather</strong> en Telegram y copiá el token</label>
+          <label className="full">2) En Portainer agregá las variables: <code>TELEGRAM_BOT_TOKEN</code> = token del bot · <code>TELEGRAM_EMPRESA_ID</code> = {telegram.empresaId}</label>
+          <label className="full">3) Registrá el webhook abriendo esta URL en el navegador (reemplazá TOKEN):<input readOnly value={`https://api.telegram.org/botTOKEN/setWebhook?url=${telegram.webhookUrl}`} onFocus={e => e.currentTarget.select()} /></label>
+          <label className="full">4) Escribile al bot: <em>"quiero 2 cemento y 1 arena"</em> y después <em>"sí"</em></label>
+        </div>
+      </>}
     </div>
 
     <div className="info-note"><Check size={16}/> Fase 2: respuestas rápidas y avisos de estado. Próximas fases: plantillas 24 h, audios e IA, pagos y seguimiento de reparto.</div>

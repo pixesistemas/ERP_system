@@ -104,6 +104,15 @@ app.get("/api/v1/whatsapp/webhook", whatsappWebhookController.getWebhook);
 app.post("/api/v1/whatsapp/webhook", whatsappWebhookController.postWebhook);
 
 /*
+ * Canal de PRUEBAS por Telegram (gratis): usa el mismo motor que los
+ * pedidos de clientes por WhatsApp. El webhook se registra con
+ * setWebhook de la Bot API (ver telegramWebhook.controller.js).
+ */
+const telegramWebhookController = require("./controllers/telegramWebhook.controller");
+app.post("/api/v1/telegram/webhook", telegramWebhookController.webhook);
+app.get("/api/v1/erp/telegram/estado", jwtMiddleware, apiRateLimit, telegramWebhookController.estado);
+
+/*
  * Webhook público de MercadoPago: confirma el pago de un cobro/QR.
  * Se registra sin JWT porque lo invoca la plataforma.
  */
