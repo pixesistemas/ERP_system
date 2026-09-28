@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>API ARCA para sistemas externos (FoxPro)</title>
+<style>
+  @page { size: A4; margin: 12mm; }
+  body { font-family: Arial, sans-serif; font-size: 11.5px; color: #222; line-height: 1.45; max-width: 900px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 21px; margin: 0 0 2px; color: #4a3d8f; }
+  .sub { color: #666; font-size: 12px; margin-bottom: 14px; }
+  h2 { font-size: 15px; color: #4a3d8f; border-bottom: 2px solid #ded8f2; padding-bottom: 3px; margin: 18px 0 8px; }
+  pre { background: #F5F6FA; border: 1px solid #D8D2EE; border-radius: 8px; padding: 9px 11px; font-size: 10.5px; overflow-x: auto; white-space: pre-wrap; }
+  code { background: #F0EEF8; padding: 0 4px; border-radius: 4px; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 11px; }
+  th, td { border: 1px solid #bbb; padding: 5px 7px; text-align: left; }
+  th { background: #2E3A59; color: #fff; }
+  .nota { background: #FFF8E6; border: 1px solid #F0C36D; border-radius: 8px; padding: 8px 12px; margin: 8px 0; }
+  footer { margin-top: 18px; color: #777; font-size: 10px; text-align: center; }
+</style>
+</head>
+<body>
+
+<h1>API ARCA para sistemas externos</h1>
+<div class="sub">Para tu sistema en FoxPro · mismo certificado y punto de venta del ERP · PixeSistemas</div>
+
+<h2>1. Activación</h2>
+<ol>
+  <li>Superadmin → <strong>Módulos</strong> → tildar <strong>"API ARCA (sistemas externos)"</strong> en la empresa.</li>
+  <li>Obtener la <strong>API Key</strong>: ERP → Bandeja WhatsApp → tarjeta de conexión → campo "API Key para n8n".</li>
+  <li>(Opcional) Subdominio <code>arca.pixesistemas.com.ar</code>: Cloudflare (registro A "arca" → IP del servidor, Solo DNS) + Nginx Proxy Manager (Proxy Host → 172.17.0.1:3100 + Let's Encrypt).</li>
+</ol>
+
+<h2>2. Dirección y autenticación</h2>
+<pre>https://arca.pixesistemas.com.ar/api/v1/arca   (o https://erp.pixesistemas.com.ar/api/v1/arca)
+
+Headers:
+  x-api-key: TU_API_KEY
+  Content-Type: application/json</pre>
+
+<h2>3. Estado del servicio</h2>
+<p><code>GET /api/v1/arca/estado</code></p>
+<pre>{ "ok": true,
+  "empresa": { "id": 4, "nombre": "Seitu", "cuit": "20234143403", "condicionIVA": "RESPONSABLE INSCRIPTO", "production": true, "puntoVenta": 5 },
+  "fiscal": { "certificado": true, "ambiente": "PRODUCCION" } }</pre>
+
+<h2>4. Último comprobante autorizado</h2>
+<p><code>GET /api/v1/arca/ultimo-comprobante?punto_venta=5&amp;tipo=6</code></p>
+<p>Códigos de tipo: 1 Factura A · 6 Factura B · 11 Factura C · 3 NC A · 8 NC B · 13 NC C · 2 ND A · 7 ND B · 12 ND C.</p>
+<pre>{ "ok": true, "punto_venta": 5, "tipo": 6, "ultimo": 1234 }</pre>
+
+<h2>5. Emitir comprobante</h2>
+<p><code>POST /api/v1/arca/comprobantes</code></p>
+<pre>{
+  "operacion": "FACTURA",
+  "punto_venta": 5,
+  "concepto": 1,
+  "cliente": {
+    "cuit": "20111111112",
+    "razon_social": "CLIENTE DE PRUEBA",
+    "condicion_iva": "CONSUMIDOR FINAL"
+  },
+  "items": [
+    { "codigo": "A1", "descripcion": "Producto 1", "cantidad": 2, "precio_unitario": 1500, "descuento": 0, "iva": 21 }
+  ]
+}</pre>
+<ul>
+  <li><strong>operacion</strong>: FACTURA (por defecto), NOTA_CREDITO o NOTA_DEBITO.</li>
+  <li>La <strong>letra A/B/C</strong> se resuelve sola según la condición IVA de la empresa y del cliente.</li>
+  <li><strong>condicion_iva</strong> del cliente: RESPONSABLE INSCRIPTO, MONOTRIBUTO, EXENTO o CONSUMIDOR FINAL.</li>
+  <li>Para notas, agregar el comprobante original: <code>"cbte_asoc": [ { "tipo": 6, "puntoVenta": 5, "numero": 1234 } ]</code></li>
+</ul>
+<p>Respuesta:</p>
+<pre>{ "ok": true, "cae": "75123456789012", "cae_vencimiento": "2026-10-05", "numero": 1235,
+  "punto_venta": 5, "tipo_comprobante": 6, "letra": "B", "nombre_comprobante": "FACTURA B",
+  "importe_neto": 3000, "importe_iva": 630, "importe_total": 3630,
+  "resultado": "A", "observaciones": null, "errores": null }</pre>
+
+<h2>6. Errores</h2>
+<table>
+  <tr><th>Código</th><th>Significado</th></tr>
+  <tr><td>400</td><td>Faltan datos (items, tipo, cbte_asoc en notas)</td></tr>
+  <tr><td>401</td><td>Falta o es inválida la x-api-key</td></tr>
+  <tr><td>403</td><td>El módulo "API ARCA" no está tildado para la empresa</td></tr>
+  <tr><td>422</td><td>ARCA rechazó el comprobante (mirar errores/observaciones)</td></tr>
+  <tr><td>502</td><td>No se pudo consultar ARCA (red/certificado)</td></tr>
+  <tr><td>503</td><td>ARCA no respondió: reintentar (el intento queda registrado)</td></tr>
+</table>
+
+<h2>7. Ejemplo desde FoxPro (Visual FoxPro)</h2>
+<pre>LOCAL loHttp, lcUrl, lcJson, lcResp
+loHttp = CREATEOBJECT("WinHttp.WinHttpRequest.5.1")
+lcUrl = "https://arca.pixesistemas.com.ar/api/v1/arca/comprobantes"
+
+lcJson = '{"operacion":"FACTURA","punto_venta":5,' + ;
+         '"cliente":{"cuit":"20111111112","razon_social":"CLIENTE","condicion_iva":"CONSUMIDOR FINAL"},' + ;
+         '"items":[{"codigo":"A1","descripcion":"Producto","cantidad":1,"precio_unitario":1000,"iva":21}]}'
+
+loHttp.Open("POST", lcUrl, .F.)
+loHttp.SetRequestHeader("Content-Type", "application/json")
+loHttp.SetRequestHeader("x-api-key", "TU_API_KEY")
+loHttp.Send(lcJson)
+
+lcResp = loHttp.ResponseText   &amp;&amp; JSON con cae, numero, vencimiento...</pre>
+
+<div class="nota">
+  <strong>Importante:</strong> la API <strong>emite</strong> el comprobante y devuelve el CAE; cada intento queda registrado en el ERP para auditoría. El comprobante <strong>no se registra como venta</strong> en el ERP (tu FoxPro sigue manejando su venta). Si querés que además quede la venta en el ERP, se agrega con un campo <code>registrar: true</code>.
+</div>
+
+<footer>PixeSistemas · ERP Empresarial · Soporte: contactar a PixeSistemas.</footer>
+
+</body>
+</html>

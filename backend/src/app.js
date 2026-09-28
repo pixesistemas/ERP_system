@@ -192,6 +192,13 @@ app.use("/api/v1/erp", jwtMiddleware, apiRateLimit, erpConsolidationRoutes);
 app.use("/api/v1/pagos", jwtMiddleware, apiRateLimit, pagoRoutes);
 app.use("/api/v1/automatizaciones", jwtMiddleware, apiRateLimit, automatizacionesRoutes);
 app.use("/api/v1/n8n", apiKeyMiddleware, apiRateLimit, automatizacionesRoutes);
+
+/*
+ * API ARCA para sistemas externos (ej. FoxPro): mismo certificado y
+ * punto de venta que el ERP. Se habilita con el módulo ARCA_API.
+ */
+const arcaRoutes = require("./routes/arca.routes");
+app.use("/api/v1/arca", apiKeyMiddleware, apiRateLimit, arcaRoutes);
 app.use("/api/v1/backup", backupKeyMiddleware, apiRateLimit, backupRoutes);
 app.use("/api/v1/users", jwtMiddleware, apiRateLimit, usuarioRoutes);
 app.use("/api/v1/roles", jwtMiddleware, apiRateLimit, rolRoutes);

@@ -102,6 +102,7 @@ async function emitirComprobanteAfip({
   puntoVenta,
   clienteId,
   clienteNombre,
+  clienteFiscal: clienteFiscalDato = null,
   items,
   operacion = "FACTURA",
   cbteAsoc = null,
@@ -121,19 +122,30 @@ async function emitirComprobanteAfip({
 
   const cliente = clienteId ? getClienteById(clienteId) : null;
 
-  const clienteFiscal = cliente
+  /*
+   * clienteFiscal permite emitir para un cliente que no está en la base
+   * (lo usa la API ARCA para el sistema FoxPro).
+   */
+  const clienteFiscal = clienteFiscalDato
     ? {
-        cuit: cliente.cuit || null,
-        dni: cliente.dni || null,
-        razonSocial: cliente.razonSocial || clienteNombre || "CONSUMIDOR FINAL",
-        condicionIVA: cliente.condicionIVA || "CF",
+        cuit: clienteFiscalDato.cuit || null,
+        dni: clienteFiscalDato.dni || null,
+        razonSocial: clienteFiscalDato.razonSocial || clienteNombre || "CONSUMIDOR FINAL",
+        condicionIVA: clienteFiscalDato.condicionIVA || "CF",
       }
-    : {
-        cuit: null,
-        dni: null,
-        razonSocial: clienteNombre || "CONSUMIDOR FINAL",
-        condicionIVA: "CF",
-      };
+    : cliente
+      ? {
+          cuit: cliente.cuit || null,
+          dni: cliente.dni || null,
+          razonSocial: cliente.razonSocial || clienteNombre || "CONSUMIDOR FINAL",
+          condicionIVA: cliente.condicionIVA || "CF",
+        }
+      : {
+          cuit: null,
+          dni: null,
+          razonSocial: clienteNombre || "CONSUMIDOR FINAL",
+          condicionIVA: "CF",
+        };
 
   const itemsFiscales = items.map((x) => ({
     codigo: x.codigo || "",

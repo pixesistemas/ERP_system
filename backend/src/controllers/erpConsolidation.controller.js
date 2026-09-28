@@ -691,7 +691,8 @@ function listBandejaPedidos(req,res){
   const vendedorId=Number(req.query.vendedor_id||0);
   const desde=String(req.query.desde||''),hasta=String(req.query.hasta||'');
   const q=String(req.query.q||'').trim();
-  let where="v.empresa_id=? AND v.tipo IN ('NOTA_PEDIDO','PRESUPUESTO') AND v.estado<>'ANULADO'";
+  /* La bandeja es de pedidos: los presupuestos no entran. */
+  let where="v.empresa_id=? AND v.tipo='NOTA_PEDIDO' AND v.estado<>'ANULADO'";
   const params=[e];
   if(estado){where+=" AND COALESCE(v.estado_pedido,'PENDIENTE')=?";params.push(estado)}
   if(vendedorId){where+=' AND v.vendedor_id=?';params.push(vendedorId)}
@@ -701,7 +702,7 @@ function listBandejaPedidos(req,res){
   const pedidos=db.prepare(`SELECT v.id,v.tipo,v.estado,v.estado_pedido,v.numero,v.punto_venta,v.total,v.fecha,v.fecha_visita,v.hora_visita,v.latitud,v.longitud,c.razon_social cliente,vd.nombre vendedor,d.canal
     FROM ventas_pos v LEFT JOIN clientes c ON c.id=v.cliente_id LEFT JOIN vendedores vd ON vd.id=v.vendedor_id LEFT JOIN documentos_comerciales d ON d.id=v.documento_id
     WHERE ${where} ORDER BY v.id DESC LIMIT 300`).all(...params);
-  const resumen=db.prepare(`SELECT COALESCE(v.estado_pedido,'PENDIENTE') estado,COUNT(1) n FROM ventas_pos v WHERE v.empresa_id=? AND v.tipo IN ('NOTA_PEDIDO','PRESUPUESTO') GROUP BY COALESCE(v.estado_pedido,'PENDIENTE')`).all(e);
+  const resumen=db.prepare(`SELECT COALESCE(v.estado_pedido,'PENDIENTE') estado,COUNT(1) n FROM ventas_pos v WHERE v.empresa_id=? AND v.tipo='NOTA_PEDIDO' AND v.estado<>'ANULADO' GROUP BY COALESCE(v.estado_pedido,'PENDIENTE')`).all(e);
   res.json({ok:true,pedidos,resumen});
 }
 function detallePedidoMovil(req,res){
