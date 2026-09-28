@@ -21,6 +21,7 @@ router.get('/whatsapp-autorizados',c.listWhatsapp);router.post('/whatsapp-autori
 const xlsxUpload=multer({storage:multer.memoryStorage(),limits:{fileSize:8*1024*1024}});
 const fotoUpload=multer({storage:multer.memoryStorage(),limits:{fileSize:10*1024*1024}});
 router.get('/compras',c.listPurchases);router.post('/compras/importar',xlsxUpload.single('file'),c.importarComprasExcel);router.post('/compras/ocr',fotoUpload.single('file'),c.ocrCompraFoto);router.post('/compras',c.savePurchase);router.delete('/compras/:id',c.deletePurchase);
+router.get('/compras/pendientes',c.listComprasPendientes);router.post('/compras/pendientes/:id/confirmar',c.confirmarCompraPendiente);router.post('/compras/pendientes/:id/descartar',c.descartarCompraPendiente);
 router.get('/libro-iva',c.vatBook);
 router.post('/precios/actualizacion-masiva',c.updatePrices);
 router.get('/pos/borrador-iva',c.borradorIva);router.post('/pos/borrador-iva/ajustes',c.saveBorradorIvaAjuste);router.post('/pos/borrador-iva/rubros/:id',c.renameBorradorIvaRubro);

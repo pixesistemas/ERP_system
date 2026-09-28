@@ -10,6 +10,7 @@ const { emitirComprobanteAfip, FiscalNetworkError } = require('../afip/fiscalEmi
 const { getLetraComprobante, getNombreComprobante } = require('../afip/fiscal.constants');
 const { registrarComision } = require('../repositories/comision.repository');
 const { generarPdfDevolucion } = require('../pdf/devolucionPdf.service');
+const OcrCompra = require('../services/ocrCompra.service');
 
 function empresaId(req) { return Number(req.empresa?.id || req.usuario?.empresaId || req.user?.empresaId || 1); }
 function bool(v) { return v === true || v === 1 || v === '1'; }
@@ -203,7 +204,10 @@ function savePurchase(req,res){
       if(bool(d.afecta_caja)){db.prepare('INSERT INTO caja_movimientos(empresa_id,tipo,concepto,importe,medios_json,cliente_nombre) VALUES(?,?,?,?,?,?)').run(e,'EGRESO',`COMPRA #${info.lastInsertRowid}`,-Math.abs(total),JSON.stringify({medio:d.condicion_pago||'CONTADO',moneda:d.moneda||'PES'}),d.proveedor_nombre.trim());}
       return info.lastInsertRowid;
     });
-    const id=tx(); req.query.month=d.mes_iva;req.query.year=d.anio_iva;listPurchases(req,res);
+    const id=tx(); req.query.month=d.mes_iva;req.query.year=d.anio_iva;
+    const jsonOriginal=res.json.bind(res);
+    res.json=(payload)=>jsonOriginal({...payload,compraId:id});
+    listPurchases(req,res);
   }catch(err){if(String(err.message).includes('UNIQUE'))return res.status(409).json({ok:false,error:'Ese comprobante de compra ya fue registrado.'});throw err}
 }
 
@@ -362,112 +366,44 @@ function importarComprasExcel(req, res) {
  *   OCR_BASE_URL  (por defecto https://api.openai.com/v1)
  *   OCR_MODEL     (por defecto gpt-4o-mini)
  */
-function ocrConfig() {
-  const apiKey = process.env.OCR_API_KEY || process.env.OPENAI_API_KEY || '';
-  if (!apiKey) return null;
-  return {
-    apiKey,
-    base: String(process.env.OCR_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, ''),
-    model: String(process.env.OCR_MODEL || 'gpt-4o-mini'),
-  };
-}
-const OCR_PROMPT = `Sos un asistente que lee facturas de compra argentinas (ARCA/AFIP) desde una foto.
-Devolvé SOLO un JSON válido, sin explicaciones, con esta forma exacta:
-{
-  "proveedor_nombre": "",
-  "proveedor_documento": "",
-  "proveedor_condicion_iva": "RESPONSABLE INSCRIPTO|MONOTRIBUTO|EXENTO|CONSUMIDOR FINAL",
-  "proveedor_domicilio": "",
-  "tipo_comprobante": "FACTURA|NOTA DE CREDITO|NOTA DE DEBITO|RECIBO",
-  "letra": "A|B|C",
-  "punto_venta": 0,
-  "numero": "",
-  "fecha": "YYYY-MM-DD",
-  "fecha_vencimiento": "YYYY-MM-DD o vacío",
-  "neto_gravado": 0,
-  "exento_no_gravado": 0,
-  "iva_total": 0,
-  "percepciones": 0,
-  "total": 0,
-  "iva_detalles": [ { "alicuota": 21, "neto": 0, "iva": 0 } ],
-  "confianza": "ALTA|MEDIA|BAJA"
-}
-Reglas: los importes van sin puntos de miles y con punto decimal (ej: 21780.5). Si un dato no se lee, dejalo vacío o en 0. En comprobantes letra C el IVA está incluido en el total: poné neto_gravado = total, iva_total = 0 y una sola alícuota estimada en iva_detalles con el total como neto.`;
-
 async function ocrCompraFoto(req, res) {
-  const cfg = ocrConfig();
-  if (!cfg) {
-    return res.status(400).json({ ok: false, error: 'El OCR no está configurado. Agregá OCR_API_KEY (por ejemplo de OpenAI) en el servidor para leer facturas por foto.' });
-  }
   if (!req.file) return res.status(400).json({ ok: false, error: 'Subí la foto de la factura.' });
-  const mime = String(req.file.mimetype || 'image/jpeg');
-  if (!mime.startsWith('image/')) return res.status(400).json({ ok: false, error: 'El archivo tiene que ser una imagen (JPG o PNG).' });
-  const dataUrl = `data:${mime};base64,${req.file.buffer.toString('base64')}`;
-  let respuesta;
   try {
-    respuesta = await fetch(`${cfg.base}/chat/completions`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${cfg.apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: cfg.model,
-        temperature: 0,
-        response_format: { type: 'json_object' },
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: OCR_PROMPT },
-              { type: 'image_url', image_url: { url: dataUrl } },
-            ],
-          },
-        ],
-      }),
-    });
-  } catch (err) {
-    return res.status(502).json({ ok: false, error: `No se pudo conectar con el OCR: ${err.message}` });
+    const datos = await OcrCompra.leerFactura(req.file.buffer, String(req.file.mimetype || 'image/jpeg'));
+    res.json({ ok: true, datos });
+  } catch (error) {
+    const noConfigurado = /no está configurado/i.test(error.message);
+    res.status(noConfigurado ? 400 : 502).json({ ok: false, error: error.message });
   }
-  const json = await respuesta.json().catch(() => ({}));
-  if (!respuesta.ok) {
-    return res.status(502).json({ ok: false, error: `El OCR respondió con error: ${json.error?.message || `HTTP ${respuesta.status}`}` });
-  }
-  const contenido = String(json.choices?.[0]?.message?.content || '').trim();
-  const limpio = contenido.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
-  let datos;
-  try {
-    datos = JSON.parse(limpio);
-  } catch {
-    return res.status(502).json({ ok: false, error: 'El OCR no devolvió datos legibles. Probá con una foto más nítida.' });
-  }
-  const numeroImporte = (v) => Number(String(v ?? 0).replace(/[^\d.,-]/g, '').replace(/\.(?=\d{3}\b)/g, '').replace(',', '.')) || 0;
-  const detalles = Array.isArray(datos.iva_detalles)
-    ? datos.iva_detalles
-        .map((d) => ({
-          alicuota: Number(d.alicuota || 0),
-          neto: numeroImporte(d.neto),
-          iva: numeroImporte(d.iva),
-        }))
-        .filter((d) => d.neto > 0 || d.iva > 0)
-    : [];
-  const salida = {
-    proveedor_nombre: String(datos.proveedor_nombre || '').trim(),
-    proveedor_documento: String(datos.proveedor_documento || '').replace(/[^\d]/g, ''),
-    proveedor_condicion_iva: String(datos.proveedor_condicion_iva || '').trim().toUpperCase(),
-    proveedor_domicilio: String(datos.proveedor_domicilio || '').trim(),
-    tipo_comprobante: String(datos.tipo_comprobante || 'FACTURA').trim().toUpperCase(),
-    letra: String(datos.letra || '').trim().toUpperCase().slice(0, 1),
-    punto_venta: Number(datos.punto_venta || 1) || 1,
-    numero: String(datos.numero || '').trim(),
-    fecha: fechaIso(datos.fecha) || new Date().toISOString().slice(0, 10),
-    fecha_vencimiento: fechaIso(datos.fecha_vencimiento) || null,
-    neto_gravado: numeroImporte(datos.neto_gravado),
-    exento_no_gravado: numeroImporte(datos.exento_no_gravado),
-    iva_total: numeroImporte(datos.iva_total),
-    percepciones: numeroImporte(datos.percepciones),
-    total: numeroImporte(datos.total),
-    iva_detalles: detalles,
-    confianza: String(datos.confianza || '').trim().toUpperCase(),
-  };
-  res.json({ ok: true, datos: salida });
+}
+
+/*
+ * Compras pendientes que llegan por WhatsApp (foto de factura de un
+ * número autorizado). El administrador las revisa y confirma o descarta.
+ */
+function listComprasPendientes(req,res){
+  const e=empresaId(req);
+  const estado=String(req.query.estado||'PENDIENTE').trim().toUpperCase();
+  const rows=db.prepare(`SELECT * FROM compras_pendientes WHERE empresa_id=? ${estado?'AND estado=?':''} ORDER BY id DESC LIMIT 200`).all(e,...(estado?[estado]:[]));
+  res.json({ok:true,pendientes:rows.map(r=>{
+    let datos=null;
+    try{datos=JSON.parse(r.datos_json||'null')}catch{}
+    return {...r,datos};
+  })});
+}
+function confirmarCompraPendiente(req,res){
+  const e=empresaId(req),id=Number(req.params.id),compraId=Number(req.body?.compra_id)||null;
+  const row=db.prepare('SELECT id FROM compras_pendientes WHERE id=? AND empresa_id=?').get(id,e);
+  if(!row)return res.status(404).json({ok:false,error:'La compra pendiente no existe.'});
+  db.prepare("UPDATE compras_pendientes SET estado='CONFIRMADA',compra_id=? WHERE id=?").run(compraId,id);
+  res.json({ok:true});
+}
+function descartarCompraPendiente(req,res){
+  const e=empresaId(req),id=Number(req.params.id);
+  const row=db.prepare('SELECT id FROM compras_pendientes WHERE id=? AND empresa_id=?').get(id,e);
+  if(!row)return res.status(404).json({ok:false,error:'La compra pendiente no existe.'});
+  db.prepare("UPDATE compras_pendientes SET estado='DESCARTADA' WHERE id=?").run(id);
+  res.json({ok:true});
 }
 
 /*
@@ -1182,7 +1118,7 @@ function updatePrices(req,res){
 function createReserveFund(req,res){const e=empresaId(req),d=req.body,amount=Number(d.importe_original||d.importe||0);if(!d.cliente_id||amount<=0)return res.status(400).json({ok:false,error:'Cliente e importe son obligatorios.'});const count=db.prepare('SELECT COUNT(*) n FROM reservas_monto WHERE empresa_id=?').get(e).n;const number=`RM-${String(count+1).padStart(8,'0')}`;const products=db.prepare('SELECT id,codigo,precio FROM productos WHERE empresa_id=? AND activo=1').all(e);const snapshot=Object.fromEntries(products.map(p=>[String(p.id),{codigo:p.codigo,precio:Number(p.precio)}]));const info=db.prepare(`INSERT INTO reservas_monto(empresa_id,cliente_id,numero,fecha,importe_original,saldo,lista_precio_id,lista_precio_nombre,precios_snapshot,observaciones) VALUES(?,?,?,?,?,?,?,?,?,?)`).run(e,Number(d.cliente_id),number,d.fecha||nowLocal().slice(0,10),amount,amount,d.lista_precio_id||null,d.lista_precio_nombre||'GENERAL',JSON.stringify(snapshot),d.observaciones||'');res.status(201).json({ok:true,reservation:db.prepare('SELECT * FROM reservas_monto WHERE id=?').get(info.lastInsertRowid)})}
 function consumeReserveFund(req,res){const e=empresaId(req),id=Number(req.params.id),amount=Number(req.body.importe||0);const tx=db.transaction(()=>{const r=db.prepare('SELECT * FROM reservas_monto WHERE id=? AND empresa_id=?').get(id,e);if(!r)throw Object.assign(new Error('Reserva inexistente.'),{status:404});if(amount<=0||amount>Number(r.saldo))throw Object.assign(new Error('El importe supera el saldo reservado.'),{status:409});db.prepare('UPDATE reservas_monto SET saldo=saldo-?,estado=CASE WHEN saldo-?<=0 THEN \'AGOTADA\' ELSE \'VIGENTE\' END,updated_at=CURRENT_TIMESTAMP WHERE id=?').run(amount,amount,id);db.prepare('INSERT INTO reserva_monto_consumos(reserva_id,documento_tipo,documento_id,importe,detalle) VALUES(?,?,?,?,?)').run(id,req.body.documento_tipo||'POS',req.body.documento_id||null,amount,req.body.detalle||'Consumo desde punto de venta');return db.prepare('SELECT * FROM reservas_monto WHERE id=?').get(id)});res.json({ok:true,reservation:tx()})}
 
-module.exports={listBanks,saveBank,listPos,savePos,listChecks,createCheck,deleteCajero,depositChecks,listWhatsapp,saveWhatsapp,uploadFiscal,fiscalFiles,listPurchases,savePurchase,deletePurchase,importarComprasExcel,ocrCompraFoto,listPedidosClientes,listPedidosActivos,listDevoluciones,devolverItemsPedido,listVendedorClientes,guardarVendedorClientes,crearVisita,listVisitas,movilBootstrap,crearPedidoMovil,listPedidosMovil,listBandejaPedidos,detallePedidoMovil,revisarPedidoMovil,cambiarEstadoPedidoMovil,listPedidosParaRuta,crearRutaReparto,listRutasReparto,detalleRutaReparto,reordenarRutaReparto,marcarEntregaRuta,cerrarRutaReparto,miRutaReparto,reporteVendedoresDetalle,crearReporteUsuario,vatBook,borradorIva,saveBorradorIvaAjuste,renameBorradorIvaRubro,updatePrices,listReserveFunds,createReserveFund,consumeReserveFund};
+module.exports={listBanks,saveBank,listPos,savePos,listChecks,createCheck,deleteCajero,depositChecks,listWhatsapp,saveWhatsapp,uploadFiscal,fiscalFiles,listPurchases,savePurchase,deletePurchase,importarComprasExcel,ocrCompraFoto,listComprasPendientes,confirmarCompraPendiente,descartarCompraPendiente,listPedidosClientes,listPedidosActivos,listDevoluciones,devolverItemsPedido,listVendedorClientes,guardarVendedorClientes,crearVisita,listVisitas,movilBootstrap,crearPedidoMovil,listPedidosMovil,listBandejaPedidos,detallePedidoMovil,revisarPedidoMovil,cambiarEstadoPedidoMovil,listPedidosParaRuta,crearRutaReparto,listRutasReparto,detalleRutaReparto,reordenarRutaReparto,marcarEntregaRuta,cerrarRutaReparto,miRutaReparto,reporteVendedoresDetalle,crearReporteUsuario,vatBook,borradorIva,saveBorradorIvaAjuste,renameBorradorIvaRubro,updatePrices,listReserveFunds,createReserveFund,consumeReserveFund};
 
 function userId(req){ return Number(req.usuario?.id || req.user?.id || req.user?.userId || 1); }
 function listPosCatalogs(req,res){

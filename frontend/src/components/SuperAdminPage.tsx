@@ -596,11 +596,12 @@ export function SuperAdminPage() {
           <div><h3>Módulos por empresa</h3><p>Activá funciones opcionales. Si una empresa no tiene el tilde, no ve el módulo en el sistema.</p></div>
         </div>
         <div className="products-card"><table>
-          <thead><tr><th>ID</th><th>Empresa</th><th>Pedidos móviles + reparto</th><th>POS simplificado (solo facturar y nota de venta)</th><th>Guardar</th></tr></thead>
+          <thead><tr><th>ID</th><th>Empresa</th><th>Pedidos móviles + reparto</th><th>POS simplificado (solo facturar y nota de venta)</th><th>App de compras</th><th>Guardar</th></tr></thead>
           <tbody>{empresas.map((e) => {
             const partes = () => String(e.modulos_activos || "").split(",").filter(Boolean);
             const activo = partes().includes("PREVENTA_MOVIL");
             const simple = partes().includes("POS_SIMPLE");
+            const compras = partes().includes("COMPRAS_MOVIL");
             const setModulo = (modulo: string, on: boolean) => {
               const lista = partes().filter((m) => m !== modulo);
               if (on) lista.push(modulo);
@@ -612,12 +613,14 @@ export function SuperAdminPage() {
               <td><strong>{e.nombre}</strong><small>{e.razon_social}</small></td>
               <td><label className="toggle-row"><span>Activo</span><input type="checkbox" checked={activo} onChange={(ev) => setModulo("PREVENTA_MOVIL", ev.target.checked)}/></label></td>
               <td><label className="toggle-row"><span>Activo</span><input type="checkbox" checked={simple} onChange={(ev) => setModulo("POS_SIMPLE", ev.target.checked)}/></label></td>
+              <td><label className="toggle-row"><span>Activo</span><input type="checkbox" checked={compras} onChange={(ev) => setModulo("COMPRAS_MOVIL", ev.target.checked)}/></label></td>
               <td><button className="sa-icon-btn" title="Guardar módulos" onClick={async () => {
                 setLoading(true);
                 try {
                   await Promise.all([
                     call("PUT", `/empresas/${e.id}/modulos`, { modulo: "PREVENTA_MOVIL", activo: partes().includes("PREVENTA_MOVIL") }),
                     call("PUT", `/empresas/${e.id}/modulos`, { modulo: "POS_SIMPLE", activo: partes().includes("POS_SIMPLE") }),
+                    call("PUT", `/empresas/${e.id}/modulos`, { modulo: "COMPRAS_MOVIL", activo: partes().includes("COMPRAS_MOVIL") }),
                   ]);
                   setOk(`Módulos de ${e.nombre} actualizados.`);
                   await load();

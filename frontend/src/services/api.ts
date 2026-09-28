@@ -169,6 +169,9 @@ export const erpApi = {
     if(!response.ok)throw new Error(payload.error||'No se pudo importar el Excel de compras.');
     return payload;
   },
+  listComprasPendientes: (estado='PENDIENTE') => request<any>(`/erp/compras/pendientes?estado=${encodeURIComponent(estado)}`),
+  confirmarCompraPendiente: (id:number,compraId?:number|null) => request<any>(`/erp/compras/pendientes/${id}/confirmar`,{method:'POST',body:JSON.stringify({compra_id:compraId||null})}),
+  descartarCompraPendiente: (id:number) => request<any>(`/erp/compras/pendientes/${id}/descartar`,{method:'POST',body:JSON.stringify({})}),
   async ocrPurchaseInvoice(file:File){
     const token=getToken(); const form=new FormData(); form.append('file',file);
     const response=await fetch(`${API_URL}/erp/compras/ocr`,{method:'POST',headers:token?{Authorization:`Bearer ${token}`}:{},body:form});

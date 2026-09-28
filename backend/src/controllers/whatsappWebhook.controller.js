@@ -1,6 +1,29 @@
+const fs = require("fs");
+const path = require("path");
+
 const db = require("../db/database");
 const CommercialConversation = require("../core/commercial-conversation");
 const ChequeWhatsapp = require("../services/chequeWhatsapp.service");
+const OcrCompra = require("../services/ocrCompra.service");
+const { urlPublica } = require("../utils/url");
+const { nowLocal } = require("../utils/time");
+
+/*
+ * Descarga una imagen (factura) desde Meta con el token de la empresa.
+ */
+async function descargarMediaMeta(mediaId, token) {
+  const infoResp = await fetch(
+    `https://graph.facebook.com/v21.0/${encodeURIComponent(mediaId)}`,
+    { headers: { Authorization: "Bearer " + (token || "") } },
+  );
+  const info = await infoResp.json().catch(() => ({}));
+  if (!info?.url) throw new Error("No se pudo obtener la imagen desde Meta.");
+  const mediaResp = await fetch(info.url, {
+    headers: { Authorization: "Bearer " + (token || "") },
+  });
+  if (!mediaResp.ok) throw new Error("No se pudo descargar la imagen desde Meta.");
+  return Buffer.from(await mediaResp.arrayBuffer());
+}
 
 function getWebhook(req, res) {
   const mode = req.query["hub.mode"];
@@ -57,13 +80,44 @@ async function postWebhook(req, res) {
             }
             continue;
           }
+          let respuesta = null;
           if (tipo === "image") {
             const mediaId = msg.image?.id || null;
-            db.prepare("INSERT INTO whatsapp_notificaciones(empresa_id,telefono,estado_pedido,mensaje,estado) VALUES(?,?,'PAGO_PENDIENTE_VERIFICACION',?,?)").run(empresa.id, from, mediaId ? "Comprobante de pago recibido (ID de media " + mediaId + "). Verificá el pago y marcá como verificado." : "Comprobante de pago recibido. Verificá el pago y marcá como verificado.", "PENDIENTE");
-            continue;
+            /*
+             * Si el número es de la empresa (autorizado), la foto es una
+             * factura de compra: se lee con OCR y queda pendiente para
+             * que un administrador la revise en Compras.
+             */
+            if (mediaId && ChequeWhatsapp.esTelefonoAutorizado(empresa.id, from)) {
+              try {
+                const buffer = await descargarMediaMeta(mediaId, config.token);
+                let datos = null;
+                try {
+                  datos = await OcrCompra.leerFactura(buffer, "image/jpeg");
+                } catch (ocrError) {
+                  datos = null;
+                }
+                const carpeta = path.join(process.cwd(), "storage", "compras-whatsapp", String(empresa.id));
+                fs.mkdirSync(carpeta, { recursive: true });
+                const nombreArchivo = `factura-${Date.now()}.jpg`;
+                const ruta = path.join(carpeta, nombreArchivo);
+                fs.writeFileSync(ruta, buffer);
+                const url = urlPublica(`/storage/compras-whatsapp/${empresa.id}/${nombreArchivo}`);
+                db.prepare(`INSERT INTO compras_pendientes(empresa_id,telefono,remitente,imagen_path,imagen_url,datos_json,estado,created_at) VALUES(?,?,?,?,?,?,'PENDIENTE',?)`).run(empresa.id, from, "", ruta, url, datos ? JSON.stringify(datos) : null, nowLocal());
+                respuesta = datos
+                  ? "Factura recibida y leída. Un administrador la va a revisar para cargarla al sistema. ¡Gracias!"
+                  : "Factura recibida. Un administrador la va a revisar para cargarla al sistema. ¡Gracias!";
+              } catch (error) {
+                db.prepare("INSERT INTO whatsapp_notificaciones(empresa_id,telefono,estado_pedido,mensaje,estado) VALUES(?,?,'PAGO_PENDIENTE_VERIFICACION',?,?)").run(empresa.id, from, `Imagen recibida de un número autorizado (no se pudo procesar como factura): ${error.message}`, "PENDIENTE");
+                respuesta = "Recibí la imagen pero no pude procesarla. Un administrador la va a revisar.";
+              }
+            } else {
+              db.prepare("INSERT INTO whatsapp_notificaciones(empresa_id,telefono,estado_pedido,mensaje,estado) VALUES(?,?,'PAGO_PENDIENTE_VERIFICACION',?,?)").run(empresa.id, from, mediaId ? "Comprobante de pago recibido (ID de media " + mediaId + "). Verificá el pago y marcá como verificado." : "Comprobante de pago recibido. Verificá el pago y marcá como verificado.", "PENDIENTE");
+              continue;
+            }
           }
+          if (!respuesta) {
           if (!texto) continue;
-          let respuesta = null;
           if (/^cheque\b/i.test(texto) && ChequeWhatsapp.esTelefonoAutorizado(empresa.id, from)) {
             respuesta = ChequeWhatsapp.procesarCheque({ empresaId: empresa.id, texto }).mensaje;
           } else {
@@ -79,6 +133,7 @@ async function postWebhook(req, res) {
             const result = await CommercialConversation.Engine.continue({ context: conversation.context, message: texto, empresaId: empresa.id, usuarioId: null, empresaNombre: empresa.nombre });
             CommercialConversation.Service.save(conversation);
             respuesta = result?.response?.message || null;
+          }
           }
           }
           if (respuesta && config.token && config.phone_id) {
