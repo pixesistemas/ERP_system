@@ -68,6 +68,7 @@ import { MobileOrdersAdminPage } from "./components/pages/MobileOrdersAdminPage"
 import { DeliveryRoutesPage } from "./components/pages/DeliveryRoutesPage";
 import { MobileDriverPage } from "./mobile/MobileDriverPage";
 import { MobilePurchasesPage } from "./mobile/MobilePurchasesPage";
+import { guardarDispositivo, leerDispositivo, borrarDispositivo } from "./mobile/offlineDb";
 import { VendorReportsPage } from "./components/pages/VendorReportsPage";
 import { BorradorIvaPage } from "./components/pages/BorradorIvaPage";
 import { WhatsappAuthorizedPage } from "./components/pages/WhatsappAuthorizedPage";
@@ -151,6 +152,31 @@ export function App() {
     api.me().then(setSession).catch(() => sessionStorage.removeItem("afip_demo_token"));
   }, []);
 
+  /*
+   * Acceso sin usuario ni clave en los celulares: si el dispositivo está
+   * recordado (vendedor/repartidor/compras), se renueva la sesión sola.
+   * Si el administrador dio de baja el dispositivo, vuelve a pedir login.
+   */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (sessionStorage.getItem("afip_demo_token")) return;
+    const hostname = window.location.hostname;
+    const esAppMovil = hostname.startsWith("vendedor.") || hostname.startsWith("repartidor.") || hostname.startsWith("compras.");
+    if (!esAppMovil) return;
+    (async () => {
+      try {
+        const refreshToken = await leerDispositivo();
+        if (!refreshToken) return;
+        const r = await api.refreshSession(refreshToken);
+        sessionStorage.setItem("afip_demo_token", r.token);
+        sessionStorage.setItem("afip_demo_refresh", refreshToken);
+        setSession(r);
+      } catch {
+        borrarDispositivo().catch(() => {});
+      }
+    })();
+  }, []);
+
   useEffect(() => {
     if (!session) return;
     api.getAppEstado().then(setAppInfo).catch(() => {});
@@ -197,7 +223,7 @@ export function App() {
     } finally { setLoading(false); }
   }
 
-  function logout() { sessionStorage.clear(); setSession(null); newConversation(); }
+  function logout() { sessionStorage.clear(); setSession(null); newConversation(); borrarDispositivo().catch(() => {}); }
 
   const command = activeResponse?.command || {};
   const items = command.items || command.productos || [];
@@ -213,16 +239,22 @@ export function App() {
       : <SuperAdminLoginPage/>;
   }
 
-  if (!session) return <Login onLogin={setSession}/>;
-  const pantallas: string[] | null = session.pantallas ?? null;
-  function canSee(key: string) { return canSeeScreen(pantallas, key); }
-
   /*
    * Los subdominios de las apps móviles quedan restringidos a su propia
    * pantalla: no se puede navegar al resto del sistema desde ahí.
    */
   const host = typeof window !== "undefined" ? window.location.hostname : "";
   const hostApp = host.startsWith("vendedor.") ? "vendedor" : host.startsWith("repartidor.") ? "repartidor" : host.startsWith("compras.") ? "compras" : null;
+
+  if (!session) return <Login onLogin={(data: any) => {
+    setSession(data);
+    /* En los celulares de las apps se recuerda el dispositivo. */
+    if (hostApp && data?.token && data?.refreshToken) {
+      guardarDispositivo(data.refreshToken).catch(() => {});
+    }
+  }}/>;
+  const pantallas: string[] | null = session.pantallas ?? null;
+  function canSee(key: string) { return canSeeScreen(pantallas, key); }
 
   if (hostApp) {
     const titulo = hostApp === "vendedor" ? "App vendedor" : hostApp === "repartidor" ? "App repartidor" : "App de compras";

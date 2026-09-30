@@ -50,6 +50,9 @@ export const api = {
   me() {
     return request<any>("/auth/me");
   },
+  refreshSession(refreshToken: string) {
+    return request<any>("/auth/refresh", { method: "POST", body: JSON.stringify({ refreshToken }) });
+  },
   sendMessage(input: { telefono: string; mensaje: string; canal?: string }) {
     return request<any>("/commercial-conversations/message", {
       method: "POST",
@@ -128,6 +131,8 @@ export const api = {
   changeUserRole(id: number, rol: string) { return request<any>(`/users/${id}/rol`, { method: "PATCH", body: JSON.stringify({ rol }) }); },
   listUserPointsOfSale(id: number) { return request<any>(`/users/${id}/puntos-venta`); },
   saveUserPointsOfSale(id: number, data: any) { return request<any>(`/users/${id}/puntos-venta`, { method: "PUT", body: JSON.stringify(data) }); },
+  listUserDevices(id: number) { return request<any>(`/users/${id}/dispositivos`); },
+  revokeUserDevices(id: number, ids: number[] = []) { return request<any>(`/users/${id}/dispositivos/revocar`, { method: "POST", body: JSON.stringify({ ids }) }); },
   listUserCashiers(id: number) { return request<any>(`/users/${id}/cajas`); },
   saveUserCashiers(id: number, data: any) { return request<any>(`/users/${id}/cajas`, { method: "PUT", body: JSON.stringify(data) }); },
   reportUserIssue(data: { tipo: string; mensaje: string; pagina?: string }) {

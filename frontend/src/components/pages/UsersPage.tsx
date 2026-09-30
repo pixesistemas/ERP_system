@@ -14,6 +14,8 @@ export function UsersPage() {
   const [cajaUser, setCajaUser] = useState<any>(null);
   const [cajas, setCajas] = useState<any[]>([]);
   const [cajasAsignadas, setCajasAsignadas] = useState<Set<number>>(new Set());
+  const [dispUser, setDispUser] = useState<any>(null);
+  const [dispositivos, setDispositivos] = useState<any[]>([]);
 
   async function load() {
     setError("");
@@ -81,6 +83,35 @@ export function UsersPage() {
     }
   }
 
+  async function openDispositivos(u: any) {
+    setError("");
+    try {
+      const r = await api.listUserDevices(u.id);
+      setDispositivos(r.dispositivos || []);
+      setDispUser(u);
+    } catch (e: any) {
+      setError(e.message);
+    }
+  }
+
+  async function recargarDispositivos() {
+    if (!dispUser) return;
+    const r = await api.listUserDevices(dispUser.id);
+    setDispositivos(r.dispositivos || []);
+  }
+
+  async function revocarDispositivos(ids: number[] = []) {
+    if (!dispUser) return;
+    if (!confirm(ids.length ? "¿Dar de baja el dispositivo seleccionado?" : "¿Dar de baja TODOS los dispositivos de este usuario?")) return;
+    setError("");
+    try {
+      await api.revokeUserDevices(dispUser.id, ids);
+      await recargarDispositivos();
+    } catch (e: any) {
+      setError(e.message);
+    }
+  }
+
   async function submit(e: any) {
     e.preventDefault();
     setError("");
@@ -121,7 +152,7 @@ export function UsersPage() {
     {error && <div className="error-box">{error}</div>}
     <div className="products-card">
       <table>
-        <thead><tr><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Rol</th><th>Estado</th><th></th><th></th><th></th></tr></thead>
+        <thead><tr><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Rol</th><th>Estado</th><th></th><th></th><th></th><th></th></tr></thead>
         <tbody>{users.map((u: any) => <tr key={u.id}>
           <td><strong>{u.nombre}</strong></td>
           <td>{u.email}</td>
@@ -131,6 +162,7 @@ export function UsersPage() {
           <td><button onClick={() => toggleActive(u)}>{u.activo ? "Desactivar" : "Activar"}</button></td>
           <td><button className="secondary-action" onClick={() => openPvModal(u)}><MonitorSmartphone /> Puntos de venta</button></td>
           <td><button className="secondary-action" onClick={() => openCajasModal(u)}><Wallet /> Cajas</button></td>
+          <td><button className="secondary-action" onClick={() => openDispositivos(u)}>Dispositivos</button></td>
         </tr>)}</tbody>
       </table>
       {!users.length && <div className="empty-table">No hay usuarios cargados.</div>}
@@ -188,6 +220,23 @@ export function UsersPage() {
         {!cajas.length && <div className="empty-table">No hay cajas cargadas. Creálas desde Cajeros.</div>}
       </div>
       <div className="modal-actions"><button type="button" onClick={() => setCajaUser(null)}>Cancelar</button><button className="save" onClick={saveCajas}>Guardar asignación</button></div>
+    </div></div>}
+    {dispUser && <div className="modal-backdrop"><div className="product-modal polished-modal">
+      <div className="modal-head"><div><h3>Dispositivos de {dispUser.nombre}</h3></div><button type="button" onClick={() => setDispUser(null)}><X /></button></div>
+      <p className="form-hint">Celulares que entran sin pedir usuario y clave. Si el empleado deja de trabajar, revocá sus dispositivos y desactivá el usuario: no podrá entrar más.</p>
+      <table><thead><tr><th>Empresa</th><th>Creado</th><th>Vence</th><th></th></tr></thead>
+        <tbody>{dispositivos.map((d: any) => <tr key={d.id}>
+          <td>{d.empresa || d.empresa_id}</td>
+          <td>{String(d.created_at || "").slice(0, 16)}</td>
+          <td>{String(d.expires_at || "").slice(0, 16)}</td>
+          <td><button onClick={() => revocarDispositivos([d.id])}>Revocar</button></td>
+        </tr>)}</tbody>
+      </table>
+      {!dispositivos.length && <div className="empty-table">Este usuario no tiene dispositivos recordados.</div>}
+      <div className="modal-actions">
+        <button type="button" onClick={() => setDispUser(null)}>Cerrar</button>
+        {dispositivos.length > 0 && <button className="danger-action" onClick={() => revocarDispositivos([])}>Revocar todos</button>}
+      </div>
     </div></div>}
   </div>;
 }

@@ -82,6 +82,24 @@ export function limpiar(store: StoreMovil) {
 }
 
 /*
+ * Dispositivo recordado: guarda el token de sesión larga para que el
+ * celular del vendedor/repartidor abra sin pedir usuario y clave.
+ * El administrador lo puede dar de baja desde Usuarios → Dispositivos.
+ */
+export async function guardarDispositivo(refreshToken: string) {
+  return guardar("meta", { id: "dispositivo", refreshToken, guardado: new Date().toISOString() });
+}
+
+export async function leerDispositivo(): Promise<string | null> {
+  const row: any = await obtener("meta", "dispositivo");
+  return row?.refreshToken || null;
+}
+
+export async function borrarDispositivo() {
+  return eliminar("meta", "dispositivo");
+}
+
+/*
  * UUID para identificar cada pedido/visita creado en el celular y que el
  * servidor no lo duplique al sincronizar.
  */

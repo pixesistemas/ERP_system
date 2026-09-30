@@ -4,6 +4,10 @@ const {
   setUsuarioActivo,
   cambiarRolUsuario,
 } = require("../repositories/usuario.repository");
+const {
+  listarDispositivos: listarDispositivosRepo,
+  revocarDispositivos: revocarDispositivosRepo,
+} = require("../repositories/refreshToken.repository");
 
 const db = require("../db/database");
 
@@ -234,6 +238,31 @@ function guardarCajas(req, res, next) {
   }
 }
 
+/*
+ * Dispositivos (celulares) que tienen la sesión recordada del usuario.
+ * El administrador los ve y los puede dar de baja: a partir de ahí el
+ * dispositivo vuelve a pedir usuario y clave.
+ */
+function listarDispositivos(req, res, next) {
+  try {
+    const usuarioId = Number(req.params.id);
+    res.json({ ok: true, dispositivos: listarDispositivosRepo(usuarioId) });
+  } catch (error) {
+    next(error);
+  }
+}
+
+function revocarDispositivos(req, res, next) {
+  try {
+    const usuarioId = Number(req.params.id);
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids : [];
+    const cantidad = revocarDispositivosRepo(usuarioId, ids);
+    res.json({ ok: true, revocados: cantidad });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   crear,
   listar,
@@ -243,4 +272,6 @@ module.exports = {
   guardarPuntosVenta,
   listarCajas,
   guardarCajas,
+  listarDispositivos,
+  revocarDispositivos,
 };

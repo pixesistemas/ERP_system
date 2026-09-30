@@ -12,6 +12,7 @@ const {
   createRefreshToken,
   getRefreshToken,
   revokeRefreshToken,
+  touchRefreshToken,
 } = require("../repositories/refreshToken.repository");
 
 const { getEmpresaByNombre } = require("../repositories/empresa.repository");
@@ -182,6 +183,9 @@ function refresh({ refreshToken }) {
       expiresIn: process.env.JWT_EXPIRES_IN || "8h",
     },
   );
+
+  /* Mientras el dispositivo se use, se corre el vencimiento 30 días. */
+  touchRefreshToken(stored.id);
 
   return {
     token,

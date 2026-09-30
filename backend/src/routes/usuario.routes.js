@@ -43,4 +43,16 @@ router.put(
   controller.guardarCajas,
 );
 
+router.get(
+  "/:id/dispositivos",
+  requirePermission("usuarios.gestionar"),
+  controller.listarDispositivos,
+);
+
+router.post(
+  "/:id/dispositivos/revocar",
+  requirePermission("usuarios.gestionar"),
+  controller.revocarDispositivos,
+);
+
 module.exports = router;
