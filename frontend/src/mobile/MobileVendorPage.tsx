@@ -325,7 +325,7 @@ export function MobileVendorPage() {
         <p>{clientes.length} clientes en tu cartera</p>
       </div>
       <div className="mobile-grid">
-        <button className="mobile-action" onClick={() => { setVista("pedidos"); }}><ClipboardList size={22} /><strong>Pedidos de hoy</strong><span>{pedidosServer.length} enviados</span></button>
+        <button className="mobile-action" onClick={() => { setVista("pedidos"); }}><ClipboardList size={22} /><strong>Pedidos de hoy</strong><span>{pedidosServer.filter((p: any) => !["ENTREGADO", "RECHAZADO"].includes(String(p.estado_pedido || "").toUpperCase())).length} en curso · {pedidosServer.length} en total</span></button>
         <button className="mobile-action" onClick={() => { setVista("clientes"); setQ(""); }}><UserRound size={22} /><strong>Clientes</strong><span>Buscar y tomar pedido</span></button>
         <button className="mobile-action" onClick={() => { setVista("ruta"); }}><Route size={22} /><strong>Ruta</strong><span>Por localidad</span></button>
         <button className="mobile-action" onClick={() => { setVista("clientes"); setQ(""); setNotice("Elegí el cliente para registrar la visita."); }}><MapPin size={22} /><strong>Visitas</strong><span>Registrar recorrido</span></button>
@@ -403,7 +403,7 @@ export function MobileVendorPage() {
         </div>)}
         {pedidosServer.map((p: any) => <div key={p.id} className="mobile-cliente">
           <div><strong>{p.cliente || "CONSUMIDOR FINAL"}</strong><span>{p.tipo} {String(p.punto_venta || "").padStart(4, "0")}-{String(p.numero || "").padStart(8, "0")} · {String(p.fecha || "").slice(0, 10)}</span></div>
-          <small className="badge">{p.estado || "PENDIENTE"}</small>
+          <small className="badge">{p.estado_pedido || p.estado || "PENDIENTE"}</small>
         </div>)}
         {!cola.length && !pedidosServer.length && <div className="empty-table">Todavía no enviaste pedidos.</div>}
       </div>
