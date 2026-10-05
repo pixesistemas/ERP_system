@@ -9,6 +9,7 @@ import { fmtFecha } from "../utils/fecha";
  */
 export function MobileDriverPage() {
   const [ruta, setRuta] = useState<any>(null);
+  const [ultimaCerrada, setUltimaCerrada] = useState<any>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -24,6 +25,7 @@ export function MobileDriverPage() {
     try {
       const r = await erpApi.miRutaReparto();
       setRuta(r.ruta ? r : null);
+      setUltimaCerrada(r.ultimaCerrada || null);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -100,8 +102,8 @@ export function MobileDriverPage() {
     return <div className="mobile-app">
       <div className="mobile-card">
         <h3>App del repartidor</h3>
-        <p>No tenés una ruta asignada en este momento.</p>
-        <p>La oficina arma la ruta desde <strong>Ventas → Reparto</strong> y la asigna a <strong>tu usuario</strong>; en cuanto lo haga, aparece acá automáticamente (se actualiza sola cada 20 segundos).</p>
+        <p>No tenés una ruta activa en este momento.</p>
+        {ultimaCerrada ? <p>Tu última ruta está <strong>finalizada</strong> (del {fmtFecha(ultimaCerrada.fecha)}). Pedile a la oficina que la <strong>reabra</strong> o que arme una nueva.</p> : <p>La oficina arma la ruta desde <strong>Ventas → Reparto</strong> y la asigna a <strong>tu usuario</strong>; en cuanto lo haga, aparece acá automáticamente (se actualiza sola cada 20 segundos).</p>}
         <button className="mobile-btn-sec" onClick={cargar}><RefreshCw size={16} /> Actualizar ahora</button>
       </div>
       {error && <div className="error-box">{error}</div>}

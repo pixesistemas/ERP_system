@@ -155,10 +155,14 @@ class WSFEService {
               MonId: data.moneda || "PES",
               MonCotiz: Number(data.cotizacion || 1),
 
-              ...(esNota && cbteAsoc
+              /*
+               * Notas de crédito/débito: AFIP exige CbtesAsoc > CbteAsoc
+               * con el comprobante original (error 10197 si falta).
+               */
+              ...(esNota && cbteAsoc && cbteAsoc.length
                 ? {
-                    CbteAsoc: {
-                      CbteAsocReq: cbteAsoc,
+                    CbtesAsoc: {
+                      CbteAsoc: cbteAsoc,
                     },
                   }
                 : {}),

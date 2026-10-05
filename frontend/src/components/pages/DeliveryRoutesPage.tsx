@@ -110,12 +110,27 @@ export function DeliveryRoutesPage() {
   }
 
   async function cerrarRuta() {
-    if (!detalle || !confirm("¿Cerrar la ruta? El repartidor dejará de verla.")) return;
+    if (!detalle || !confirm("¿Finalizar la ruta? Deja de verse en la app del repartidor. Si te equivocaste, después la podés reabrir.")) return;
     setBusy(true);
     try {
       await erpApi.cerrarRutaReparto(detalle.ruta.id);
-      setNotice("Ruta cerrada.");
+      setNotice("Ruta finalizada. El repartidor ya no la ve en su app.");
       setDetalle(null);
+      await cargar();
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function reabrirRuta() {
+    if (!detalle || !confirm("¿Reabrir la ruta para que vuelva a verse en la app del repartidor?")) return;
+    setBusy(true);
+    try {
+      await erpApi.reabrirRutaReparto(detalle.ruta.id);
+      setNotice("Ruta reabierta: el repartidor ya la ve en su app.");
+      await abrirRuta(detalle.ruta.id);
       await cargar();
     } catch (e: any) {
       setError(e.message);
@@ -158,7 +173,7 @@ export function DeliveryRoutesPage() {
         <thead><tr><th></th><th>Fecha</th><th>Vendedor</th><th>Cliente</th><th>Dirección</th><th>Total</th></tr></thead>
         <tbody>{pedidos.filter((p: any) => !p.en_ruta).map((p: any) => <tr key={p.id}>
           <td><input type="checkbox" checked={seleccion.has(p.id)} onChange={() => toggle(p.id)} /></td>
-          <td>{String(p.fecha || "").slice(0, 10)}</td>
+          <td>{fmtFecha(p.fecha)}</td>
           <td>{p.vendedor || "-"}</td>
           <td><strong>{p.cliente}</strong><small>{p.tipo === "PRESUPUESTO" ? "Presupuesto" : "Nota de pedido"} {String(p.punto_venta || "").padStart(4, "0")}-{String(p.numero || "").padStart(8, "0")}</small></td>
           <td>{p.domicilio || ""} {p.localidad ? `· ${p.localidad}` : ""}</td>
@@ -227,7 +242,8 @@ export function DeliveryRoutesPage() {
       <div className="modal-actions">
         <button onClick={imprimirHoja}><Printer size={15} /> Imprimir hoja</button>
         {detalle.ruta.estado !== "CERRADA" && <button disabled={busy} onClick={guardarOrden}>Guardar orden</button>}
-        {detalle.ruta.estado !== "CERRADA" && <button className="danger-action" disabled={busy} onClick={cerrarRuta}>Cerrar ruta</button>}
+        {detalle.ruta.estado !== "CERRADA" && <button className="danger-action" disabled={busy} onClick={cerrarRuta}>Finalizar ruta</button>}
+        {detalle.ruta.estado === "CERRADA" && <button className="primary-action" disabled={busy} onClick={reabrirRuta}>Reabrir ruta</button>}
       </div>
     </div></div>}
   </div>;
