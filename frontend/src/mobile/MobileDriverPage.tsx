@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ChevronDown, ChevronUp, MapPin, Package, Phone, RefreshCw, Truck, X } from "lucide-react";
 import { erpApi } from "../services/api";
+import { fmtFecha } from "../utils/fecha";
 
 /*
  * App del repartidor (PWA): hoja de ruta del día con paradas ordenadas,
@@ -32,6 +33,24 @@ export function MobileDriverPage() {
 
   useEffect(() => {
     cargar();
+  }, []);
+
+  /*
+   * La ruta se actualiza sola cada 20 segundos y al volver a la app:
+   * el repartidor ve los cambios sin cerrar y abrir.
+   */
+  useEffect(() => {
+    const intervalo = setInterval(() => {
+      if (document.visibilityState === "visible") cargar();
+    }, 20000);
+    const alVolver = () => {
+      if (document.visibilityState === "visible") cargar();
+    };
+    document.addEventListener("visibilitychange", alVolver);
+    return () => {
+      clearInterval(intervalo);
+      document.removeEventListener("visibilitychange", alVolver);
+    };
   }, []);
 
   function pedirGps(): Promise<{ lat: number | null; lng: number | null }> {
@@ -81,8 +100,9 @@ export function MobileDriverPage() {
     return <div className="mobile-app">
       <div className="mobile-card">
         <h3>App del repartidor</h3>
-        <p>No tenés una ruta asignada en este momento. Cuando el administrador arme una ruta para vos, va a aparecer acá.</p>
-        <button className="mobile-btn-sec" onClick={cargar}><RefreshCw size={16} /> Actualizar</button>
+        <p>No tenés una ruta asignada en este momento.</p>
+        <p>La oficina arma la ruta desde <strong>Ventas → Reparto</strong> y la asigna a <strong>tu usuario</strong>; en cuanto lo haga, aparece acá automáticamente (se actualiza sola cada 20 segundos).</p>
+        <button className="mobile-btn-sec" onClick={cargar}><RefreshCw size={16} /> Actualizar ahora</button>
       </div>
       {error && <div className="error-box">{error}</div>}
     </div>;
@@ -94,7 +114,7 @@ export function MobileDriverPage() {
     <div className="mobile-topbar">
       <div className="mobile-hero">
         <h2>Ruta {ruta.ruta.numero}</h2>
-        <p>{String(ruta.ruta.fecha || "").slice(0, 10)} · {ruta.pedidos.length} paradas · {pendientes} pendientes</p>
+        <p>{fmtFecha(ruta.ruta.fecha)} · {ruta.pedidos.length} paradas · {pendientes} pendientes</p>
       </div>
       <button className="mobile-back" onClick={cargar}><RefreshCw size={18} /></button>
     </div>

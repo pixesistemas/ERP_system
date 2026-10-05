@@ -263,6 +263,7 @@ export const erpApi = {
   listPosOperationItems: (id:number) => request<any>(`/erp/pos/operaciones/${id}/items`),
   listComisiones: () => request<any>('/comisiones'),
   posRetryFiscal: (id:number) => request<any>(`/erp/pos/operaciones/${id}/fiscal/reintentar`,{method:'POST',body:JSON.stringify({})}),
+  listFiscalIntentos: (limit=50) => request<any>(`/erp/fiscal/intentos?limit=${limit}`),
   posNotaCredito: (id:number,body?:any) => request<any>(`/erp/pos/operaciones/${id}/nota-credito`,{method:'POST',body:JSON.stringify(body||{})}),
   posNotaDebito: (id:number,body?:any) => request<any>(`/erp/pos/operaciones/${id}/nota-debito`,{method:'POST',body:JSON.stringify(body||{})}),
   posFacturarPendiente: (id:number,body?:any) => request<any>(`/erp/pos/operaciones/${id}/facturar`,{method:'POST',body:JSON.stringify(body||{})}),

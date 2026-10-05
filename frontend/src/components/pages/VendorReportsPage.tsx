@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, Download, Printer, RefreshCw, Search } from "lucide-react";
 import { erpApi } from "../../services/api";
 import { useServerRows } from "../../hooks/useServerStorage";
+import { fmtFecha } from "../../utils/fecha";
 
 /*
  * Reportes fijos por vendedor (Etapa 5).
@@ -188,7 +189,7 @@ export function VendorReportsPage() {
   const total = useMemo(() => suma(filtradas), [filtradas]);
 
   const titulo = `REPORTES DE VENTAS ${TIPOS.find((t) => t.key === tipo)?.label.toUpperCase()}`;
-  const subtitulo = `Desde ${desde} hasta ${hasta}${vendedorId ? ` · Vendedor: ${sellers.find((s: any) => Number(s.id) === vendedorId)?.nombre || ""}` : ""}`;
+  const subtitulo = `Desde ${fmtFecha(desde)} hasta ${fmtFecha(hasta)}${vendedorId ? ` · Vendedor: ${sellers.find((s: any) => Number(s.id) === vendedorId)?.nombre || ""}` : ""}`;
 
   const rowsConTotal = (rows: Salida[]) => [...rows, { kind: "total" as const, key: "total", cells: [`Total Acumulado (${filas.length} líneas)`, fmtCant(total.cantidad), `$ ${fmtMon(total.precio)}`, ...(verComision ? [`$ ${fmtMon(total.comision)}`] : [])] }];
 

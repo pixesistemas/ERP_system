@@ -9,12 +9,14 @@ export function SalesHistoryPage() {
   const [busy, setBusy] = useState<number | null>(null);
   const [obsOpen, setObsOpen] = useState<number | null>(null);
   const [pdfModal, setPdfModal] = useState<{ url: string; title: string } | null>(null);
+  const [intentos, setIntentos] = useState<any[]>([]);
 
   async function load() {
     try {
       setError("");
       const r:any = await erpApi.listPosOperations();
       setSales(r.operations || []);
+      erpApi.listFiscalIntentos(30).then((x: any) => setIntentos(x.intentos || [])).catch(() => {});
     } catch (e:any) {
       setError(e.message);
     }
@@ -82,6 +84,18 @@ export function SalesHistoryPage() {
     <div className="products-toolbar"><div><h3>Historial de ventas</h3><p>Ventas del POS con estado fiscal ARCA.</p></div><button className="primary-action" onClick={load}>Actualizar</button></div>
     {error && <div className="error-box">{error}</div>}
     <div className="products-card"><table><thead><tr><th>Fecha</th><th>Comprobante</th><th>Cliente</th><th>Estado fiscal</th><th>CAE</th><th>Total</th><th></th></tr></thead><tbody>{sales.map((s:any)=><Fragment key={s.id}><tr><td>{fmtFechaHora(s.fecha || s.created_at)}</td><td><strong>{numeroFiscal(s)}</strong></td><td>{s.cliente || s.razon_social || s.cliente_nombre ? (s.cliente || s.razon_social || s.cliente_nombre) : 'CONSUMIDOR FINAL'}</td><td><span className={claseFiscal(s)}>{estadoFiscal(s)}</span></td><td>{s.cae || '-'}</td><td className="price">$ {Number(s.total || s.importe_total || 0).toLocaleString('es-AR',{minimumFractionDigits:2})}</td><td className="row-actions">{s.afip_estado==='PENDIENTE'&&<button disabled={busy===s.id} onClick={()=>retry(s.id)}>Reintentar CAE</button>}{s.documento_id&&<button disabled={busy===s.id} onClick={()=>verPdf(s)}>PDF</button>}<button onClick={()=>setObsOpen(obsOpen===s.id?null:s.id)}>Ver observación</button></td></tr>{obsOpen===s.id&&<tr className="obs-row"><td colSpan={7}><strong>Observación:</strong> {s.observaciones || 'Sin observación.'}{(()=>{const arca=observacionesArca(s);if(!arca)return null;return <><div className="obs-arca"><strong>Respuesta de ARCA:</strong>{arca.map((o:any,i:number)=><div className="obs-arca-line" key={i}><b>Obs {o.Code}</b><span>{o.Msg}</span></div>)}</div></>})()}</td></tr>}</Fragment>)}</tbody></table>{!sales.length&&<div className="empty-table">Todavía no hay ventas registradas.</div>}</div>
+    {intentos.length > 0 && <div className="products-card" style={{ marginTop: 12 }}>
+      <div className="products-toolbar"><div><h3>Rechazos y errores de ARCA</h3><p>Últimos intentos de CAE rechazados o fallidos, con el motivo que devolvió ARCA. Sirve para corregir y reintentar.</p></div></div>
+      <table><thead><tr><th>Fecha</th><th>Comprobante</th><th>Estado</th><th>Motivo</th><th></th></tr></thead>
+        <tbody>{intentos.map((i: any) => <tr key={i.id}>
+          <td>{fmtFechaHora(i.created_at)}</td>
+          <td>{i.operacion || ""} {i.letra || ""} {i.numero ? `N° ${i.numero}` : ""}</td>
+          <td><span className="badge danger">{i.estado}</span></td>
+          <td><small>{i.error || "Sin detalle"}</small></td>
+          <td>{i.venta_id ? <button disabled={busy === i.venta_id} onClick={() => retry(i.venta_id)}>Reintentar CAE</button> : "-"}</td>
+        </tr>)}</tbody>
+      </table>
+    </div>}
     {pdfModal && <PdfViewerModal url={pdfModal.url} title={pdfModal.title} onClose={() => setPdfModal(null)} />}
   </div>;
 }

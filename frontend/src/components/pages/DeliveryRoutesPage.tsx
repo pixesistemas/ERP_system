@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, MapPin, Printer, RefreshCw, Truck, X } from "lucide-react";
 import { api, erpApi } from "../../services/api";
+import { fmtFecha } from "../../utils/fecha";
 
 /*
  * Reparto (Etapa 4): armado de rutas con pedidos confirmados (manual o
@@ -40,6 +41,13 @@ export function DeliveryRoutesPage() {
     api.listUsers().then((u: any) => setRepartidores(u.usuarios || [])).catch(() => {});
   }, []);
 
+  /* Si hay un usuario con rol REPARTIDOR, se preselecciona. */
+  useEffect(() => {
+    if (repartidorId) return;
+    const rep = repartidores.find((u: any) => String(u.rol || "").toUpperCase() === "REPARTIDOR");
+    if (rep) setRepartidorId(Number(rep.id));
+  }, [repartidores]);
+
   function toggle(id: number) {
     const next = new Set(seleccion);
     if (next.has(id)) next.delete(id);
@@ -49,6 +57,7 @@ export function DeliveryRoutesPage() {
 
   async function crear(orden: "MANUAL" | "ZONA") {
     if (!seleccion.size) return setError("Seleccioná al menos un pedido confirmado.");
+    if (!repartidorId && !confirm("No asignaste repartidor: no la va a ver en su app. ¿Crear la ruta igual?")) return;
     setBusy(true);
     setError("");
     try {
@@ -121,7 +130,7 @@ export function DeliveryRoutesPage() {
     const carga = detalle.carga.map((c: any) => `<tr><td>${c.codigo}</td><td>${c.descripcion}</td><td>${Number(c.cantidad).toLocaleString("es-AR")}</td></tr>`).join("");
     const w = window.open("", "_blank");
     if (!w) return;
-    w.document.write(`<html><head><title>Hoja de ruta ${detalle.ruta.numero}</title><style>@page{size:A4 portrait;margin:10mm}body{font-family:Arial;font-size:10px}h1{font-size:15px}h2{font-size:12px;margin-top:14px}table{width:100%;border-collapse:collapse;margin-top:6px}th,td{border:1px solid #999;padding:3px 5px;text-align:left}th{background:#eee}</style></head><body><h1>HOJA DE RUTA ${detalle.ruta.numero}</h1><div>Fecha: ${detalle.ruta.fecha} · Repartidor: ${detalle.ruta.repartidor_nombre || "-"} · Paradas: ${detalle.pedidos.length}</div><h2>Recorrido</h2><table><thead><tr><th>#</th><th>Cliente</th><th>Dirección</th><th>Teléfono</th><th>Pedido</th></tr></thead><tbody>${filas}</tbody></table><h2>Carga del vehículo</h2><table><thead><tr><th>Código</th><th>Producto</th><th>Cantidad</th></tr></thead><tbody>${carga}</tbody></table></body></html>`);
+    w.document.write(`<html><head><title>Hoja de ruta ${detalle.ruta.numero}</title><style>@page{size:A4 portrait;margin:10mm}body{font-family:Arial;font-size:10px}h1{font-size:15px}h2{font-size:12px;margin-top:14px}table{width:100%;border-collapse:collapse;margin-top:6px}th,td{border:1px solid #999;padding:3px 5px;text-align:left}th{background:#eee}</style></head><body><h1>HOJA DE RUTA ${detalle.ruta.numero}</h1><div>Fecha: ${fmtFecha(detalle.ruta.fecha)} · Repartidor: ${detalle.ruta.repartidor_nombre || "-"} · Paradas: ${detalle.pedidos.length}</div><h2>Recorrido</h2><table><thead><tr><th>#</th><th>Cliente</th><th>Dirección</th><th>Teléfono</th><th>Pedido</th></tr></thead><tbody>${filas}</tbody></table><h2>Carga del vehículo</h2><table><thead><tr><th>Código</th><th>Producto</th><th>Cantidad</th></tr></thead><tbody>${carga}</tbody></table></body></html>`);
     w.document.close();
     setTimeout(() => w.print(), 300);
   }
@@ -180,7 +189,7 @@ export function DeliveryRoutesPage() {
         return true;
       }).map((r: any) => <tr key={r.id}>
         <td><strong>{r.numero}</strong></td>
-        <td>{String(r.fecha || "").slice(0, 10)}</td>
+        <td>{fmtFecha(r.fecha)}</td>
         <td>{r.repartidor_nombre || "Sin asignar"}</td>
         <td>{r.pedidos}</td>
         <td className="price">$ {Number(r.total || 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}</td>
@@ -193,7 +202,7 @@ export function DeliveryRoutesPage() {
 
     {detalle && <div className="modal-backdrop"><div className="modal polished-modal order-review-modal">
       <div className="modal-head">
-        <div><h3>Ruta {detalle.ruta.numero}</h3><p>{String(detalle.ruta.fecha || "").slice(0, 10)} · Repartidor: <strong>{detalle.ruta.repartidor_nombre || "Sin asignar"}</strong> · {detalle.pedidos.length} paradas</p></div>
+        <div><h3>Ruta {detalle.ruta.numero}</h3><p>{fmtFecha(detalle.ruta.fecha)} · Repartidor: <strong>{detalle.ruta.repartidor_nombre || "Sin asignar"}</strong> · {detalle.pedidos.length} paradas</p></div>
         <button onClick={() => setDetalle(null)}><X /></button>
       </div>
 

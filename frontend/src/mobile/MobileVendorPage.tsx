@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { erpApi } from "../services/api";
+import { fmtFecha } from "../utils/fecha";
 import { guardar, guardarMuchos, listar, obtener, uuidMovil } from "./offlineDb";
 
 /*
@@ -117,6 +118,33 @@ export function MobileVendorPage() {
   useEffect(() => {
     if (online && !cargando) sincronizar();
   }, [online, cargando]);
+
+  /*
+   * Actualización automática: cada 30 segundos y al volver a la app, se
+   * refrescan los pedidos para ver los estados sin cerrar y abrir.
+   */
+  useEffect(() => {
+    if (!online) return;
+    const refrescar = async () => {
+      try {
+        const r = await erpApi.listMobileOrders();
+        setPedidosServer(r.pedidos || []);
+      } catch {
+        /* sin conexión: se reintenta solo */
+      }
+    };
+    const intervalo = setInterval(() => {
+      if (document.visibilityState === "visible") refrescar();
+    }, 30000);
+    const alVolver = () => {
+      if (document.visibilityState === "visible") refrescar();
+    };
+    document.addEventListener("visibilitychange", alVolver);
+    return () => {
+      clearInterval(intervalo);
+      document.removeEventListener("visibilitychange", alVolver);
+    };
+  }, [online]);
 
   async function sincronizar() {
     if (sincronizando) return;
@@ -339,7 +367,7 @@ export function MobileVendorPage() {
       <div className="mobile-list">
         {clientesFiltrados.slice(0, 80).map((c: any) => <button key={c.id} className="mobile-cliente" onClick={() => { setClienteSel(c); setVista("cliente"); }}>
           <div><strong>{c.razon_social}</strong><span>{c.domicilio || c.localidad || ""}</span></div>
-          <small>{ultimoPedido(c.id)?.fecha ? `Último pedido: ${String(ultimoPedido(c.id).fecha).slice(0, 10)}` : "Sin pedidos"}</small>
+          <small>{ultimoPedido(c.id)?.fecha ? `Último pedido: ${fmtFecha(ultimoPedido(c.id).fecha)}` : "Sin pedidos"}</small>
         </button>)}
         {!clientesFiltrados.length && <div className="empty-table">No hay clientes que coincidan.</div>}
       </div>
@@ -402,7 +430,7 @@ export function MobileVendorPage() {
           <small className="badge warning">PENDIENTE</small>
         </div>)}
         {pedidosServer.map((p: any) => <div key={p.id} className="mobile-cliente">
-          <div><strong>{p.cliente || "CONSUMIDOR FINAL"}</strong><span>{p.tipo} {String(p.punto_venta || "").padStart(4, "0")}-{String(p.numero || "").padStart(8, "0")} · {String(p.fecha || "").slice(0, 10)}</span></div>
+          <div><strong>{p.cliente || "CONSUMIDOR FINAL"}</strong><span>{p.tipo} {String(p.punto_venta || "").padStart(4, "0")}-{String(p.numero || "").padStart(8, "0")} · {fmtFecha(p.fecha)}</span></div>
           <small className="badge">{p.estado_pedido || p.estado || "PENDIENTE"}</small>
         </div>)}
         {!cola.length && !pedidosServer.length && <div className="empty-table">Todavía no enviaste pedidos.</div>}

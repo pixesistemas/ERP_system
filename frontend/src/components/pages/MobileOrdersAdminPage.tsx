@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Check, MapPin, RefreshCw, Search, Truck, X } from "lucide-react";
 import { erpApi } from "../../services/api";
 import { useServerRows } from "../../hooks/useServerStorage";
+import { fmtFecha, fmtFechaHora } from "../../utils/fecha";
 
 /*
  * Bandeja de pedidos del administrador (Etapa 3).
@@ -154,7 +155,7 @@ export function MobileOrdersAdminPage() {
     <div className="products-card"><table>
       <thead><tr><th>Fecha</th><th>Canal</th><th>Vendedor</th><th>Cliente</th><th>Ubicación</th><th>Total</th><th>Estado</th><th></th></tr></thead>
       <tbody>{pedidos.map((p: any) => <tr key={p.id}>
-        <td>{String(p.fecha || "").slice(0, 10)}<small>{p.hora_visita || ""}</small></td>
+        <td>{fmtFecha(p.fecha)}<small>{String(p.hora_visita || "").slice(0, 5)}</small></td>
         <td><span className="badge">{p.canal || "POS"}</span></td>
         <td>{p.vendedor || "-"}</td>
         <td><strong>{p.cliente || "CONSUMIDOR FINAL"}</strong><small>{p.tipo === "PRESUPUESTO" ? "Presupuesto" : "Nota de pedido"} {String(p.punto_venta || "").padStart(4, "0")}-{String(p.numero || "").padStart(8, "0")}</small></td>
@@ -204,7 +205,7 @@ export function MobileOrdersAdminPage() {
       <div className="order-historial">
         <h4>Trazabilidad</h4>
         {detalle.historial.map((h: any) => <div key={h.id} className="order-historial-linea">
-          <span>{String(h.created_at || "").slice(0, 16)}</span>
+          <span>{fmtFechaHora(h.created_at)}</span>
           <strong>{h.usuario_nombre || "SISTEMA"}</strong>
           <em className={claseEstado(h.estado)}>{h.estado}</em>
           {h.detalle && <small>{h.detalle}</small>}

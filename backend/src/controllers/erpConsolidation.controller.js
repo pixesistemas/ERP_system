@@ -974,6 +974,20 @@ function crearReporteUsuario(req,res){
   res.status(201).json({ok:true,id:Number(info.lastInsertRowid)});
 }
 
+/*
+ * Últimos intentos fiscales (CAE) con error o rechazo, para ver el motivo
+ * exacto que devolvió ARCA.
+ */
+function listFiscalIntentos(req,res){
+  const e=empresaId(req);
+  const limit=Math.min(200,Math.max(1,Number(req.query.limit||50)));
+  const rows=db.prepare(`SELECT id,venta_id,documento_id,operacion,estado,intento,tipo_comprobante,letra,numero,cae,error,created_at
+    FROM fiscal_intentos
+    WHERE empresa_id=? AND estado IN ('RECHAZADO','ERROR','ERROR_RED')
+    ORDER BY id DESC LIMIT ?`).all(e,limit);
+  res.json({ok:true,intentos:rows});
+}
+
 function vatBook(req,res){
   const e=empresaId(req),month=Number(req.query.month||new Date().getMonth()+1),year=Number(req.query.year||new Date().getFullYear()),pv=Number(req.query.pv||0);
   const sales=db.prepare(`SELECT d.id,d.fecha,c.razon_social razon_social,c.cuit,d.tipo,d.punto_venta,d.numero,d.importe_neto neto,d.importe_iva iva,d.importe_total total FROM documentos_comerciales d LEFT JOIN clientes c ON c.id=d.cliente_id WHERE d.empresa_id=? AND CAST(strftime('%m',d.fecha) AS INTEGER)=? AND CAST(strftime('%Y',d.fecha) AS INTEGER)=? ${pv?'AND d.punto_venta=? ':''}AND (UPPER(d.tipo) LIKE 'FACTURA%' OR UPPER(d.tipo) LIKE 'NOTA DE CREDITO%' OR UPPER(d.tipo) LIKE 'NOTA DE CRÉDITO%' OR UPPER(d.tipo) LIKE 'NOTA DE DEBITO%' OR UPPER(d.tipo) LIKE 'NOTA DE DÉBITO%') ORDER BY d.fecha,d.id`).all(e,month,year,...(pv?[pv]:[])).map(r=>{const credit=/CREDITO|CRÉDITO/i.test(r.tipo);return {...r,neto:credit?-Math.abs(Number(r.neto||0)):Number(r.neto||0),iva:credit?-Math.abs(Number(r.iva||0)):Number(r.iva||0),total:credit?-Math.abs(Number(r.total||0)):Number(r.total||0)}});
@@ -1119,7 +1133,7 @@ function updatePrices(req,res){
 function createReserveFund(req,res){const e=empresaId(req),d=req.body,amount=Number(d.importe_original||d.importe||0);if(!d.cliente_id||amount<=0)return res.status(400).json({ok:false,error:'Cliente e importe son obligatorios.'});const count=db.prepare('SELECT COUNT(*) n FROM reservas_monto WHERE empresa_id=?').get(e).n;const number=`RM-${String(count+1).padStart(8,'0')}`;const products=db.prepare('SELECT id,codigo,precio FROM productos WHERE empresa_id=? AND activo=1').all(e);const snapshot=Object.fromEntries(products.map(p=>[String(p.id),{codigo:p.codigo,precio:Number(p.precio)}]));const info=db.prepare(`INSERT INTO reservas_monto(empresa_id,cliente_id,numero,fecha,importe_original,saldo,lista_precio_id,lista_precio_nombre,precios_snapshot,observaciones) VALUES(?,?,?,?,?,?,?,?,?,?)`).run(e,Number(d.cliente_id),number,d.fecha||nowLocal().slice(0,10),amount,amount,d.lista_precio_id||null,d.lista_precio_nombre||'GENERAL',JSON.stringify(snapshot),d.observaciones||'');res.status(201).json({ok:true,reservation:db.prepare('SELECT * FROM reservas_monto WHERE id=?').get(info.lastInsertRowid)})}
 function consumeReserveFund(req,res){const e=empresaId(req),id=Number(req.params.id),amount=Number(req.body.importe||0);const tx=db.transaction(()=>{const r=db.prepare('SELECT * FROM reservas_monto WHERE id=? AND empresa_id=?').get(id,e);if(!r)throw Object.assign(new Error('Reserva inexistente.'),{status:404});if(amount<=0||amount>Number(r.saldo))throw Object.assign(new Error('El importe supera el saldo reservado.'),{status:409});db.prepare('UPDATE reservas_monto SET saldo=saldo-?,estado=CASE WHEN saldo-?<=0 THEN \'AGOTADA\' ELSE \'VIGENTE\' END,updated_at=CURRENT_TIMESTAMP WHERE id=?').run(amount,amount,id);db.prepare('INSERT INTO reserva_monto_consumos(reserva_id,documento_tipo,documento_id,importe,detalle) VALUES(?,?,?,?,?)').run(id,req.body.documento_tipo||'POS',req.body.documento_id||null,amount,req.body.detalle||'Consumo desde punto de venta');return db.prepare('SELECT * FROM reservas_monto WHERE id=?').get(id)});res.json({ok:true,reservation:tx()})}
 
-module.exports={listBanks,saveBank,listPos,savePos,listChecks,createCheck,deleteCajero,depositChecks,listWhatsapp,saveWhatsapp,uploadFiscal,fiscalFiles,listPurchases,savePurchase,deletePurchase,importarComprasExcel,ocrCompraFoto,listComprasPendientes,confirmarCompraPendiente,descartarCompraPendiente,listPedidosClientes,listPedidosActivos,listDevoluciones,devolverItemsPedido,listVendedorClientes,guardarVendedorClientes,crearVisita,listVisitas,movilBootstrap,crearPedidoMovil,listPedidosMovil,listBandejaPedidos,detallePedidoMovil,revisarPedidoMovil,cambiarEstadoPedidoMovil,listPedidosParaRuta,crearRutaReparto,listRutasReparto,detalleRutaReparto,reordenarRutaReparto,marcarEntregaRuta,cerrarRutaReparto,miRutaReparto,reporteVendedoresDetalle,crearReporteUsuario,vatBook,borradorIva,saveBorradorIvaAjuste,renameBorradorIvaRubro,updatePrices,listReserveFunds,createReserveFund,consumeReserveFund};
+module.exports={listBanks,saveBank,listPos,savePos,listChecks,createCheck,deleteCajero,depositChecks,listWhatsapp,saveWhatsapp,uploadFiscal,fiscalFiles,listPurchases,savePurchase,deletePurchase,importarComprasExcel,ocrCompraFoto,listComprasPendientes,confirmarCompraPendiente,descartarCompraPendiente,listPedidosClientes,listPedidosActivos,listDevoluciones,devolverItemsPedido,listVendedorClientes,guardarVendedorClientes,crearVisita,listVisitas,movilBootstrap,crearPedidoMovil,listPedidosMovil,listBandejaPedidos,detallePedidoMovil,revisarPedidoMovil,cambiarEstadoPedidoMovil,listPedidosParaRuta,crearRutaReparto,listRutasReparto,detalleRutaReparto,reordenarRutaReparto,marcarEntregaRuta,cerrarRutaReparto,miRutaReparto,reporteVendedoresDetalle,crearReporteUsuario,listFiscalIntentos,vatBook,borradorIva,saveBorradorIvaAjuste,renameBorradorIvaRubro,updatePrices,listReserveFunds,createReserveFund,consumeReserveFund};
 
 function userId(req){ return Number(req.usuario?.id || req.user?.id || req.user?.userId || 1); }
 function listPosCatalogs(req,res){
@@ -1220,10 +1234,15 @@ async function createPosOperation(req,res){const e=empresaId(req);limpiarNotasVe
   if(accountSale&&!d.cliente_id)return res.status(400).json({ok:false,error:'La cuenta corriente exige seleccionar un cliente del sistema.'});
   let asociada=null;
   if(type==='NOTA_CREDITO'||type==='NOTA_DEBITO'){
-    if(!d.cliente_id)return res.status(400).json({ok:false,error:'La nota de crédito o débito exige seleccionar un cliente del sistema.'});
     if(!d.factura_asociada_id)return res.status(400).json({ok:false,error:'Seleccioná la factura asociada para emitir la nota.'});
     asociada=db.prepare(`SELECT v.id,v.cliente_id,v.condicion_pago,d.id documento_id,d.cae cae_original,d.punto_venta pv_original,d.numero numero_original,d.comprobante_tipo_afip tipo_afip_original FROM ventas_pos v JOIN documentos_comerciales d ON d.id=v.documento_id WHERE v.id=? AND v.empresa_id=? AND v.tipo='FACTURA' AND d.afip_estado='AUTORIZADO'`).get(Number(d.factura_asociada_id),e);
     if(!asociada)return res.status(422).json({ok:false,error:'La factura asociada no existe o no está autorizada por ARCA.'});
+    /*
+     * Las facturas de consumidor final no tienen cliente del sistema:
+     * la nota se emite igual con documento 99/0.
+     */
+    if(asociada.cliente_id&&!d.cliente_id)return res.status(400).json({ok:false,error:'La factura asociada es de un cliente del sistema: seleccionalo para emitir la nota.'});
+    if(!asociada.cliente_id&&!d.cliente_id)d.cliente_nombre='CONSUMIDOR FINAL';
   }
   const calculatedSubtotal=items.reduce((n,x)=>n+Number(x.precio_unitario||x.precio||0)*Number(x.cantidad||0)*(1-Number(x.descuento||0)/100),0);
   let subtotal=reserveWithdrawal?calculatedSubtotal:Number(d.subtotal||calculatedSubtotal);
@@ -1237,6 +1256,12 @@ async function createPosOperation(req,res){const e=empresaId(req);limpiarNotasVe
   // no responde (caída de red/timeout), la venta se registra como
   // PENDIENTE de CAE para no perder la operación y poder reintentarla.
   const cfg=comprobanteConfig(e,type);
+  /*
+   * Numeración independiente por tipo y punto de venta: los remitos X y R
+   * no comparten números, y cada comprobante no fiscal tiene la suya.
+   * (Las facturas electrónicas usan la numeración de ARCA.)
+   */
+  const numeradorTipo=type==='REMITO'?(remitoSub==='R'?'REMITO_R':'REMITO_X'):(cfg.numerador_tipo||type);
   if(cfg.requiere_cliente&&!d.cliente_id&&!(type==='REMITO'&&mode==='REMITO_X'))return res.status(400).json({ok:false,error:'Este comprobante requiere un cliente del sistema.'});
   if(cfg.requiere_vendedor&&!d.vendedor_id)return res.status(400).json({ok:false,error:'Este comprobante requiere seleccionar un vendedor.'});
   let number;
@@ -1254,7 +1279,9 @@ async function createPosOperation(req,res){const e=empresaId(req);limpiarNotasVe
       }
     }
     if(!fiscalPendiente&&!fiscal.ok){
-      return res.status(422).json({ok:false,error:'AFIP rechazó el comprobante. La venta no se registró.',detalle:fiscal.observaciones||fiscal.errores||fiscal.resultado||null});
+      const motivo=fiscal.observaciones||fiscal.errores||fiscal.resultado||null;
+      const textoMotivo=typeof motivo==='string'?motivo:JSON.stringify(motivo);
+      return res.status(422).json({ok:false,error:`AFIP rechazó el comprobante. La venta no se registró. Motivo: ${textoMotivo}.`,detalle:motivo});
     }
     if(fiscal&&fiscal.ok){
       number=fiscal.numero;
@@ -1262,10 +1289,10 @@ async function createPosOperation(req,res){const e=empresaId(req);limpiarNotasVe
       importeIva=fiscal.importeIva;
       total=fiscal.importeTotal;
     }else{
-      number=nextNumber(e,pv,cfg.numerador_tipo||type);
+      number=nextNumber(e,pv,numeradorTipo);
     }
   }else{
-    number=nextNumber(e,pv,cfg.numerador_tipo||type);
+    number=nextNumber(e,pv,numeradorTipo);
   }
 
   const chequeMonto=Number((d.pagos||{}).CHEQUE||(d.pagos||{}).cheque||0);
@@ -1608,7 +1635,11 @@ async function emitirNota(req,res,notaTipo){
     if(error instanceof FiscalNetworkError)return res.status(503).json({ok:false,error:error.message,afipEstado:'PENDIENTE'});
     return res.status(422).json({ok:false,error:error.message||`No se pudo emitir la ${notaTipo==='NOTA_CREDITO'?'nota de crédito':'nota de débito'}.`});
   }
-  if(!fiscal.ok)return res.status(422).json({ok:false,error:'AFIP rechazó la nota.',detalle:fiscal.observaciones||fiscal.errores||fiscal.resultado||null});
+  if(!fiscal.ok){
+    const motivo=fiscal.observaciones||fiscal.errores||fiscal.resultado||null;
+    const textoMotivo=typeof motivo==='string'?motivo:JSON.stringify(motivo);
+    return res.status(422).json({ok:false,error:`AFIP rechazó la nota. Motivo: ${textoMotivo}.`,detalle:motivo});
+  }
   const tx=db.transaction(()=>{
     const documentoId=insertarDocumentoNota({e,d,sale,items,pv:sale.pv_original,number:fiscal.numero,tipo:notaTipo,subtotal:fiscal.importeNeto,importeIva:fiscal.importeIva,total:fiscal.importeTotal,fiscal});
     if(sale.condicion_pago&&['CTA_CTE','CUENTA_CORRIENTE','CUENTA CORRIENTE'].includes(String(sale.condicion_pago).toUpperCase())&&client){
