@@ -421,6 +421,8 @@ function listPedidosClientes(req,res){
   const params=[e,...TIPOS_PEDIDO_ACTIVO];
   if(q){sql+=' AND (c.razon_social LIKE ? OR c.cuit LIKE ?)';params.push(`%${q}%`,`%${q}%`)}
   if(vendedorId){sql+=' AND v.vendedor_id=?';params.push(vendedorId)}
+  /* Los pedidos entregados o rechazados ya no se pueden modificar. */
+  sql+=" AND COALESCE(v.estado_pedido,'PENDIENTE') NOT IN ('ENTREGADO','RECHAZADO')";
   sql+=' GROUP BY v.cliente_id ORDER BY c.razon_social LIMIT 100';
   res.json({ok:true,clientes:db.prepare(sql).all(...params)});
 }
@@ -428,9 +430,10 @@ function listPedidosActivos(req,res){
   const e=empresaId(req),clienteId=Number(req.query.cliente_id||0),vendedorId=Number(req.query.vendedor_id||0);
   if(!clienteId)return res.status(400).json({ok:false,error:'Seleccioná un cliente.'});
   const filtroVendedor=vendedorId?' AND v.vendedor_id=?':'';
-  const pedidos=db.prepare(`SELECT v.id,v.tipo,d.subtipo,v.numero,v.punto_venta,v.total,v.fecha,v.estado,v.documento_id,vd.nombre vendedor
+  const pedidos=db.prepare(`SELECT v.id,v.tipo,d.subtipo,v.numero,v.punto_venta,v.total,v.fecha,v.estado,v.estado_pedido,v.documento_id,vd.nombre vendedor
     FROM ventas_pos v LEFT JOIN documentos_comerciales d ON d.id=v.documento_id LEFT JOIN vendedores vd ON vd.id=v.vendedor_id
     WHERE v.empresa_id=? AND v.cliente_id=? AND v.estado='PENDIENTE'
+      AND COALESCE(v.estado_pedido,'PENDIENTE') NOT IN ('ENTREGADO','RECHAZADO')
       AND v.tipo IN (${TIPOS_PEDIDO_ACTIVO.map(()=>'?').join(',')})${filtroVendedor} ORDER BY v.id DESC`).all(e,clienteId,...TIPOS_PEDIDO_ACTIVO,...(vendedorId?[vendedorId]:[]));
   const itemsStmt=db.prepare('SELECT id,producto_id,codigo,descripcion,unidad,cantidad,precio_unitario,descuento,iva,subtotal FROM venta_pos_items WHERE venta_id=? ORDER BY id');
   res.json({ok:true,pedidos:pedidos.map(p=>({...p,items:itemsStmt.all(p.id)}))});
@@ -856,7 +859,10 @@ function datosRutaReparto(e,id){
   for(const it of items)(porPedido[it.venta_id]=porPedido[it.venta_id]||[]).push(it);
   const carga={};
   for(const it of items){const k=`${it.codigo}|${it.descripcion}`;carga[k]=carga[k]||{codigo:it.codigo,descripcion:it.descripcion,cantidad:0};(carga[k].cantidad+=Number(it.cantidad||0))}
-  return {ruta,pedidos:pedidos.map(p=>({...p,items:porPedido[p.id]||[]})),carga:Object.values(carga)};
+  const devoluciones=db.prepare('SELECT * FROM reparto_devoluciones WHERE ruta_id=? ORDER BY id').all(id);
+  const devPorParada={};
+  for(const d of devoluciones)(devPorParada[String(d.ruta_pedido_id)]=devPorParada[String(d.ruta_pedido_id)]||[]).push(d);
+  return {ruta,pedidos:pedidos.map(p=>({...p,items:porPedido[p.id]||[],devoluciones:devPorParada[String(p.ruta_pedido_id)]||[]})),carga:Object.values(carga)};
 }
 function listRutasReparto(req,res){
   const e=empresaId(req);
@@ -885,7 +891,7 @@ function reordenarRutaReparto(req,res){
 }
 function marcarEntregaRuta(req,res){
   const e=empresaId(req),rutaId=Number(req.params.id),rutaPedidoId=Number(req.params.idEntrega),d=req.body||{},usuarioId=userId(req);
-  const rp=db.prepare('SELECT rp.*,v.documento_id FROM ruta_pedidos rp JOIN ventas_pos v ON v.id=rp.venta_id WHERE rp.id=? AND rp.ruta_id=? AND rp.empresa_id=?').get(rutaPedidoId,rutaId,e);
+  const rp=db.prepare('SELECT rp.*,v.documento_id,v.cliente_id FROM ruta_pedidos rp JOIN ventas_pos v ON v.id=rp.venta_id WHERE rp.id=? AND rp.ruta_id=? AND rp.empresa_id=?').get(rutaPedidoId,rutaId,e);
   if(!rp)return res.status(404).json({ok:false,error:'La entrega no existe en esa ruta.'});
   const estado=String(d.estado_entrega||'ENTREGADO').toUpperCase();
   if(!['ENTREGADO','PARCIAL','NO_ENTREGADO'].includes(estado))return res.status(400).json({ok:false,error:'Estado de entrega inválido.'});
@@ -893,10 +899,27 @@ function marcarEntregaRuta(req,res){
   const fecha=nowLocal().slice(0,10),hora=nowLocal().slice(11,19);
   const lat=d.latitud!=null&&Number.isFinite(Number(d.latitud))?Number(d.latitud):null;
   const lng=d.longitud!=null&&Number.isFinite(Number(d.longitud))?Number(d.longitud):null;
+  /*
+   * Productos que el cliente devuelve en el momento de la entrega.
+   * Se reemplazan los registros previos de esa parada (permite corregir).
+   */
+  const devoluciones=Array.isArray(d.devoluciones)
+    ? d.devoluciones
+        .map((x)=>({producto_id:Number(x.producto_id)||null,codigo:String(x.codigo||''),descripcion:String(x.descripcion||''),cantidad:Number(x.cantidad||0)}))
+        .filter((x)=>x.cantidad>0)
+    : [];
   const tx=db.transaction(()=>{
     db.prepare(`UPDATE ruta_pedidos SET estado_entrega=?,fecha_entrega=?,hora_entrega=?,latitud=?,longitud=?,observaciones=? WHERE id=?`).run(estado,fecha,hora,lat,lng,String(d.observaciones||''),rutaPedidoId);
     if(estado==='ENTREGADO')db.prepare("UPDATE ventas_pos SET estado_pedido='ENTREGADO' WHERE id=?").run(rp.venta_id);
-    db.prepare('INSERT INTO pedido_estado_historial(empresa_id,venta_id,documento_id,estado,estado_anterior,usuario_id,usuario_nombre,detalle,created_at) VALUES(?,?,?,?,?,?,?,?,?)').run(e,rp.venta_id,rp.documento_id||null,estado==='ENTREGADO'?'ENTREGADO':'DESPACHADO',null,usuarioId,usuario?.nombre||'REPARTIDOR',`Entrega ${estado}${d.observaciones?`: ${String(d.observaciones)}`:''}`,nowLocal());
+    db.prepare('DELETE FROM reparto_devoluciones WHERE ruta_pedido_id=?').run(rutaPedidoId);
+    if(devoluciones.length){
+      const insDev=db.prepare(`INSERT INTO reparto_devoluciones(empresa_id,ruta_id,ruta_pedido_id,venta_id,cliente_id,producto_id,codigo,descripcion,cantidad,motivo,fecha,hora,usuario_id)
+        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+      for(const dev of devoluciones)insDev.run(e,rutaId,rutaPedidoId,rp.venta_id,rp.cliente_id||null,dev.producto_id,dev.codigo,dev.descripcion,dev.cantidad,String(d.observaciones||''),fecha,hora,usuarioId);
+      if(estado==='ENTREGADO')db.prepare("UPDATE ventas_pos SET estado_pedido='PARCIAL' WHERE id=?").run(rp.venta_id);
+    }
+    const detalleDevolucion=devoluciones.length?` Devolvió: ${devoluciones.map((x)=>`${x.descripcion||x.codigo} x${x.cantidad}`).join(', ')}.`:'';
+    db.prepare('INSERT INTO pedido_estado_historial(empresa_id,venta_id,documento_id,estado,estado_anterior,usuario_id,usuario_nombre,detalle,created_at) VALUES(?,?,?,?,?,?,?,?,?)').run(e,rp.venta_id,rp.documento_id||null,estado==='ENTREGADO'?'ENTREGADO':'DESPACHADO',null,usuarioId,usuario?.nombre||'REPARTIDOR',`Entrega ${estado}${d.observaciones?`: ${String(d.observaciones)}`:''}${detalleDevolucion}`,nowLocal());
   });
   tx();
   res.json({ok:true});

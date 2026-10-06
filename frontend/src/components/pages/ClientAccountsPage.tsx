@@ -1,9 +1,10 @@
 import { useState, useEffect, Fragment } from "react";
 import { fmtFecha } from "../../utils/fecha";
 import { ChevronRight, CircleDollarSign, Search, History, BadgeDollarSign, Printer, Plus } from "lucide-react";
-import { api } from "../../services/api";
+import { api, erpApi } from "../../services/api";
 import { Client } from "../../types";
 import { MoneyInput } from "../shared/MoneyInput";
+import { PdfViewerModal } from "../shared/PdfViewerModal";
 
 export function ClientAccountsPage() {
   const [clients, setClients] = useState<Client[]>([]);
@@ -15,6 +16,18 @@ export function ClientAccountsPage() {
   const [payments, setPayments] = useState<any>({ efectivo: 0, tarjeta: 0, qr: 0, transferencia: 0, cheque: 0 });
   const [receivedChecks, setReceivedChecks] = useState<any[]>([]);
   const [lastReceipt, setLastReceipt] = useState<any>(null);
+  const [puntos, setPuntos] = useState<any[]>([]);
+  const [pvSeleccionado, setPvSeleccionado] = useState<number | null>(null);
+  const [pdfModal, setPdfModal] = useState<{ url: string; title: string } | null>(null);
+
+  async function verReciboPdf(id: number, titulo: string) {
+    try {
+      const url = await api.getReceiptPdfUrl(id);
+      setPdfModal({ url, title: titulo });
+    } catch (e: any) {
+      setError(e.message);
+    }
+  }
 
   function calcularVencidos(movs: any[]) {
     const hoy = new Date();
@@ -61,6 +74,16 @@ export function ClientAccountsPage() {
       }));
       setSummaries(Object.fromEntries(pairs));
     }).catch((e: any) => setError(e.message));
+  }, []);
+
+  /* Puntos de venta para emitir el recibo (numeración y logo propios). */
+  useEffect(() => {
+    erpApi.misPuntosVenta().then((m: any) => {
+      const lista = m.puntosVenta || [];
+      setPuntos(lista);
+      const def = m.predeterminado || lista.find((p: any) => p.predeterminado) || lista[0];
+      if (def) setPvSeleccionado(Number(def.id));
+    }).catch(() => {});
   }, []);
 
   const filtered = clients.filter(c => `${c.razonSocial} ${c.cuit || ""} ${c.dni || ""}`.toLowerCase().includes(query.toLowerCase()));
@@ -117,7 +140,7 @@ export function ClientAccountsPage() {
           } as any);
         }
       }
-      const r = await api.collectClientAccount({ clienteId: selected.id, clienteDoc: selected.cuit || selected.dni, clienteNombre: selected.razonSocial, importe: totalPayment, detalles });
+      const r = await api.collectClientAccount({ clienteId: selected.id, clienteDoc: selected.cuit || selected.dni, clienteNombre: selected.razonSocial, importe: totalPayment, puntoVenta: pvSeleccionado || undefined, detalles });
       setError("");
       setLastReceipt(r.recibo || null);
       await consult(selected);
@@ -127,7 +150,7 @@ export function ClientAccountsPage() {
   return <div className="accounts-page">
     {error && <div className="error-box">{error}</div>}
     {lastReceipt && <div className="success-box recepit-banner">Recibo {String(lastReceipt.punto_venta || 1).padStart(4, '0')}-{String(lastReceipt.numero || 0).padStart(8, '0')} generado. Cobro registrado.
-      <button className="primary-action" onClick={() => api.downloadReceiptPdf(lastReceipt.id, `recibo-${lastReceipt.punto_venta}-${lastReceipt.numero}.pdf`)}><Printer size={16} /> Ver PDF del recibo</button>
+      <button className="primary-action" onClick={() => verReciboPdf(lastReceipt.id, `Recibo ${String(lastReceipt.punto_venta || 1).padStart(4, "0")}-${String(lastReceipt.numero || 0).padStart(8, "0")}`)}><Printer size={16} /> Ver PDF del recibo</button>
       <button onClick={() => setLastReceipt(null)}>Cerrar</button>
     </div>}
     {!selected ? <div className="account-list-panel">
@@ -158,11 +181,17 @@ export function ClientAccountsPage() {
             <div><span>{new Date(m.created_at || m.fecha).toLocaleString('es-AR')}</span><strong>{m.concepto || m.tipo}</strong><small>{m.factura_id ? `Factura asociada #${m.factura_id}` : m.tipo === 'RECIBO' ? `Recibo #${m.documento_id}` : m.documento_id ? `Documento #${m.documento_id}` : ""}</small></div>
             <b>{Number(m.haber || 0) > 0 ? 'Cobro' : 'Comprobante'}: $ {Number(m.haber || m.debe || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</b>
             <em>{m.observaciones || ""}</em>
-            {Number(m.haber || 0) > 0 && m.tipo === 'RECIBO' && m.documento_id && <button className="mini-pdf" onClick={() => api.downloadReceiptPdf(m.documento_id, `recibo-${m.documento_id}.pdf`)}><Printer size={14} /> Ver recibo</button>}
+            {Number(m.haber || 0) > 0 && m.tipo === 'RECIBO' && m.documento_id && <button className="mini-pdf" onClick={() => verReciboPdf(m.documento_id, "Recibo de cobro")}><Printer size={14} /> Ver recibo</button>}
           </article>)}</div>
         </section>
         <aside className="payment-card">
           <h3><CircleDollarSign /> Ingresar cobro</h3>
+          {puntos.length > 0 && <label className="full" style={{ marginBottom: 8 }}>
+            <span>PUNTO DE VENTA (RECIBO)</span>
+            <select value={pvSeleccionado || ""} onChange={e => setPvSeleccionado(Number(e.target.value) || null)}>
+              {puntos.map((p: any) => <option key={p.id} value={p.id}>PV {String(p.numero).padStart(4, "0")} · {p.nombre || ""}{p.predeterminado ? " (pred)" : ""}</option>)}
+            </select>
+          </label>}
           {Object.keys(payments).map(k => <label key={k}>
             <span>{k.toUpperCase()}</span>
             <MoneyInput value={payments[k]} onChange={v => setPayments({ ...payments, [k]: v })} onCompleteMissing={() => {
@@ -174,12 +203,12 @@ export function ClientAccountsPage() {
           {Number(payments.cheque) > 0 && <div className="check-capture">
             <div className="check-capture-head">
               <strong>Cheques recibidos</strong>
-              <button type="button" onClick={() => setReceivedChecks([...receivedChecks, { id: Date.now(), numero: "", banco: "", librador: "", importe: 0, fechaEmision: new Date().toISOString().slice(0, 10), vencimiento: new Date().toISOString().slice(0, 10) }])}><Plus size={15} /> Agregar cheque</button>
+              <button type="button" onClick={() => { const usados = receivedChecks.reduce((n, c) => n + Number(c.importe || 0), 0); const falta = Math.max(0, Number(payments.cheque || 0) - usados); setReceivedChecks([...receivedChecks, { id: Date.now(), numero: "", banco: "", librador: "", importe: Number(falta.toFixed(2)), fechaEmision: new Date().toISOString().slice(0, 10), vencimiento: new Date().toISOString().slice(0, 10) }]); }}><Plus size={15} /> Agregar cheque</button>
             </div>
             {receivedChecks.map((c: any, index: number) => <div className="check-row" key={c.id}>
               <input placeholder="Número" value={c.numero} onChange={e => setReceivedChecks(receivedChecks.map((x: any, i: number) => i === index ? { ...x, numero: e.target.value } : x))} />
               <input placeholder="Banco" value={c.banco} onChange={e => setReceivedChecks(receivedChecks.map((x: any, i: number) => i === index ? { ...x, banco: e.target.value } : x))} />
-              <MoneyInput value={c.importe} onChange={v => setReceivedChecks(receivedChecks.map((x: any, i: number) => i === index ? { ...x, importe: v } : x))} />
+              <MoneyInput value={c.importe} placeholder="Importe" onChange={v => setReceivedChecks(receivedChecks.map((x: any, i: number) => i === index ? { ...x, importe: v } : x))} />
               <input type="date" value={c.vencimiento} onChange={e => setReceivedChecks(receivedChecks.map((x: any, i: number) => i === index ? { ...x, vencimiento: e.target.value } : x))} />
               <button type="button" onClick={() => setReceivedChecks(receivedChecks.filter((_: any, i: number) => i !== index))}>Quitar</button>
             </div>)}
@@ -190,5 +219,6 @@ export function ClientAccountsPage() {
         </aside>
       </div>
     </div>}
+    {pdfModal && <PdfViewerModal url={pdfModal.url} title={pdfModal.title} onClose={() => setPdfModal(null)} />}
   </div>;
 }

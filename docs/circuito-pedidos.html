@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Circuito de pedidos - Guía ilustrada</title>
+<style>
+  @page { size: A4; margin: 10mm; }
+  body { font-family: Arial, sans-serif; font-size: 12px; color: #222; max-width: 900px; margin: 0 auto; padding: 12px; }
+  h1 { font-size: 22px; color: #4a3d8f; margin: 0 0 2px; }
+  .sub { color: #666; font-size: 12px; margin-bottom: 12px; }
+  h2 { font-size: 15px; color: #4a3d8f; border-bottom: 2px solid #ded8f2; padding-bottom: 3px; margin: 16px 0 8px; }
+  .paso { display: flex; gap: 12px; align-items: center; background: #F8F7FD; border: 1px solid #E2DDF2; border-radius: 12px; padding: 10px 12px; margin: 8px 0; break-inside: avoid; }
+  .paso .num { flex: 0 0 34px; height: 34px; border-radius: 50%; background: #6952C4; color: #fff; font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+  .paso .texto { flex: 1; }
+  .paso strong { font-size: 13.5px; }
+  .paso p { margin: 2px 0 0; color: #555; font-size: 11.5px; }
+  .estados { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0; }
+  .chip { border-radius: 999px; padding: 5px 12px; font-size: 11px; font-weight: 700; border: 1px solid #bbb; }
+  .flecha { color: #999; font-weight: 800; }
+  .c1 { background: #FFF3D6; border-color: #E8C878; }
+  .c2 { background: #E8EFFB; border-color: #9DB8E8; }
+  .c3 { background: #E3F7EC; border-color: #8FD3A8; }
+  .c4 { background: #FBE7EA; border-color: #E8A5B4; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 11px; }
+  th, td { border: 1px solid #bbb; padding: 5px 7px; text-align: left; }
+  th { background: #2E3A59; color: #fff; }
+  footer { margin-top: 14px; color: #777; font-size: 10px; text-align: center; }
+  svg { display: block; }
+</style>
+</head>
+<body>
+
+<h1>El circuito de pedidos, explicado con dibujos</h1>
+<div class="sub">De la calle a la entrega: quién hace qué en cada paso · PixeSistemas</div>
+
+<svg viewBox="0 0 860 240" width="100%">
+  <!-- VENDEDOR -->
+  <g transform="translate(20,30)">
+    <rect x="0" y="0" width="240" height="180" rx="14" fill="#F4F1FB" stroke="#C9BFEA"/>
+    <circle cx="120" cy="42" r="16" fill="#F5C9A0" stroke="#C99A6E"/>
+    <rect x="104" y="58" width="32" height="38" rx="8" fill="#6952C4"/>
+    <line x1="104" y1="70" x2="86" y2="92" stroke="#6952C4" stroke-width="7" stroke-linecap="round"/>
+    <rect x="62" y="86" width="34" height="54" rx="8" fill="#333" />
+    <rect x="66" y="92" width="26" height="40" rx="4" fill="#8FD3A8" />
+    <text x="120" y="128" text-anchor="middle" font-size="13" font-weight="bold" fill="#4a3d8f">1. VENDEDOR</text>
+    <text x="120" y="146" text-anchor="middle" font-size="10" fill="#666">toma el pedido en el celular</text>
+    <text x="120" y="160" text-anchor="middle" font-size="10" fill="#666">(funciona sin señal)</text>
+  </g>
+  <!-- flecha -->
+  <g transform="translate(268,120)">
+    <line x1="0" y1="0" x2="52" y2="0" stroke="#6952C4" stroke-width="4" stroke-linecap="round"/>
+    <polygon points="52,-7 66,0 52,7" fill="#6952C4"/>
+  </g>
+  <!-- OFICINA -->
+  <g transform="translate(340,30)">
+    <rect x="0" y="0" width="240" height="180" rx="14" fill="#EAF2FF" stroke="#9DB8E8"/>
+    <rect x="60" y="30" width="120" height="76" rx="8" fill="#2E3A59"/>
+    <rect x="68" y="38" width="104" height="60" rx="4" fill="#fff"/>
+    <line x1="78" y1="52" x2="160" y2="52" stroke="#6952C4" stroke-width="4"/>
+    <line x1="78" y1="64" x2="150" y2="64" stroke="#999" stroke-width="3"/>
+    <line x1="78" y1="74" x2="140" y2="74" stroke="#999" stroke-width="3"/>
+    <rect x="100" y="106" width="40" height="10" fill="#2E3A59"/>
+    <text x="120" y="140" text-anchor="middle" font-size="13" font-weight="bold" fill="#2A4B8D">2. OFICINA</text>
+    <text x="120" y="156" text-anchor="middle" font-size="10" fill="#666">revisa, ajusta y confirma</text>
+    <text x="120" y="170" text-anchor="middle" font-size="10" fill="#666">el pedido</text>
+  </g>
+  <!-- flecha -->
+  <g transform="translate(588,120)">
+    <line x1="0" y1="0" x2="52" y2="0" stroke="#2F9E67" stroke-width="4" stroke-linecap="round"/>
+    <polygon points="52,-7 66,0 52,7" fill="#2F9E67"/>
+  </g>
+  <!-- REPARTO -->
+  <g transform="translate(660,30)">
+    <rect x="0" y="0" width="180" height="180" rx="14" fill="#EAF7EF" stroke="#8FD3A8"/>
+    <rect x="30" y="52" width="86" height="44" rx="6" fill="#fff" stroke="#2F9E67" stroke-width="3"/>
+    <rect x="116" y="64" width="34" height="32" rx="5" fill="#fff" stroke="#2F9E67" stroke-width="3"/>
+    <circle cx="52" cy="102" r="10" fill="#333"/><circle cx="130" cy="102" r="10" fill="#333"/>
+    <circle cx="58" cy="34" r="7" fill="#B23B58"/><path d="M58 41 L58 56" stroke="#B23B58" stroke-width="3"/>
+    <circle cx="146" cy="30" r="7" fill="#2A4B8D"/><path d="M146 37 L146 52" stroke="#2A4B8D" stroke-width="3"/>
+    <text x="90" y="140" text-anchor="middle" font-size="13" font-weight="bold" fill="#1F7A4D">3. REPARTO</text>
+    <text x="90" y="156" text-anchor="middle" font-size="10" fill="#666">se arma la ruta y se carga</text>
+    <text x="90" y="170" text-anchor="middle" font-size="10" fill="#666">el vehículo</text>
+  </g>
+</svg>
+
+<svg viewBox="0 0 860 200" width="100%">
+  <!-- ENTREGA -->
+  <g transform="translate(20,20)">
+    <rect x="0" y="0" width="380" height="160" rx="14" fill="#FFF8E6" stroke="#E8C878"/>
+    <path d="M40 96 L40 56 L70 34 L100 56 L100 96 Z" fill="#fff" stroke="#B78A2E" stroke-width="3"/>
+    <rect x="56" y="68" width="28" height="28" fill="#8FD3A8" stroke="#B78A2E" stroke-width="2"/>
+    <rect x="130" y="60" width="60" height="40" rx="5" fill="#E8C878" stroke="#8a6a1f" stroke-width="2"/>
+    <line x1="130" y1="72" x2="190" y2="72" stroke="#8a6a1f" stroke-width="2"/>
+    <line x1="160" y1="60" x2="160" y2="100" stroke="#8a6a1f" stroke-width="2"/>
+    <text x="120" y="128" font-size="14" font-weight="bold" fill="#8a6a1f">4. ENTREGA AL CLIENTE</text>
+    <text x="120" y="146" font-size="10" fill="#666">El repartidor marca Entregado / Parcial / No entregado</text>
+  </g>
+  <!-- DEVOLUCIONES -->
+  <g transform="translate(430,20)">
+    <rect x="0" y="0" width="410" height="160" rx="14" fill="#FDECEF" stroke="#E8A5B4"/>
+    <rect x="40" y="58" width="70" height="42" rx="6" fill="#fff" stroke="#B23B58" stroke-width="3"/>
+    <path d="M50 58 L80 38 L110 58" fill="none" stroke="#B23B58" stroke-width="3"/>
+    <line x1="140" y1="60" x2="300" y2="95" stroke="#B23B58" stroke-width="3" stroke-dasharray="7 5"/>
+    <polygon points="300,95 286,88 288,102" fill="#B23B58"/>
+    <text x="30" y="126" font-size="14" font-weight="bold" fill="#B23B58">5. SI TE DEVUELVEN PRODUCTOS</text>
+    <text x="30" y="144" font-size="10" fill="#666">Se marcan en el momento y la oficina los ve en la ruta</text>
+  </g>
+</svg>
+
+<h2>Los 7 pasos, uno por uno</h2>
+
+<div class="paso"><div class="num">1</div><div class="texto"><strong>El vendedor visita al cliente y toma el pedido</strong><p>Desde su celular busca al cliente, agrega los productos con − / + y toca ENVIAR PEDIDO. Queda guardada la fecha, la hora y la ubicación GPS. Si no hay señal, el pedido se guarda y se envía solo cuando vuelve Internet.</p></div></div>
+<div class="paso"><div class="num">2</div><div class="texto"><strong>El pedido llega a la oficina (Bandeja de pedidos)</strong><p>Aparece como <strong>PENDIENTE</strong>. El administrador lo abre, ajusta cantidades, quita productos o marca "No disponible", y lo CONFIRMA (o lo deja parcial, o lo rechaza).</p></div></div>
+<div class="paso"><div class="num">3</div><div class="texto"><strong>Se arma la ruta de reparto</strong><p>En <strong>Reparto</strong> se eligen los pedidos confirmados, se asigna el repartidor y la fecha, y se crea la ruta (manual o ordenada por zona). La hoja de ruta se puede imprimir y muestra la <strong>carga del vehículo</strong> (todo lo que hay que subir).</p></div></div>
+<div class="paso"><div class="num">4</div><div class="texto"><strong>El repartidor sale a entregar</strong><p>En su app ve la ruta del día con las paradas ordenadas: cliente, dirección, teléfono, navegación por mapa y los productos de cada pedido.</p></div></div>
+<div class="paso"><div class="num">5</div><div class="texto"><strong>Registra la entrega (o lo que no se entregó)</strong><p>Toca ENTREGADO, ENTREGA PARCIAL o NO ENTREGADO. Si el cliente <strong>devuelve algún producto en el momento</strong>, lo marca producto por producto y queda registrado para la oficina.</p></div></div>
+<div class="paso"><div class="num">6</div><div class="texto"><strong>La oficina controla lo devuelto</strong><p>En el detalle de la ruta aparecen los productos devueltos. Si hubo una devolución después, se usa <strong>Anular pedidos</strong> (solo con pedidos activos: los entregados ya no se tocan) y se genera el PDF de devolución con su fecha.</p></div></div>
+<div class="paso"><div class="num">7</div><div class="texto"><strong>Reportes</strong><p>En <strong>Reportes de vendedores</strong> se mide por vendedor, cliente y producto, con comisiones, y se exporta a PDF, Excel o CSV.</p></div></div>
+
+<h2>Los estados del pedido</h2>
+<div class="estados">
+  <span class="chip c1">PENDIENTE</span><span class="flecha">→</span>
+  <span class="chip c2">EN REVISIÓN</span><span class="flecha">→</span>
+  <span class="chip c3">CONFIRMADO</span><span class="chip c1">PARCIAL</span><span class="chip c4">RECHAZADO</span><span class="flecha">→</span>
+  <span class="chip c2">PREPARANDO</span><span class="flecha">→</span>
+  <span class="chip c2">DESPACHADO</span><span class="flecha">→</span>
+  <span class="chip c3">ENTREGADO</span>
+</div>
+<table>
+  <tr><th>Estado</th><th>Qué significa</th></tr>
+  <tr><td><b>PENDIENTE</b></td><td>El vendedor lo envió y la oficina todavía no lo revisó.</td></tr>
+  <tr><td><b>CONFIRMADO</b></td><td>La oficina lo aprobó tal como llegó.</td></tr>
+  <tr><td><b>PARCIAL</b></td><td>Se confirmó solo una parte (faltaba stock o se quitó algo).</td></tr>
+  <tr><td><b>PREPARANDO</b></td><td>Ya está asignado a una ruta de reparto.</td></tr>
+  <tr><td><b>DESPACHADO</b></td><td>Salió a reparto.</td></tr>
+  <tr><td><b>ENTREGADO</b></td><td>El repartidor lo entregó (si devolvió productos, queda PARCIAL).</td></tr>
+  <tr><td><b>RECHAZADO</b></td><td>La oficina lo anuló.</td></tr>
+</table>
+
+<h2>Quién hace qué</h2>
+<table>
+  <tr><th>Rol</th><th>Qué hace</th><th>Dónde</th></tr>
+  <tr><td>Vendedor</td><td>Toma pedidos y registra visitas</td><td>vendedor.pixesistemas.com.ar (celular)</td></tr>
+  <tr><td>Administrador</td><td>Revisa, confirma, arma rutas y mide</td><td>erp.pixesistemas.com.ar (PC)</td></tr>
+  <tr><td>Repartidor</td><td>Recorre la ruta, entrega y marca devoluciones</td><td>repartidor.pixesistemas.com.ar (celular)</td></tr>
+  <tr><td>Compras</td><td>Saca foto de la factura del proveedor y la carga</td><td>compras.pixesistemas.com.ar (celular)</td></tr>
+</table>
+
+<footer>PixeSistemas · ERP Empresarial · Guía ilustrada del circuito de pedidos</footer>
+
+</body>
+</html>

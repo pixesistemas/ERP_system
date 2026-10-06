@@ -30,6 +30,18 @@ import { guardar, guardarMuchos, listar, obtener, uuidMovil } from "./offlineDb"
 
 type Vista = "home" | "clientes" | "cliente" | "pedido" | "pedidos" | "ruta";
 
+/* Estados del pedido explicados para el vendedor. */
+const ETIQUETA_ESTADO: Record<string, string> = {
+  PENDIENTE: "Enviado",
+  REVISANDO: "En revisión",
+  CONFIRMADO: "Confirmado",
+  PARCIAL: "Parcial",
+  RECHAZADO: "Rechazado",
+  PREPARANDO: "En preparación",
+  DESPACHADO: "En reparto",
+  ENTREGADO: "Entregado",
+};
+
 const RESULTADOS_VISITA = [
   { valor: "PEDIDO", label: "Pedido realizado" },
   { valor: "NO_COMPRO", label: "No compró" },
@@ -431,7 +443,7 @@ export function MobileVendorPage() {
         </div>)}
         {pedidosServer.map((p: any) => <div key={p.id} className="mobile-cliente">
           <div><strong>{p.cliente || "CONSUMIDOR FINAL"}</strong><span>{p.tipo} {String(p.punto_venta || "").padStart(4, "0")}-{String(p.numero || "").padStart(8, "0")} · {fmtFecha(p.fecha)}</span></div>
-          <small className="badge">{p.estado_pedido || p.estado || "PENDIENTE"}</small>
+          <small className="badge">{ETIQUETA_ESTADO[String(p.estado_pedido || p.estado || "PENDIENTE").toUpperCase()] || p.estado_pedido || "Enviado"}</small>
         </div>)}
         {!cola.length && !pedidosServer.length && <div className="empty-table">Todavía no enviaste pedidos.</div>}
       </div>

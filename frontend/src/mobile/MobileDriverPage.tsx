@@ -19,6 +19,19 @@ export function MobileDriverPage() {
   const [entrega, setEntrega] = useState<any>(null);
   const [estadoEntrega, setEstadoEntrega] = useState("ENTREGADO");
   const [obsEntrega, setObsEntrega] = useState("");
+  const [devueltos, setDevueltos] = useState<Record<string, number>>({});
+
+  const claveItem = (item: any) => String(item.producto_id ?? item.codigo ?? item.descripcion);
+
+  function abrirEntrega(p: any) {
+    setEstadoEntrega("ENTREGADO");
+    setObsEntrega("");
+    /* Si ya tenía devoluciones cargadas, se muestran para corregir. */
+    const previas: Record<string, number> = {};
+    for (const dv of p.devoluciones || []) previas[String(dv.producto_id ?? dv.codigo ?? dv.descripcion)] = Number(dv.cantidad || 0);
+    setDevueltos(previas);
+    setEntrega(p);
+  }
 
   async function cargar() {
     setError("");
@@ -72,9 +85,18 @@ export function MobileDriverPage() {
     setError("");
     try {
       const g = await pedirGps();
+      const devoluciones = (entrega.items || [])
+        .map((i: any) => ({
+          producto_id: i.producto_id,
+          codigo: i.codigo,
+          descripcion: i.descripcion,
+          cantidad: Number(devueltos[claveItem(i)] || 0),
+        }))
+        .filter((x: any) => x.cantidad > 0);
       await erpApi.marcarEntregaRuta(ruta.ruta.id, entrega.ruta_pedido_id, {
         estado_entrega: estadoEntrega,
         observaciones: obsEntrega,
+        devoluciones,
         latitud: g.lat,
         longitud: g.lng,
       });
@@ -156,8 +178,8 @@ export function MobileDriverPage() {
             <b>{Number(it.cantidad).toLocaleString("es-AR")}</b>
           </div>)}
         </div>}
-        {p.estado_entrega === "PENDIENTE" && <button className="mobile-btn-primario" onClick={() => { setEstadoEntrega("ENTREGADO"); setObsEntrega(""); setEntrega(p); }}><Truck size={18} /> REGISTRAR ENTREGA</button>}
-        {p.estado_entrega !== "PENDIENTE" && <button className="mobile-btn-sec full" onClick={() => { setEstadoEntrega(p.estado_entrega); setObsEntrega(p.observaciones || ""); setEntrega(p); }}>Cambiar entrega</button>}
+        {p.estado_entrega === "PENDIENTE" && <button className="mobile-btn-primario" onClick={() => abrirEntrega(p)}><Truck size={18} /> REGISTRAR ENTREGA</button>}
+        {p.estado_entrega !== "PENDIENTE" && <button className="mobile-btn-sec full" onClick={() => { abrirEntrega(p); setEstadoEntrega(p.estado_entrega); }}>Cambiar entrega</button>}
       </div>)}
     </div>
 
@@ -169,6 +191,14 @@ export function MobileDriverPage() {
         </label>)}
       </div>
       <label className="mobile-obs">Observaciones<input value={obsEntrega} onChange={(e) => setObsEntrega(e.target.value)} placeholder="Opcional" /></label>
+      {(entrega.items || []).length > 0 && <div className="mobile-card" style={{ marginTop: 8 }}>
+        <h4>¿Te devolvieron algo?</h4>
+        <p>Marcá la cantidad que el cliente devolvió. Si no devolvió nada, dejalo en 0. El administrador lo va a ver en la ruta.</p>
+        {(entrega.items || []).map((i: any) => <div className="mobile-linea" key={claveItem(i)}>
+          <div><strong>{i.descripcion}</strong><span>{i.codigo} · pedido: {Number(i.cantidad).toLocaleString("es-AR")}</span></div>
+          <input type="number" min={0} max={Number(i.cantidad)} value={devueltos[claveItem(i)] ?? 0} onFocus={(e) => e.currentTarget.select()} onChange={(e) => setDevueltos({ ...devueltos, [claveItem(i)]: Math.min(Number(e.target.value) || 0, Number(i.cantidad)) })} style={{ width: 84, height: 38, textAlign: "center", border: "1px solid var(--line-2)", borderRadius: 8, fontWeight: 700 }} />
+        </div>)}
+      </div>}
       <div className="modal-actions">
         <button onClick={() => setEntrega(null)}>Cancelar</button>
         <button className="primary-action" disabled={busy} onClick={confirmarEntrega}><Truck size={15} /> Guardar entrega</button>

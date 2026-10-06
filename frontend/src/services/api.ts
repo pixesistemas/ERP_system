@@ -89,6 +89,13 @@ export const api = {
   collectClientAccount(data: any) { return request<any>("/clientes/cc/cobro", { method: "POST", body: JSON.stringify(data) }); },
   listReceipts() { return request<any>("/recibos"); },
   getReceipt(id:number) { return request<any>(`/recibos/${id}`); },
+  async getReceiptPdfUrl(id:number):Promise<string>{
+    const token=getToken();
+    const response=await fetch(`${API_URL}/recibos/${id}/pdf`,{headers:token?{Authorization:`Bearer ${token}`}:{}});
+    if(!response.ok){const p=await response.json().catch(()=>({}));throw new Error(p.error||"No se pudo generar el PDF")}
+    const blob=await response.blob();
+    return URL.createObjectURL(blob);
+  },
   async downloadReceiptPdf(id:number, filename:string) {
     const token=getToken();
     const response=await fetch(`${API_URL}/recibos/${id}/pdf`,{headers:token?{Authorization:`Bearer ${token}`}:{}});

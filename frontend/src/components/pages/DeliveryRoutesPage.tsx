@@ -224,7 +224,7 @@ export function DeliveryRoutesPage() {
       <table className="order-review-items"><thead><tr><th>#</th><th>Cliente</th><th>Dirección</th><th>Pedido</th><th>Entrega</th><th></th></tr></thead>
         <tbody>{detalle.pedidos.map((p: any, i: number) => <tr key={p.ruta_pedido_id}>
           <td>{i + 1}</td>
-          <td><strong>{p.cliente}</strong>{p.telefono && <small>{p.telefono}</small>}</td>
+          <td><strong>{p.cliente}</strong>{p.telefono && <small>{p.telefono}</small>}{p.devoluciones?.length ? <small style={{ color: "#B23B58", display: "block" }}>Devuelto: {p.devoluciones.map((d: any) => `${d.descripcion || d.codigo} x${Number(d.cantidad)}`).join(", ")}</small> : null}</td>
           <td>{p.domicilio || ""} {p.localidad ? `· ${p.localidad}` : ""}{p.clat != null && <a className="link-button" href={`https://www.google.com/maps?q=${p.clat},${p.clng}`} target="_blank" rel="noreferrer"><MapPin size={13} /></a>}</td>
           <td className="price">$ {Number(p.total || 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}</td>
           <td><span className={p.estado_entrega === "ENTREGADO" ? "badge success" : p.estado_entrega === "NO_ENTREGADO" ? "badge danger" : p.estado_entrega === "PARCIAL" ? "badge warning" : "badge"}>{p.estado_entrega}</span></td>
