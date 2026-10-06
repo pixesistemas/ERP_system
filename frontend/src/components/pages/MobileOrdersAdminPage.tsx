@@ -161,7 +161,7 @@ export function MobileOrdersAdminPage() {
         <td><strong>{p.cliente || "CONSUMIDOR FINAL"}</strong><small>{p.tipo === "PRESUPUESTO" ? "Presupuesto" : "Nota de pedido"} {String(p.punto_venta || "").padStart(4, "0")}-{String(p.numero || "").padStart(8, "0")}</small></td>
         <td>{p.latitud != null && p.longitud != null ? <a className="link-button" href={`https://www.google.com/maps?q=${p.latitud},${p.longitud}`} target="_blank" rel="noreferrer"><MapPin size={14} /> Ver mapa</a> : "—"}</td>
         <td className="price">$ {Number(p.total || 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}</td>
-        <td><span className={claseEstado(p.estado_pedido)}>{p.estado_pedido || "PENDIENTE"}</span></td>
+        <td><span className={claseEstado(p.estado_pedido)}>{p.estado_pedido || "PENDIENTE"}</span>{p.facturado ? <span className="badge success" style={{ marginLeft: 6 }} title={p.cae ? `CAE ${p.cae}` : "Facturado"}>FACTURADO</span> : null}</td>
         <td><button className="secondary-action" onClick={() => abrir(p.id)}>Abrir</button></td>
       </tr>)}</tbody>
     </table>
@@ -190,11 +190,17 @@ export function MobileOrdersAdminPage() {
       </table>
 
       {!yaRevisado && <>
+        <div className="info-note" style={{ marginBottom: 8 }}>
+          <strong>¿Qué hace cada botón?</strong>
+          <div>· <strong>Confirmar todo</strong>: prepara el pedido completo, tal como quedó la lista de arriba.</div>
+          <div>· <strong>Confirmar parcial</strong>: prepara <em>solo</em> las cantidades finales que dejaste; lo que quitaste o marcaste "No disponible" no se prepara.</div>
+          <div>· <strong>Rechazar</strong>: anula el pedido.</div>
+        </div>
         <label className="full">Observación de la revisión<input value={detalleTexto} onChange={(e) => setDetalleTexto(e.target.value)} placeholder="Ej.: faltaba stock de un producto" /></label>
         <div className="modal-actions">
-          <button className="danger-action" disabled={busy} onClick={() => revisar("RECHAZADO")}>Rechazar</button>
-          <button disabled={busy} onClick={() => revisar("PARCIAL")}>Dejar parcial</button>
-          <button className="primary-action" disabled={busy} onClick={() => revisar("CONFIRMADO")}><Check size={16} /> Confirmar pedido</button>
+          <button className="danger-action" disabled={busy} onClick={() => revisar("RECHAZADO")} title="Anula el pedido">Rechazar</button>
+          <button disabled={busy} onClick={() => revisar("PARCIAL")} title="Prepara solo las cantidades finales de la lista">Confirmar parcial</button>
+          <button className="primary-action" disabled={busy} onClick={() => revisar("CONFIRMADO")} title="Prepara el pedido completo"><Check size={16} /> Confirmar todo</button>
         </div>
       </>}
 

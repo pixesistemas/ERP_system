@@ -67,6 +67,7 @@ export function DeliveryRoutesPage() {
   const [fecha, setFecha] = useState(() => new Date().toISOString().slice(0, 10));
   const [observaciones, setObservaciones] = useState("");
   const [detalle, setDetalle] = useState<any>(null);
+  const [ordenCambiado, setOrdenCambiado] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
@@ -126,6 +127,7 @@ export function DeliveryRoutesPage() {
     try {
       const r = await erpApi.getRutaReparto(id);
       setDetalle(r);
+      setOrdenCambiado(false);
     } catch (e: any) {
       setError(e.message);
     }
@@ -139,6 +141,7 @@ export function DeliveryRoutesPage() {
     const [item] = lista.splice(index, 1);
     lista.splice(destino, 0, item);
     setDetalle({ ...detalle, pedidos: lista.map((p: any, i: number) => ({ ...p, orden: i + 1 })) });
+    setOrdenCambiado(true);
   }
 
   async function guardarOrden() {
@@ -146,7 +149,8 @@ export function DeliveryRoutesPage() {
     setBusy(true);
     try {
       await erpApi.reordenarRutaReparto(detalle.ruta.id, detalle.pedidos.map((p: any) => p.ruta_pedido_id));
-      setNotice("Orden de la ruta guardado.");
+      setNotice("Orden de las paradas guardado.");
+      setOrdenCambiado(false);
       await abrirRuta(detalle.ruta.id);
     } catch (e: any) {
       setError(e.message);
@@ -159,8 +163,10 @@ export function DeliveryRoutesPage() {
     if (!detalle || !confirm("¿Finalizar la ruta? Deja de verse en la app del repartidor. Si te equivocaste, después la podés reabrir.")) return;
     setBusy(true);
     try {
-      await erpApi.cerrarRutaReparto(detalle.ruta.id);
-      setNotice("Ruta finalizada. El repartidor ya no la ve en su app.");
+      const r: any = await erpApi.cerrarRutaReparto(detalle.ruta.id);
+      setNotice(r?.liberados
+        ? `Ruta finalizada. ${r.liberados} pedido(s) sin entregar volvieron a la lista para armar otra ruta.`
+        : "Ruta finalizada. El repartidor ya no la ve en su app.");
       setDetalle(null);
       await cargar();
     } catch (e: any) {
@@ -288,7 +294,7 @@ export function DeliveryRoutesPage() {
 
       <div className="modal-actions">
         <button onClick={imprimirHoja}><Printer size={15} /> Imprimir hoja</button>
-        {detalle.ruta.estado !== "CERRADA" && <button disabled={busy} onClick={guardarOrden}>Guardar orden</button>}
+        {detalle.ruta.estado !== "CERRADA" && ordenCambiado && <button disabled={busy} onClick={guardarOrden} title="Guarda el nuevo orden de las paradas para el repartidor">Guardar el orden de las paradas</button>}
         {detalle.ruta.estado !== "CERRADA" && <button className="danger-action" disabled={busy} onClick={cerrarRuta}>Finalizar ruta</button>}
         {detalle.ruta.estado === "CERRADA" && <button className="primary-action" disabled={busy} onClick={reabrirRuta}>Reabrir ruta</button>}
       </div>

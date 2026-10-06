@@ -694,18 +694,22 @@ function listBandejaPedidos(req,res){
   const vendedorId=Number(req.query.vendedor_id||0);
   const desde=String(req.query.desde||''),hasta=String(req.query.hasta||'');
   const q=String(req.query.q||'').trim();
-  /* La bandeja es de pedidos: los presupuestos no entran. */
-  let where="v.empresa_id=? AND v.tipo='NOTA_PEDIDO' AND v.estado<>'ANULADO'";
+  /*
+   * La bandeja es de pedidos: incluye las notas de pedido y también los
+   * que ya fueron facturados (así se ve el estado FACTURADO).
+   */
+  let where="v.empresa_id=? AND v.estado<>'ANULADO' AND (v.tipo='NOTA_PEDIDO' OR (v.tipo='FACTURA' AND d.documento_origen_id IS NOT NULL))";
   const params=[e];
   if(estado){where+=" AND COALESCE(v.estado_pedido,'PENDIENTE')=?";params.push(estado)}
   if(vendedorId){where+=' AND v.vendedor_id=?';params.push(vendedorId)}
   if(desde){where+=' AND v.fecha>=?';params.push(desde)}
   if(hasta){where+=' AND v.fecha<=?';params.push(hasta)}
   if(q){where+=' AND (c.razon_social LIKE ? OR vd.nombre LIKE ? OR CAST(v.numero AS TEXT) LIKE ?)';params.push(`%${q}%`,`%${q}%`,`%${q}%`)}
-  const pedidos=db.prepare(`SELECT v.id,v.tipo,v.estado,v.estado_pedido,v.numero,v.punto_venta,v.total,v.fecha,v.fecha_visita,v.hora_visita,v.latitud,v.longitud,c.razon_social cliente,vd.nombre vendedor,d.canal
+  const pedidos=db.prepare(`SELECT v.id,v.tipo,v.estado,v.estado_pedido,v.numero,v.punto_venta,v.total,v.fecha,v.fecha_visita,v.hora_visita,v.latitud,v.longitud,c.razon_social cliente,vd.nombre vendedor,d.canal,d.cae,d.afip_estado,
+      CASE WHEN v.tipo='FACTURA' THEN 1 ELSE 0 END facturado
     FROM ventas_pos v LEFT JOIN clientes c ON c.id=v.cliente_id LEFT JOIN vendedores vd ON vd.id=v.vendedor_id LEFT JOIN documentos_comerciales d ON d.id=v.documento_id
     WHERE ${where} ORDER BY v.id DESC LIMIT 300`).all(...params);
-  const resumen=db.prepare(`SELECT COALESCE(v.estado_pedido,'PENDIENTE') estado,COUNT(1) n FROM ventas_pos v WHERE v.empresa_id=? AND v.tipo='NOTA_PEDIDO' AND v.estado<>'ANULADO' GROUP BY COALESCE(v.estado_pedido,'PENDIENTE')`).all(e);
+  const resumen=db.prepare(`SELECT COALESCE(v.estado_pedido,'PENDIENTE') estado,COUNT(1) n FROM ventas_pos v LEFT JOIN documentos_comerciales d ON d.id=v.documento_id WHERE v.empresa_id=? AND v.estado<>'ANULADO' AND (v.tipo='NOTA_PEDIDO' OR (v.tipo='FACTURA' AND d.documento_origen_id IS NOT NULL)) GROUP BY COALESCE(v.estado_pedido,'PENDIENTE')`).all(e);
   res.json({ok:true,pedidos,resumen});
 }
 function detallePedidoMovil(req,res){
@@ -808,6 +812,11 @@ function crearRutaReparto(req,res){
     FROM ventas_pos v LEFT JOIN clientes c ON c.id=v.cliente_id
     WHERE v.empresa_id=? AND v.id IN (${ids.map(()=>'?').join(',')}) AND v.estado<>'ANULADO'`).all(e,...ids);
   if(pedidos.length!==ids.length)return res.status(400).json({ok:false,error:'Uno o más pedidos no existen.'});
+  /* No se puede meter dos veces el mismo pedido en rutas sin finalizar. */
+  const yaEnRuta=db.prepare(`SELECT DISTINCT rp.venta_id FROM ruta_pedidos rp
+    JOIN rutas_reparto r ON r.id=rp.ruta_id
+    WHERE rp.empresa_id=? AND r.estado<>'CERRADA' AND rp.venta_id IN (${ids.map(()=>'?').join(',')})`).all(e,...ids);
+  if(yaEnRuta.length)return res.status(409).json({ok:false,error:`Hay ${yaEnRuta.length} pedido(s) que ya están en otra ruta sin finalizar. Finalizá esa ruta o quitalos de la selección.`});
   const auto=String(d.orden||'MANUAL').toUpperCase()==='ZONA';
   let ordenados=pedidos;
   if(auto){
@@ -928,8 +937,20 @@ function cerrarRutaReparto(req,res){
   const e=empresaId(req),id=Number(req.params.id);
   const ruta=db.prepare('SELECT id FROM rutas_reparto WHERE id=? AND empresa_id=?').get(id,e);
   if(!ruta)return res.status(404).json({ok:false,error:'La ruta no existe.'});
-  db.prepare("UPDATE rutas_reparto SET estado='CERRADA',updated_at=CURRENT_TIMESTAMP WHERE id=?").run(id);
-  res.json({ok:true});
+  let liberados=0;
+  const tx=db.transaction(()=>{
+    db.prepare("UPDATE rutas_reparto SET estado='CERRADA',updated_at=CURRENT_TIMESTAMP WHERE id=?").run(id);
+    /*
+     * Los pedidos que quedaron sin entregar vuelven a CONFIRMADO para
+     * poder armar una ruta nueva (no se pueden repetir los ya en ruta).
+     */
+    const pendientes=db.prepare(`SELECT rp.venta_id FROM ruta_pedidos rp
+      WHERE rp.ruta_id=? AND rp.estado_entrega='PENDIENTE'`).all(id);
+    const liberar=db.prepare("UPDATE ventas_pos SET estado_pedido='CONFIRMADO' WHERE id=? AND estado_pedido NOT IN ('ENTREGADO','RECHAZADO','ANULADO')");
+    for(const p of pendientes)liberados+=liberar.run(p.venta_id).changes;
+  });
+  tx();
+  res.json({ok:true,liberados});
 }
 /*
  * Devoluciones de reparto: el administrador ve todas las que marcaron los
