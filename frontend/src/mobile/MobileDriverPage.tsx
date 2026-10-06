@@ -172,6 +172,9 @@ export function MobileDriverPage() {
           {p.telefono && <a className="mobile-btn-sec" href={`tel:${p.telefono}`}><Phone size={16} /> Llamar</a>}
           <button className="mobile-btn-sec" onClick={() => setExpandido(expandido === p.ruta_pedido_id ? null : p.ruta_pedido_id)}>{expandido === p.ruta_pedido_id ? <ChevronUp size={16} /> : <ChevronDown size={16} />} Productos</button>
         </div>
+        {p.devoluciones?.length ? <div className="parada-devueltos">
+          {p.devoluciones.map((dv: any) => <div key={dv.id}>−{Number(dv.cantidad).toLocaleString("es-AR")} {dv.descripcion || dv.codigo} {dv.confirmado ? <small>(confirmado)</small> : <small>(pendiente de confirmar)</small>}</div>)}
+        </div> : null}
         {expandido === p.ruta_pedido_id && <div className="parada-items">
           {p.items.map((it: any) => <div className="mobile-linea" key={`${it.codigo}-${it.descripcion}`}>
             <div><strong>{it.descripcion}</strong><span>{it.codigo}</span></div>
@@ -196,7 +199,7 @@ export function MobileDriverPage() {
         <p>Marcá la cantidad que el cliente devolvió. Si no devolvió nada, dejalo en 0. El administrador lo va a ver en la ruta.</p>
         {(entrega.items || []).map((i: any) => <div className="mobile-linea" key={claveItem(i)}>
           <div><strong>{i.descripcion}</strong><span>{i.codigo} · pedido: {Number(i.cantidad).toLocaleString("es-AR")}</span></div>
-          <input type="number" min={0} max={Number(i.cantidad)} value={devueltos[claveItem(i)] ?? 0} onFocus={(e) => e.currentTarget.select()} onChange={(e) => setDevueltos({ ...devueltos, [claveItem(i)]: Math.min(Number(e.target.value) || 0, Number(i.cantidad)) })} style={{ width: 84, height: 38, textAlign: "center", border: "1px solid var(--line-2)", borderRadius: 8, fontWeight: 700 }} />
+          <input type="text" inputMode="decimal" pattern="[0-9]*" value={devueltos[claveItem(i)] ?? 0} onFocus={(e) => e.currentTarget.select()} onChange={(e) => { const limpio = String(e.target.value).replace(/[^\d.,]/g, "").replace(",", "."); const n = Number(limpio) || 0; setDevueltos({ ...devueltos, [claveItem(i)]: Math.min(n, Number(i.cantidad)) }); }} style={{ width: 84, height: 38, textAlign: "center", border: "1px solid var(--line-2)", borderRadius: 8, fontWeight: 700 }} />
         </div>)}
       </div>}
       <div className="modal-actions">

@@ -5535,6 +5535,8 @@ html,body{height:auto;overflow:visible!important;background:#fff!important}
 .parada-head p{margin:2px 0 0;font-size:12px;color:var(--muted)}
 .parada-ok{opacity:.85}
 .parada-items{margin-top:6px;border-top:1px dashed var(--line-2);padding-top:6px}
+.parada-devueltos{color:#B23B58;font-weight:700;font-size:12.5px;margin-top:6px;display:flex;flex-direction:column;gap:2px}
+.parada-devueltos small{color:#C2536B;font-weight:400}
 .parada .mobile-btn-primario{margin-top:10px;height:48px}
 
 /* ===== Reportes fijos por vendedor ===== */
@@ -5553,6 +5555,7 @@ table.reporte-fijo tr.grupo .muted{color:var(--muted);font-weight:400;margin-lef
 table.reporte-fijo tr.grupo b{float:right}
 table.reporte-fijo tr.subtotal td{background:#FBF3DC;font-weight:700}
 table.reporte-fijo tr.total td{background:#DCE7F7;font-weight:800}
+table.reporte-fijo td.neg{color:#B23B58;font-weight:700}
 .reporte-fijo-total{display:flex;justify-content:flex-end;gap:16px;padding:8px 6px 2px;font-size:12px}
 
 /* ===== Reportes de usuarios y configuración de comprobantes ===== */

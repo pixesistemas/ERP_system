@@ -236,6 +236,8 @@ export const erpApi = {
   reabrirRutaReparto: (id:number) => request<any>(`/erp/reparto/rutas/${id}/reabrir`,{method:'POST',body:JSON.stringify({})}),
   marcarEntregaRuta: (rutaId:number,entregaId:number,data:any) => request<any>(`/erp/reparto/rutas/${rutaId}/entregas/${entregaId}`,{method:'POST',body:JSON.stringify(data)}),
   miRutaReparto: () => request<any>('/erp/reparto/mi-ruta'),
+  listRepartoDevoluciones: (estado='PENDIENTE') => request<any>(`/erp/reparto/devoluciones?estado=${encodeURIComponent(estado)}`),
+  confirmarDevolucion: (ids:number[],cantidades?:Record<number,number>) => request<any>('/erp/reparto/devoluciones/confirmar',{method:'POST',body:JSON.stringify({ids,cantidades})}),
   listPedidosClientes: (q:string='',vendedorId?:number|null) => request<any>(`/erp/pedidos/clientes?q=${encodeURIComponent(q)}${vendedorId?`&vendedor_id=${vendedorId}`:''}`),
   listPedidosActivos: (clienteId:number,vendedorId?:number|null) => request<any>(`/erp/pedidos/activos?cliente_id=${clienteId}${vendedorId?`&vendedor_id=${vendedorId}`:''}`),
   listDevolucionesPedido: () => request<any>('/erp/pedidos/devoluciones'),

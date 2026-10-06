@@ -4,6 +4,52 @@ import { api, erpApi } from "../../services/api";
 import { fmtFecha } from "../../utils/fecha";
 
 /*
+ * Dibuja un mapa simple (sin servicios externos) con los puntos de la
+ * ruta numerados en orden y la dirección flotante en cada punto.
+ */
+function escaparHtmlMapa(valor: any) {
+  return String(valor ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function construirMapaSvg(pedidos: any[]) {
+  const puntos = (pedidos || []).filter((p) => p.clat != null && p.clng != null);
+  if (puntos.length < 2) {
+    return '<p style="font-size:11px;color:#666">No hay coordenadas suficientes para dibujar el mapa. Cargá latitud y longitud en los clientes para verlo.</p>';
+  }
+  const ancho = 780,
+    alto = 520,
+    pad = 70;
+  const lats = puntos.map((p) => Number(p.clat)),
+    lngs = puntos.map((p) => Number(p.clng));
+  const minLat = Math.min(...lats),
+    maxLat = Math.max(...lats),
+    minLng = Math.min(...lngs),
+    maxLng = Math.max(...lngs);
+  const rangoLat = maxLat - minLat || 0.01,
+    rangoLng = maxLng - minLng || 0.01;
+  const x = (lng: number) => pad + ((lng - minLng) / rangoLng) * (ancho - 2 * pad);
+  const y = (lat: number) => alto - pad - ((lat - minLat) / rangoLat) * (alto - 2 * pad);
+  const marcas = puntos
+    .map((p, i) => {
+      const px = x(Number(p.clng)),
+        py = y(Number(p.clat));
+      const etiqueta = `${i + 1}. ${p.cliente || ""} — ${p.domicilio || ""}${p.localidad ? `, ${p.localidad}` : ""}`;
+      const anchoEtq = Math.min(370, etiqueta.length * 5.5 + 14);
+      const derecha = px < ancho / 2;
+      const lx = derecha ? px + 14 : px - 14 - anchoEtq;
+      const ly = py - 12;
+      return `<g>
+        <line x1="${px}" y1="${py}" x2="${derecha ? px + 12 : px - 12}" y2="${py - 8}" stroke="#999" stroke-width="1"/>
+        <circle cx="${px}" cy="${py}" r="11" fill="#6952C4" stroke="#fff" stroke-width="2"/>
+        <text x="${px}" y="${py + 4}" text-anchor="middle" font-size="11" font-weight="bold" fill="#fff">${i + 1}</text>
+        <rect x="${lx}" y="${ly - 12}" width="${anchoEtq}" height="22" rx="5" fill="#fff" fill-opacity="0.94" stroke="#C9BFEA"/>
+        <text x="${lx + 7}" y="${ly + 3}" font-size="10" fill="#333">${escaparHtmlMapa(etiqueta)}</text>
+      </g>`;
+    })
+    .join("");
+  return `<svg viewBox="0 0 ${ancho} ${alto}" width="100%" style="border:1px solid #ccc;background:#F4F6FA">${marcas}</svg>`;
+}
+
+/*
  * Reparto (Etapa 4): armado de rutas con pedidos confirmados (manual o
  * sugerida por zona), hoja de ruta ordenable, carga del vehículo,
  * cierre de ruta e impresión.
@@ -143,9 +189,10 @@ export function DeliveryRoutesPage() {
     if (!detalle) return;
     const filas = detalle.pedidos.map((p: any, i: number) => `<tr><td>${i + 1}</td><td>${p.cliente || ""}</td><td>${p.domicilio || ""} ${p.localidad || ""}</td><td>${p.telefono || ""}</td><td>$${Number(p.total || 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}</td></tr>`).join("");
     const carga = detalle.carga.map((c: any) => `<tr><td>${c.codigo}</td><td>${c.descripcion}</td><td>${Number(c.cantidad).toLocaleString("es-AR")}</td></tr>`).join("");
+    const mapa = construirMapaSvg(detalle.pedidos);
     const w = window.open("", "_blank");
     if (!w) return;
-    w.document.write(`<html><head><title>Hoja de ruta ${detalle.ruta.numero}</title><style>@page{size:A4 portrait;margin:10mm}body{font-family:Arial;font-size:10px}h1{font-size:15px}h2{font-size:12px;margin-top:14px}table{width:100%;border-collapse:collapse;margin-top:6px}th,td{border:1px solid #999;padding:3px 5px;text-align:left}th{background:#eee}</style></head><body><h1>HOJA DE RUTA ${detalle.ruta.numero}</h1><div>Fecha: ${fmtFecha(detalle.ruta.fecha)} · Repartidor: ${detalle.ruta.repartidor_nombre || "-"} · Paradas: ${detalle.pedidos.length}</div><h2>Recorrido</h2><table><thead><tr><th>#</th><th>Cliente</th><th>Dirección</th><th>Teléfono</th><th>Pedido</th></tr></thead><tbody>${filas}</tbody></table><h2>Carga del vehículo</h2><table><thead><tr><th>Código</th><th>Producto</th><th>Cantidad</th></tr></thead><tbody>${carga}</tbody></table></body></html>`);
+    w.document.write(`<html><head><title>Hoja de ruta ${detalle.ruta.numero}</title><style>@page{size:A4 portrait;margin:10mm}body{font-family:Arial;font-size:10px}h1{font-size:15px}h2{font-size:12px;margin-top:14px}table{width:100%;border-collapse:collapse;margin-top:6px}th,td{border:1px solid #999;padding:3px 5px;text-align:left}th{background:#eee}</style></head><body><h1>HOJA DE RUTA ${detalle.ruta.numero}</h1><div>Fecha: ${fmtFecha(detalle.ruta.fecha)} · Repartidor: ${detalle.ruta.repartidor_nombre || "-"} · Paradas: ${detalle.pedidos.length}</div><h2>Recorrido</h2><table><thead><tr><th>#</th><th>Cliente</th><th>Dirección</th><th>Teléfono</th><th>Pedido</th></tr></thead><tbody>${filas}</tbody></table><h2>Carga del vehículo</h2><table><thead><tr><th>Código</th><th>Producto</th><th>Cantidad</th></tr></thead><tbody>${carga}</tbody></table><h2 style="page-break-before:always">Mapa de entregas</h2><div style="font-size:10px;color:#555;margin-bottom:6px">Puntos numerados en el orden del recorrido. Cada etiqueta muestra la dirección.</div>${mapa}</body></html>`);
     w.document.close();
     setTimeout(() => w.print(), 300);
   }

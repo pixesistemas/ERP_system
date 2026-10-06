@@ -931,6 +931,47 @@ function cerrarRutaReparto(req,res){
   db.prepare("UPDATE rutas_reparto SET estado='CERRADA',updated_at=CURRENT_TIMESTAMP WHERE id=?").run(id);
   res.json({ok:true});
 }
+/*
+ * Devoluciones de reparto: el administrador ve todas las que marcaron los
+ * repartidores, ajusta la cantidad y las confirma. Solo las confirmadas
+ * descuentan en los reportes.
+ */
+function listRepartoDevoluciones(req,res){
+  const e=empresaId(req);
+  const estado=String(req.query.estado||'PENDIENTE').trim().toUpperCase();
+  const filtro=estado==='TODAS'?'':(estado==='CONFIRMADA'?'AND d.confirmado=1':'AND d.confirmado=0');
+  const rows=db.prepare(`SELECT d.*,r.numero ruta_numero,r.fecha ruta_fecha,
+      c.razon_social cliente,vt.numero venta_numero,vt.punto_venta venta_punto_venta,vd.nombre vendedor
+    FROM reparto_devoluciones d
+    LEFT JOIN rutas_reparto r ON r.id=d.ruta_id
+    LEFT JOIN clientes c ON c.id=d.cliente_id
+    LEFT JOIN ventas_pos vt ON vt.id=d.venta_id
+    LEFT JOIN vendedores vd ON vd.id=vt.vendedor_id
+    WHERE d.empresa_id=? ${filtro}
+    ORDER BY d.confirmado, d.id DESC LIMIT 300`).all(e);
+  res.json({ok:true,devoluciones:rows});
+}
+function confirmarDevolucion(req,res){
+  const e=empresaId(req),d=req.body||{};
+  const ids=Array.isArray(d.ids)?d.ids.map(Number).filter(Boolean):[];
+  if(!ids.length)return res.status(400).json({ok:false,error:'Seleccioná al menos una devolución.'});
+  const usuario=db.prepare('SELECT nombre FROM usuarios WHERE id=?').get(userId(req));
+  const tx=db.transaction(()=>{
+    let confirmadas=0;
+    for(const id of ids){
+      const dv=db.prepare('SELECT * FROM reparto_devoluciones WHERE id=? AND empresa_id=?').get(id,e);
+      if(!dv)continue;
+      const cantidad=d.cantidades&&d.cantidades[id]!=null?Math.max(0,Number(d.cantidades[id])):Number(dv.cantidad);
+      db.prepare('UPDATE reparto_devoluciones SET cantidad=?,confirmado=1,confirmado_por=?,confirmado_en=? WHERE id=?').run(cantidad,userId(req),nowLocal(),id);
+      const v=db.prepare('SELECT documento_id FROM ventas_pos WHERE id=?').get(dv.venta_id);
+      db.prepare('INSERT INTO pedido_estado_historial(empresa_id,venta_id,documento_id,estado,usuario_id,usuario_nombre,detalle,created_at) VALUES(?,?,?,?,?,?,?,?)').run(e,dv.venta_id,v?.documento_id||null,'DEVOLUCION_CONFIRMADA',userId(req),usuario?.nombre||'ADMIN',`Devolución confirmada (${dv.fecha}): ${dv.descripcion||dv.codigo} x${cantidad}`,nowLocal());
+      confirmadas++;
+    }
+    return confirmadas;
+  });
+  const confirmadas=tx();
+  res.json({ok:true,confirmadas});
+}
 function miRutaReparto(req,res){
   const e=empresaId(req),usuarioId=userId(req);
   const ruta=db.prepare("SELECT id FROM rutas_reparto WHERE empresa_id=? AND repartidor_id=? AND estado<>'CERRADA' ORDER BY id DESC LIMIT 1").get(e,usuarioId);
@@ -975,20 +1016,58 @@ function reporteVendedoresDetalle(req,res){
    * Precio con IVA incluido (igual que el total del pedido/ruta) para que
    * los montos coincidan con la bandeja, los repartos y el POS.
    */
-  const filas=db.prepare(`SELECT COALESCE(NULLIF(vd.nombre,''),'MOSTRADOR') vendedor, v.vendedor_id,
-      COALESCE(NULLIF(c.razon_social,''),'CONSUMIDOR FINAL') cliente, c.domicilio, c.localidad,
-      COALESCE(i.codigo,'') codigo, i.descripcion,
-      ROUND(SUM(i.cantidad),3) cantidad,
-      ROUND(SUM(i.subtotal*(1+i.iva/100.0)),2) precio,
-      ROUND(SUM(i.subtotal*(1+i.iva/100.0))*COALESCE(vd.comision_porcentaje,0)/100,2) comision
-    FROM ventas_pos v
-    JOIN venta_pos_items i ON i.venta_id=v.id
-    LEFT JOIN vendedores vd ON vd.id=v.vendedor_id
-    LEFT JOIN clientes c ON c.id=v.cliente_id
-    WHERE ${where.join(' AND ')}
-    GROUP BY v.vendedor_id, COALESCE(NULLIF(c.razon_social,''),'CONSUMIDOR FINAL'), COALESCE(i.codigo,''), i.descripcion
-    ORDER BY vendedor, cliente, i.descripcion
-    LIMIT 5000`).all(...params);
+  /*
+   * Ventas agrupadas por vendedor, cliente y producto (valores positivos).
+   */
+  const filasVentas = db
+    .prepare(
+      `SELECT COALESCE(NULLIF(vd.nombre,''),'MOSTRADOR') vendedor, v.vendedor_id,
+         COALESCE(NULLIF(c.razon_social,''),'CONSUMIDOR FINAL') cliente, c.domicilio, c.localidad,
+         COALESCE(i.codigo,'') codigo, i.descripcion,
+         ROUND(SUM(i.cantidad),3) cantidad,
+         ROUND(SUM(i.subtotal*(1+i.iva/100.0)),2) precio,
+         ROUND(SUM(i.subtotal*(1+i.iva/100.0))*COALESCE(vd.comision_porcentaje,0)/100,2) comision
+       FROM ventas_pos v
+       JOIN venta_pos_items i ON i.venta_id=v.id
+       LEFT JOIN vendedores vd ON vd.id=v.vendedor_id
+       LEFT JOIN clientes c ON c.id=v.cliente_id
+       WHERE ${where.join(" AND ")}
+       GROUP BY v.vendedor_id, COALESCE(NULLIF(c.razon_social,''),'CONSUMIDOR FINAL'), COALESCE(i.codigo,''), i.descripcion
+       ORDER BY vendedor, cliente, i.descripcion
+       LIMIT 5000`,
+    )
+    .all(...params);
+
+  /*
+   * Devoluciones de reparto CONFIRMADAS: van como línea aparte (por eso la
+   * descripción lleva la fecha) y en negativo, para que se vean en el reporte.
+   */
+  const condVendedorDev = vendedorId ? "AND v.vendedor_id=?" : "";
+  const paramsDev = [e, desde, hasta, ...(vendedorId ? [vendedorId] : [])];
+  const filasDevoluciones = db
+    .prepare(
+      `SELECT COALESCE(NULLIF(vd.nombre,''),'MOSTRADOR') vendedor, v.vendedor_id,
+         COALESCE(NULLIF(c.razon_social,''),'CONSUMIDOR FINAL') cliente, c.domicilio, c.localidad,
+         COALESCE(dv.codigo,'') codigo, dv.descripcion, dv.fecha devolucion_fecha,
+         ROUND(-dv.cantidad,3) cantidad,
+         ROUND(-(vi.subtotal*(1+vi.iva/100.0)/NULLIF(vi.cantidad,0))*dv.cantidad,2) precio,
+         ROUND(-(vi.subtotal*(1+vi.iva/100.0)/NULLIF(vi.cantidad,0))*dv.cantidad*COALESCE(vd.comision_porcentaje,0)/100,2) comision
+       FROM reparto_devoluciones dv
+       JOIN ventas_pos v ON v.id=dv.venta_id
+       LEFT JOIN vendedores vd ON vd.id=v.vendedor_id
+       LEFT JOIN clientes c ON c.id=v.cliente_id
+       LEFT JOIN venta_pos_items vi ON vi.venta_id=dv.venta_id AND (vi.producto_id=dv.producto_id OR vi.codigo=dv.codigo)
+       WHERE dv.empresa_id=? AND dv.confirmado=1 AND date(dv.fecha) BETWEEN ? AND ? ${condVendedorDev}
+       LIMIT 2000`,
+    )
+    .all(...paramsDev)
+    .map((d) => ({
+      ...d,
+      /* La fecha en la descripción hace que el reporte la muestre como línea propia. */
+      descripcion: `${d.descripcion} (dev. ${String(d.devolucion_fecha || "").slice(8, 10)}/${String(d.devolucion_fecha || "").slice(5, 7)}/${String(d.devolucion_fecha || "").slice(0, 4)})`,
+    }));
+
+  const filas = [...filasVentas, ...filasDevoluciones];
   res.json({ok:true,desde,hasta,filas});
 }
 
@@ -1166,7 +1245,7 @@ function updatePrices(req,res){
 function createReserveFund(req,res){const e=empresaId(req),d=req.body,amount=Number(d.importe_original||d.importe||0);if(!d.cliente_id||amount<=0)return res.status(400).json({ok:false,error:'Cliente e importe son obligatorios.'});const count=db.prepare('SELECT COUNT(*) n FROM reservas_monto WHERE empresa_id=?').get(e).n;const number=`RM-${String(count+1).padStart(8,'0')}`;const products=db.prepare('SELECT id,codigo,precio FROM productos WHERE empresa_id=? AND activo=1').all(e);const snapshot=Object.fromEntries(products.map(p=>[String(p.id),{codigo:p.codigo,precio:Number(p.precio)}]));const info=db.prepare(`INSERT INTO reservas_monto(empresa_id,cliente_id,numero,fecha,importe_original,saldo,lista_precio_id,lista_precio_nombre,precios_snapshot,observaciones) VALUES(?,?,?,?,?,?,?,?,?,?)`).run(e,Number(d.cliente_id),number,d.fecha||nowLocal().slice(0,10),amount,amount,d.lista_precio_id||null,d.lista_precio_nombre||'GENERAL',JSON.stringify(snapshot),d.observaciones||'');res.status(201).json({ok:true,reservation:db.prepare('SELECT * FROM reservas_monto WHERE id=?').get(info.lastInsertRowid)})}
 function consumeReserveFund(req,res){const e=empresaId(req),id=Number(req.params.id),amount=Number(req.body.importe||0);const tx=db.transaction(()=>{const r=db.prepare('SELECT * FROM reservas_monto WHERE id=? AND empresa_id=?').get(id,e);if(!r)throw Object.assign(new Error('Reserva inexistente.'),{status:404});if(amount<=0||amount>Number(r.saldo))throw Object.assign(new Error('El importe supera el saldo reservado.'),{status:409});db.prepare('UPDATE reservas_monto SET saldo=saldo-?,estado=CASE WHEN saldo-?<=0 THEN \'AGOTADA\' ELSE \'VIGENTE\' END,updated_at=CURRENT_TIMESTAMP WHERE id=?').run(amount,amount,id);db.prepare('INSERT INTO reserva_monto_consumos(reserva_id,documento_tipo,documento_id,importe,detalle) VALUES(?,?,?,?,?)').run(id,req.body.documento_tipo||'POS',req.body.documento_id||null,amount,req.body.detalle||'Consumo desde punto de venta');return db.prepare('SELECT * FROM reservas_monto WHERE id=?').get(id)});res.json({ok:true,reservation:tx()})}
 
-module.exports={listBanks,saveBank,listPos,savePos,listChecks,createCheck,deleteCajero,depositChecks,listWhatsapp,saveWhatsapp,uploadFiscal,fiscalFiles,listPurchases,savePurchase,deletePurchase,importarComprasExcel,ocrCompraFoto,listComprasPendientes,confirmarCompraPendiente,descartarCompraPendiente,listPedidosClientes,listPedidosActivos,listDevoluciones,devolverItemsPedido,listVendedorClientes,guardarVendedorClientes,crearVisita,listVisitas,movilBootstrap,crearPedidoMovil,listPedidosMovil,listBandejaPedidos,detallePedidoMovil,revisarPedidoMovil,cambiarEstadoPedidoMovil,listPedidosParaRuta,crearRutaReparto,listRutasReparto,detalleRutaReparto,reordenarRutaReparto,marcarEntregaRuta,cerrarRutaReparto,reabrirRutaReparto,miRutaReparto,reporteVendedoresDetalle,crearReporteUsuario,listFiscalIntentos,vatBook,borradorIva,saveBorradorIvaAjuste,renameBorradorIvaRubro,updatePrices,listReserveFunds,createReserveFund,consumeReserveFund};
+module.exports={listBanks,saveBank,listPos,savePos,listChecks,createCheck,deleteCajero,depositChecks,listWhatsapp,saveWhatsapp,uploadFiscal,fiscalFiles,listPurchases,savePurchase,deletePurchase,importarComprasExcel,ocrCompraFoto,listComprasPendientes,confirmarCompraPendiente,descartarCompraPendiente,listPedidosClientes,listPedidosActivos,listDevoluciones,devolverItemsPedido,listVendedorClientes,guardarVendedorClientes,crearVisita,listVisitas,movilBootstrap,crearPedidoMovil,listPedidosMovil,listBandejaPedidos,detallePedidoMovil,revisarPedidoMovil,cambiarEstadoPedidoMovil,listPedidosParaRuta,crearRutaReparto,listRutasReparto,detalleRutaReparto,reordenarRutaReparto,marcarEntregaRuta,cerrarRutaReparto,reabrirRutaReparto,miRutaReparto,listRepartoDevoluciones,confirmarDevolucion,reporteVendedoresDetalle,crearReporteUsuario,listFiscalIntentos,vatBook,borradorIva,saveBorradorIvaAjuste,renameBorradorIvaRubro,updatePrices,listReserveFunds,createReserveFund,consumeReserveFund};
 
 function userId(req){ return Number(req.usuario?.id || req.user?.id || req.user?.userId || 1); }
 function listPosCatalogs(req,res){

@@ -25,13 +25,15 @@ const TIPOS: { key: Tipo; label: string }[] = [
   { key: "DETALLE", label: "Detalle" },
 ];
 
-type Fila = { vendedor: string; cliente: string; domicilio: string; localidad: string; codigo: string; descripcion: string; cantidad: number; precio: number; comision: number };
+type Fila = { vendedor: string; cliente: string; domicilio: string; localidad: string; codigo: string; descripcion: string; cantidad: number; precio: number; comision: number; devolucion_fecha?: string | null };
 type Salida = { kind: "fila" | "grupo" | "subtotal" | "total"; key: string; numero?: number; cells: string[]; nivel?: number };
 
 const num = (v: any) => Number(v || 0);
 const fmtCant = (v: number) => v.toLocaleString("es-AR", { maximumFractionDigits: 3 });
 const fmtMon = (v: number) => v.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const etiquetaCliente = (f: Fila) => `${f.cliente}${f.domicilio ? ` Direction: ${f.domicilio}` : ""}`;
+/* Las devoluciones ya vienen en la descripción con su fecha (dev. dd/mm/aaaa). */
+const etiquetaProducto = (f: Fila) => f.descripcion;
 const suma = (filas: Fila[]) => ({
   cantidad: filas.reduce((n, f) => n + num(f.cantidad), 0),
   precio: filas.reduce((n, f) => n + num(f.precio), 0),
@@ -55,7 +57,7 @@ function construir(filas: Fila[], tipo: Tipo, expandidos: Set<string>, todoAbier
   const celdaComision = (valor: number) => (conComision ? [`$ ${fmtMon(valor)}`] : []);
 
   if (tipo === "VENDEDOR" || tipo === "CLIENTE" || tipo === "PRODUCTO") {
-    const clave = tipo === "VENDEDOR" ? (f: Fila) => f.vendedor : tipo === "CLIENTE" ? (f: Fila) => etiquetaCliente(f) : (f: Fila) => f.descripcion;
+    const clave = tipo === "VENDEDOR" ? (f: Fila) => f.vendedor : tipo === "CLIENTE" ? (f: Fila) => etiquetaCliente(f) : (f: Fila) => etiquetaProducto(f);
     let n = 0;
     for (const [k, grupo] of agrupar(filas, clave)) {
       const s = suma(grupo);
@@ -67,7 +69,7 @@ function construir(filas: Fila[], tipo: Tipo, expandidos: Set<string>, todoAbier
   if (tipo === "VENDEDOR_CLIENTE" || tipo === "VENDEDOR_PRODUCTO" || tipo === "CLIENTE_PRODUCTO") {
     const porVendedor = tipo !== "CLIENTE_PRODUCTO";
     const externa = porVendedor ? (f: Fila) => f.vendedor : (f: Fila) => etiquetaCliente(f);
-    const interna = porVendedor ? (f: Fila) => etiquetaCliente(f) : (f: Fila) => f.descripcion;
+    const interna = porVendedor ? (f: Fila) => etiquetaCliente(f) : (f: Fila) => etiquetaProducto(f);
     let n = 0;
     for (const [grupo, lista] of agrupar(filas, externa)) {
       if (porVendedor) rows.push({ kind: "grupo", key: `g:${grupo}`, cells: [grupo] });
@@ -94,7 +96,7 @@ function construir(filas: Fila[], tipo: Tipo, expandidos: Set<string>, todoAbier
       rows.push({ kind: "grupo", key: kc, cells: [`Cliente => ${cliente}`, abierto(kc) ? "" : `${porC.length} productos`, "", `$ ${fmtMon(sc.precio)}`], nivel: 1 });
       if (abierto(kc)) {
         for (const f of porC) {
-          rows.push({ kind: "fila", key: `${kc}|${f.codigo}|${f.descripcion}`, numero: ++n, cells: [fmtCant(num(f.cantidad)), f.codigo, f.descripcion, `$ ${fmtMon(num(f.precio))}`], nivel: 2 });
+          rows.push({ kind: "fila", key: `${kc}|${f.codigo}|${f.descripcion}`, numero: ++n, cells: [fmtCant(num(f.cantidad)), f.codigo, etiquetaProducto(f), `$ ${fmtMon(num(f.precio))}`], nivel: 2 });
         }
       }
       rows.push({ kind: "subtotal", key: `s:${kc}`, cells: [fmtCant(sc.cantidad), "", "Total cliente", `$ ${fmtMon(sc.precio)}`], nivel: 1 });
@@ -271,7 +273,7 @@ export function VendorReportsPage() {
               </tr>;
             }
             return <tr key={r.key} className={clase}>
-              {r.cells.map((c, i) => <td key={i} style={i === 0 ? indent : undefined}>{r.numero && i === 0 ? `${r.numero}  ${c}` : c}</td>)}
+              {r.cells.map((c, i) => <td key={i} className={/-\s*[\d$]/.test(String(c)) ? "neg" : ""} style={i === 0 ? indent : undefined}>{r.numero && i === 0 ? `${r.numero}  ${c}` : c}</td>)}
             </tr>;
           })}
           {!reporte.rows.length && <tr><td colSpan={reporte.headers.length} className="empty-table">No hay ventas en el período.</td></tr>}

@@ -12,6 +12,7 @@ export const SCREEN_SECTIONS: { section: string; screens: { key: string; label: 
       { key: "delivery-routes", label: "Reparto" },
       { key: "vendor-reports", label: "Reportes de vendedores" },
       { key: "mobile-driver", label: "App repartidor" },
+      { key: "delivery-returns", label: "Devoluciones de reparto" },
       { key: "sales", label: "Historial de ventas" },
       { key: "documents", label: "Comprobantes" },
       { key: "budgets", label: "Presupuestos" },
