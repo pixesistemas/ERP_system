@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Manual del Administrador - Pedidos móviles, reparto y compras</title>
+<style>
+  @page { size: A4; margin: 12mm; }
+  * { box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; font-size: 13px; color: #222; line-height: 1.5; max-width: 900px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 24px; margin: 0 0 2px; color: #4a3d8f; }
+  .sub { color: #666; font-size: 13px; margin-bottom: 16px; }
+  h2 { font-size: 17px; color: #4a3d8f; border-bottom: 2px solid #ded8f2; padding-bottom: 3px; margin: 20px 0 10px; }
+  h3 { font-size: 14px; margin: 12px 0 4px; }
+  p, li { margin: 4px 0; }
+  ol, ul { padding-left: 22px; margin: 6px 0; }
+  .paso { background: #F7F9FD; border-left: 4px solid #6952C4; border-radius: 6px; padding: 8px 12px; margin: 8px 0; }
+  .nota { background: #FFF8E6; border: 1px solid #F0C36D; border-radius: 8px; padding: 8px 12px; margin: 8px 0; }
+  .clave { background: #EAF7EF; border: 1px solid #8FD3A8; border-radius: 8px; padding: 8px 12px; margin: 8px 0; }
+  .boton { display: inline-block; background: #6952C4; color: #fff; border-radius: 6px; padding: 1px 7px; font-weight: bold; font-size: 12px; }
+  .boton-borde { display: inline-block; border: 1px solid #bbb; border-radius: 6px; padding: 1px 7px; font-weight: bold; font-size: 12px; }
+  .circuito { background: #F4F1FB; border: 1px solid #D8D2EE; border-radius: 8px; padding: 10px 12px; font-family: Consolas, monospace; font-size: 12px; white-space: pre-line; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 12px; }
+  th, td { border: 1px solid #bbb; padding: 5px 7px; text-align: left; }
+  th { background: #2E3A59; color: #fff; }
+  .dibujo { background: #FBFBFE; border: 1px solid #E3E0F2; border-radius: 10px; padding: 8px; margin: 10px 0; text-align: center; }
+  footer { margin-top: 20px; color: #777; font-size: 11px; text-align: center; }
+  @media print { body { padding: 0; } h2 { break-after: avoid; } .paso, .nota, .clave, .dibujo { break-inside: avoid; } }
+</style>
+</head>
+<body>
+
+<h1>Manual del Administrador</h1>
+<div class="sub">Puesta en marcha de vendedores, cartera de clientes, pedidos por celular, reparto y compras · PixeSistemas</div>
+
+<p>Este manual explica, paso a paso, cómo dejar funcionando el circuito de pedidos móviles en tu empresa: crear los usuarios, cargar los vendedores, armar la cartera de clientes de cada uno, asignar repartidores y operar el día a día desde el sistema.</p>
+
+<h2>1. Antes de empezar: activar los módulos</h2>
+<p>Los módulos opcionales se activan con el usuario <strong>superadmin</strong> del sistema (no es el administrador de tu empresa, es el usuario técnico). Ingresá a <strong>#/superadmin</strong> → solapa <strong>Módulos</strong> y tildá lo que tu empresa va a usar:</p>
+<table>
+  <tr><th>Módulo</th><th>Qué habilita</th></tr>
+  <tr><td><strong>Pedidos móviles + reparto</strong></td><td>Apps del vendedor y del repartidor, bandeja de pedidos, rutas de reparto, cartera de clientes, anular pedidos y reportes por vendedor.</td></tr>
+  <tr><td><strong>POS simplificado</strong></td><td>Deja en el POS solo <em>facturar</em> y <em>nota de venta</em> (esconde presupuestos, reservas y pedidos).</td></tr>
+  <tr><td><strong>App de compras</strong></td><td>App del celular y pantalla de Compras para que un encargado cargue facturas de proveedores.</td></tr>
+  <tr><td><strong>API ARCA</strong></td><td>Permite que otro sistema (por ejemplo un programa en FoxPro) emita facturas usando este ERP.</td></tr>
+</table>
+<div class="paso">Después de tildar, tocá el <strong>lápiz (Guardar)</strong> al final de la fila de tu empresa. Los cambios se aplican al instante al recargar el sistema.</div>
+<div class="nota">Si un módulo no está tildado, el menú correspondiente no aparece para nadie de la empresa. Es la llave general.</div>
+
+<div class="dibujo">
+<svg width="820" height="150" viewBox="0 0 820 150" xmlns="http://www.w3.org/2000/svg">
+  <defs><marker id="flecha" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#6952C4"/></marker></defs>
+  <rect x="20" y="35" width="200" height="80" rx="10" fill="#F4F1FB" stroke="#6952C4" stroke-width="2"/>
+  <text x="120" y="62" text-anchor="middle" font-family="Arial" font-size="14" font-weight="bold" fill="#4a3d8f">USUARIOS</text>
+  <text x="120" y="82" text-anchor="middle" font-family="Arial" font-size="11" fill="#555">quién entra y con qué rol</text>
+  <text x="120" y="98" text-anchor="middle" font-family="Arial" font-size="11" fill="#555">(vendedor, repartidor…)</text>
+  <line x1="225" y1="75" x2="285" y2="75" stroke="#6952C4" stroke-width="2" marker-end="url(#flecha)"/>
+  <rect x="290" y="35" width="200" height="80" rx="10" fill="#F4F1FB" stroke="#6952C4" stroke-width="2"/>
+  <text x="390" y="62" text-anchor="middle" font-family="Arial" font-size="14" font-weight="bold" fill="#4a3d8f">VENDEDORES</text>
+  <text x="390" y="82" text-anchor="middle" font-family="Arial" font-size="11" fill="#555">nombre + comisión</text>
+  <text x="390" y="98" text-anchor="middle" font-family="Arial" font-size="11" fill="#555">vinculado a su usuario</text>
+  <line x1="495" y1="75" x2="555" y2="75" stroke="#6952C4" stroke-width="2" marker-end="url(#flecha)"/>
+  <rect x="560" y="35" width="235" height="80" rx="10" fill="#EAF7EF" stroke="#4CAF7D" stroke-width="2"/>
+  <text x="677" y="62" text-anchor="middle" font-family="Arial" font-size="14" font-weight="bold" fill="#2f7a52">CARTERA DE CLIENTES</text>
+  <text x="677" y="82" text-anchor="middle" font-family="Arial" font-size="11" fill="#555">cada vendedor ve solo</text>
+  <text x="677" y="98" text-anchor="middle" font-family="Arial" font-size="11" fill="#555">los clientes que le marcás</text>
+</svg>
+</div>
+
+<h2>2. Paso 1: crear los usuarios</h2>
+<p>Menú <strong>Usuarios</strong> (Configuración → Usuarios, según tu menú). Ahí se crea quién puede entrar al sistema y con qué rol.</p>
+<ol>
+  <li>Tocá <span class="boton">Nuevo usuario</span>.</li>
+  <li>Completá <strong>nombre</strong>, <strong>usuario</strong> (por ejemplo <em>juan</em>) y <strong>contraseña</strong>.</li>
+  <li>Elegí el <strong>rol</strong>:
+    <ul>
+      <li><strong>Vendedor</strong>: entra a la app del celular y toma pedidos.</li>
+      <li><strong>Repartidor</strong>: entra a la app de reparto y entrega los pedidos.</li>
+      <li><strong>Administrador / Encargado / Cajero</strong>: los roles de escritorio de siempre.</li>
+    </ul>
+  </li>
+  <li>Guardá. Repetí por cada persona (un usuario por persona: no se comparten).</li>
+</ol>
+<div class="clave"><strong>Dispositivos:</strong> en la lista de Usuarios, el botón de <strong>dispositivos</strong> muestra los celulares donde esa persona quedó recordada (para no pedirle usuario y clave cada vez). Si perdió o cambió el celular, tocá <strong>Dar de baja</strong> para sacarle el acceso a ese aparato (o a todos).</div>
+<div class="nota">Cuando alguien deja de trabajar: desactivá su usuario. Eso corta también el acceso de todos sus celulares recordados.</div>
+
+<h2>3. Paso 2: cargar los vendedores y comisiones</h2>
+<p>Menú <strong>Vendedores y comisiones</strong>. Este paso es obligatorio para usar notas de pedido y reportes por vendedor.</p>
+<ol>
+  <li>Tocá <span class="boton">Nuevo vendedor</span>.</li>
+  <li><strong>Nombre</strong>: tal como querés que aparezca en pedidos y reportes.</li>
+  <li><strong>Comisión %</strong>: el porcentaje que le liquidás (podés dejarlo en 0 y completarlo después).</li>
+  <li><strong>Usuario del sistema</strong>: elegí el usuario que creaste en el paso 1. <em>Este vínculo es lo que hace que la app del celular sepa de quién son los pedidos.</em></li>
+  <li>Dejá <strong>Activo</strong> tildado y guardá.</li>
+</ol>
+<div class="paso">
+  <strong>Ejemplo:</strong> usuario <em>juan</em> (rol Vendedor) → vendedor <em>Juan Pérez</em> (comisión 3%) → el usuario del sistema <em>juan</em>. Cuando Juan cargue un pedido desde el celular, quedará a nombre de <em>Juan Pérez</em>.
+</div>
+<div class="nota">El POS también pide el vendedor al hacer una nota de pedido. Solo aparecen los vendedores <strong>activos</strong>: si alguien ya no vende, destildá <strong>Activo</strong> en vez de borrarlo (así los reportes históricos siguen completos).</div>
+
+<h2>4. Paso 3: cargar los clientes y marcarlos "de pedidos"</h2>
+<p>Menú <strong>Clientes</strong>. Son los mismos clientes de siempre, pero con dos datos nuevos importantes:</p>
+<ol>
+  <li><strong>"Cliente de pedidos"</strong>: tildá esta casilla en cada cliente que el vendedor puede visitar y tomar pedidos. En la lista de Clientes aparece una columna <strong>Pedidos</strong> que muestra <strong>Sí / NO</strong>.</li>
+  <li><strong>Dirección completa + Latitud y Longitud</strong>: cargá calle, localidad y las coordenadas. Con la latitud/longitud el cliente aparece en el <strong>mapa de la ruta</strong> del repartidor y en el botón <strong>Mapa</strong> de la app del vendedor (los abre directamente en Google Maps para navegar).</li>
+</ol>
+<div class="nota">Si falta la latitud/longitud, todo funciona igual salvo el navegador del mapa: el sistema ordena la ruta por <strong>localidad</strong>. Para cargarlas fácil: en el celular abrí el mapa en el punto del domicilio, mantené tocado y copiá las coordenadas.</div>
+
+<h2>5. Paso 4: armar la cartera de cada vendedor</h2>
+<p>Menú <strong>Cartera de clientes por vendedor</strong> (Cartas → Cartera según tu menú). El vendedor <em>solo</em> ve los clientes que le marques acá; no puede tomarle un pedido a un cliente que no tenga asignado.</p>
+<ol>
+  <li>Elegí el <strong>vendedor</strong> en la lista de arriba.</li>
+  <li>Buscá el cliente por nombre, CUIT, teléfono o dirección.</li>
+  <li>Tildá la casilla de los clientes que le corresponden.</li>
+  <li>Tocá <span class="boton">Guardar cartera</span>. El sistema confirma: <em>"Cartera guardada: N clientes asignados."</em></li>
+</ol>
+<div class="dibujo">
+<svg width="820" height="120" viewBox="0 0 820 120" xmlns="http://www.w3.org/2000/svg">
+  <defs><marker id="flecha2" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#4CAF7D"/></marker></defs>
+  <rect x="25" y="30" width="220" height="60" rx="10" fill="#FFF" stroke="#bbb" stroke-width="2"/>
+  <text x="135" y="55" text-anchor="middle" font-family="Arial" font-size="13" font-weight="bold" fill="#2E3A59">Clientes de la empresa</text>
+  <text x="135" y="74" text-anchor="middle" font-family="Arial" font-size="11" fill="#666">con tilde "Cliente de pedidos"</text>
+  <line x1="250" y1="60" x2="320" y2="60" stroke="#4CAF7D" stroke-width="2" marker-end="url(#flecha2)"/>
+  <rect x="325" y="30" width="220" height="60" rx="10" fill="#F7F9FD" stroke="#6952C4" stroke-width="2"/>
+  <text x="435" y="55" text-anchor="middle" font-family="Arial" font-size="13" font-weight="bold" fill="#4a3d8f">Cartera de Juan</text>
+  <text x="435" y="74" text-anchor="middle" font-family="Arial" font-size="11" fill="#666">los que marcaste para él</text>
+  <line x1="550" y1="60" x2="620" y2="60" stroke="#4CAF7D" stroke-width="2" marker-end="url(#flecha2)"/>
+  <rect x="625" y="30" width="170" height="60" rx="10" fill="#EAF7EF" stroke="#4CAF7D" stroke-width="2"/>
+  <text x="710" y="55" text-anchor="middle" font-family="Arial" font-size="13" font-weight="bold" fill="#2f7a52">App del vendedor</text>
+  <text x="710" y="74" text-anchor="middle" font-family="Arial" font-size="11" fill="#666">ve solo su cartera</text>
+</svg>
+</div>
+<div class="clave"><strong>Tip de recorrido:</strong> la app le muestra la cartera ordenada por <strong>localidad/zona</strong> (pantalla <em>Ruta</em>), así el vendedor recorre sin dar vueltas. Cuanto mejor cargada esté la localidad y las coordenadas, mejor la ruta.</div>
+
+<h2>6. Paso 5: asignar repartidores</h2>
+<p>Un repartidor es un <strong>usuario con rol REPARTIDOR</strong> (paso 1). No hace falta cargar nada más: al armar una ruta, el sistema te pide el repartidor de la lista de usuarios y, si ya existe uno con ese rol, lo deja preseleccionado.</p>
+<div class="nota">Si armás una ruta sin repartidor, el sistema avisa: la ruta existe, pero ese repartidor no la va a ver en su app hasta que se la asignes.</div>
+
+<h2>7. La operación diaria (tu parte)</h2>
+<table>
+  <tr><th>Pantalla</th><th>Qué hacés ahí</th></tr>
+  <tr>
+    <td><strong>Bandeja de pedidos</strong></td>
+    <td>Llegan los pedidos que cargaron los vendedores. Revisás y ajustás cantidades, quitás productos agotados y elegís: <strong>Confirmar todo</strong> (prepara el pedido completo), <strong>Confirmar parcial</strong> (prepara solo lo que dejaste) o <strong>Rechazar</strong> (anula con aviso). Después avanzás el estado: <strong>Preparando → Despachado → Entregado</strong>. El badge <strong>FACTURADO</strong> con CAE aparece cuando el pedido ya se facturó.</td>
+  </tr>
+  <tr>
+    <td><strong>Reparto</strong></td>
+    <td>Elegís los pedidos a repartir, el <strong>repartidor</strong> y la <strong>fecha</strong>. El sistema sugiere agrupar por zona y ordenar las paradas por cercanía (GPS). Podés reordenar la lista, ver la <strong>carga del vehículo</strong> (resumen de productos), imprimir la <strong>hoja de ruta</strong> con el mapa y <strong>Finalizar la ruta</strong> al volver (o <strong>Reabrirla</strong> si faltó algo).</td>
+  </tr>
+  <tr>
+    <td><strong>Devoluciones de reparto</strong></td>
+    <td>Cuando el repartidor marca que dejó productos, acá ves la lista y <strong>confirmás las cantidades</strong> que vuelven. Solo las confirmadas afectan stock y reportes.</td>
+  </tr>
+  <tr>
+    <td><strong>Anular pedidos</strong></td>
+    <td>Buscás el cliente, ves sus pedidos activos, quitás productos con un <strong>motivo</strong> y registrás la devolución: se genera el <strong>PDF de devolución</strong> con fecha y el pedido se actualiza (si se quita todo, queda anulado y desaparece de la lista).</td>
+  </tr>
+  <tr>
+    <td><strong>Reportes de vendedores</strong></td>
+    <td>Elegís período (por defecto hoy) y vendedor, y ves: ventas por vendedor, por cliente, por producto, detalle expandible, total acumulado y <strong>comisión</strong> (si la empresa muestra comisión). Exportás a <strong>PDF, Excel o CSV</strong>.</td>
+  </tr>
+  <tr>
+    <td><strong>Compras</strong></td>
+    <td>Carga de facturas de proveedores con foto (OCR), importación del archivo Excel de AFIP "Mis Comprobantes Recibidos" y la bandeja <strong>Facturas recibidas por WhatsApp</strong> si habilitaste números autorizados.</td>
+  </tr>
+</table>
+
+<h2>8. Las apps del celular</h2>
+<table>
+  <tr><th>App</th><th>Dirección</th><th>Quién entra</th></tr>
+  <tr><td><strong>Vendedores</strong></td><td>https://vendedor.pixesistemas.com.ar</td><td>Usuarios con rol Vendedor (vinculados a un vendedor)</td></tr>
+  <tr><td><strong>Reparto</strong></td><td>https://repartidor.pixesistemas.com.ar</td><td>Usuarios con rol Repartidor</td></tr>
+  <tr><td><strong>Compras</strong></td><td>https://compras.pixesistemas.com.ar</td><td>El usuario encargado de compras</td></tr>
+  <tr><td><strong>Escritorio</strong></td><td>https://erp.pixesistemas.com.ar</td><td>Administración, caja, POS y todas las pantallas</td></tr>
+</table>
+<div class="paso">En el celular se abre la dirección en el navegador y se agrega a la pantalla de inicio: Chrome → menú ⋮ → <strong>"Instalar aplicación"</strong>. En iPhone: Safari → Compartir → <strong>"Agregar a pantalla de inicio"</strong>. Queda como una app.</div>
+<div class="clave">La primera vez se pide usuario y clave; después el celular queda <strong>recordado</strong> (30 días, se renueva solo con el uso). El vendedor ve en su app solo <em>su</em> cartera; el repartidor, solo <em>su</em> ruta.</div>
+
+<h2>9. WhatsApp (opcional)</h2>
+<ul>
+  <li><strong>Pedidos por WhatsApp:</strong> tus clientes mandan el pedido por WhatsApp y cae en el ERP. Se configura en <strong>Bandeja de WhatsApp</strong> (ahí copiás la <strong>API Key</strong> para n8n) y en <strong>Pedidos por WhatsApp</strong> (qué números pueden pedir).</li>
+  <li><strong>Facturas de compras por WhatsApp:</strong> un número autorizado le saca una foto a la factura del proveedor y queda en la bandeja de Compras lista para revisar y cargar.</li>
+  <li><strong>Cheques y saldos:</strong> el sistema también puede avisar por WhatsApp (cheques por vencer, saldos vencidos) si están habilitados en la configuración de la empresa.</li>
+</ul>
+
+<h2>10. Mantenimiento y respaldo</h2>
+<table>
+  <tr><th>Tema</th><th>Cómo funciona</th></tr>
+  <tr><td><strong>Backup diario</strong></td><td>El servidor hace el backup todos los días a las 03:00 y n8n lo sube a <strong>Google Drive</strong> (workflow 07). La primera vez hay que conectar la cuenta de Google: n8n → workflow 07 → nodo <em>Subir a Google Drive</em> → <em>Create New</em> credencial → iniciar sesión con la cuenta de Gmail y aceptar. Quedan archivos <code>backup-erp-AAAA-MM-DD.sqlite</code>.</td></tr>
+  <tr><td><strong>PDFs en el servidor</strong></td><td>Los PDF generados (facturas, documentos y devoluciones) se guardan en el servidor y <strong>se borran automáticamente a los 30 días</strong> para que el disco no se llene. Si necesitás uno viejo, el sistema lo <strong>regenera</strong> al pedirlo de nuevo. El plazo se puede cambiar con la variable <code>PDF_RETENCION_DIAS</code>.</td></tr>
+  <tr><td><strong>Dispositivos recordados</strong></td><td>Se ven y se revocan desde Usuarios → dispositivos. Al desactivar un usuario, se cortan todos sus accesos.</td></tr>
+  <tr><td><strong>Clave del superadmin</strong></td><td>Se cambia con el script del servidor (<code>npm run db:reset-superadmin</code>). No se comparte con los usuarios de la empresa.</td></tr>
+  <tr><td><strong>¿Cuántos datos aguanta?</strong></td><td>La base SQLite soporta <strong>millones de registros y varias empresas juntas</strong> sin problema con este uso (ventas, pedidos y compras diarias). Lo importante es el <strong>backup diario</strong> y no dejar el servidor sin espacio en disco. Si algún día son varios servidores escribiendo a la vez, se evalúa migrar a MySQL.</td></tr>
+</table>
+
+<h2>11. Preguntas frecuentes</h2>
+<table>
+  <tr><th>Situación</th><th>Solución</th></tr>
+  <tr><td>El vendedor no ve la app en el celular</td><td>Verificá con el superadmin que el módulo <strong>Pedidos móviles + reparto</strong> esté tildado para tu empresa.</td></tr>
+  <tr><td>No puede entrar: "usuario o clave incorrectos"</td><td>Revisá en Usuarios que el usuario exista, esté activo y la clave esté bien. Si cambió de celular, revocale los dispositivos viejos.</td></tr>
+  <tr><td>El vendedor no ve un cliente</td><td>Ese cliente no está en <em>su</em> cartera: agregalo en <strong>Cartera de clientes por vendedor</strong> y guardá.</td></tr>
+  <tr><td>No aparece el cliente para pedidos</td><td>Falta el tilde <strong>"Cliente de pedidos"</strong> en el cliente (columna Pedidos = NO).</td></tr>
+  <tr><td>El repartidor no ve la ruta</td><td>La ruta quedó sin repartidor asignado: reabrí la ruta (o armá una nueva) y elegí el repartidor. Verificá que su usuario tenga rol Repartidor.</td></tr>
+  <tr><td>Un vendedor ya no trabaja</td><td>Destildá <strong>Activo</strong> en Vendedores y desactivá su usuario. No borres el vendedor: los reportes históricos lo necesitan.</td></tr>
+  <tr><td>En el POS aparecen vendedores que ya no usás</td><td>Quedan solo los activos: desmarcá <strong>Activo</strong> en Vendedores y recargá.</td></tr>
+  <tr><td>Necesito el PDF de una venta vieja</td><td>Se regenera solo: abrilo desde el historial de ventas o documentos. Aunque el archivo se haya borrado a los 30 días, el sistema lo vuelve a armar.</td></tr>
+</table>
+
+<h2>12. El circuito completo, en resumen</h2>
+<div class="circuito">VOS cargás usuarios → vendedores → clientes de pedidos → cartera
+        ↓
+EL VENDEDOR toma el pedido en el celular (con GPS)
+        ↓
+LA BANDEJA lo recibe: lo revisás y confirmás (todo / parcial / rechazar)
+        ↓
+SE ARMA LA RUTA: pedidos + repartidor + orden de paradas
+        ↓
+EL REPARTIDOR entrega desde su app (total / parcial / no entregado)
+        ↓
+DEVOLUCIONES: confirmás cantidades que vuelven
+        ↓
+REPORTES por vendedor/cliente/producto + comisión
+        ↓
+FACTURACIÓN y cobranza como siempre (POS, facturas ARCA, cuenta corriente)</div>
+
+<footer>PixeSistemas · ERP Empresarial · Ante cualquier duda, comunicate con el soporte.</footer>
+
+</body>
+</html>

@@ -1422,10 +1422,10 @@ async function createPosOperation(req,res){const e=empresaId(req);limpiarNotasVe
       importeIva=fiscal.importeIva;
       total=fiscal.importeTotal;
     }else{
-      number=nextNumber(e,pv,numeradorTipo);
+      number=nextNumberLibre(e,pv,numeradorTipo);
     }
   }else{
-    number=nextNumber(e,pv,numeradorTipo);
+    number=nextNumberLibre(e,pv,numeradorTipo);
   }
 
   const chequeMonto=Number((d.pagos||{}).CHEQUE||(d.pagos||{}).cheque||0);
@@ -1639,7 +1639,7 @@ async function facturarPedido(req,res){
     importeIva=fiscal.importeIva;
     total=fiscal.importeTotal;
   }else{
-    number=nextNumber(e,pv,'FACTURA');
+    number=nextNumberLibre(e,pv,'FACTURA');
   }
   const prevPagos=db.prepare('SELECT medio,importe FROM venta_pos_pagos WHERE venta_id=?').all(id);
   let pagosObj={...Object.fromEntries(prevPagos.map(p=>[String(p.medio).toLowerCase(),Number(p.importe)]))};

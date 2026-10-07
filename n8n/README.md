@@ -32,7 +32,7 @@ Creá estas variables en n8n (Settings → Variables) o en su `.env`:
 | `04-reintento-cae.json` | Cron cada 30 min | Reintenta CAE pendientes de AFIP |
 | `05-cobranzas.json` | Cron 10:00 | Recordatorio de saldo a clientes |
 | `06-conciliacion-pagos.json` | Webhook `mercadopago-pago` | Marca pagado y avisa |
-| `07-backup-nube.json` | Cron 03:00 | Crea el backup y lo descarga (agregá Drive/S3) |
+| `07-backup-nube.json` | Cron 03:00 | Crea el backup, lo descarga y lo sube a Google Drive |
 | `08-escalamiento-humano.json` | Webhook `erp-escalamiento` | Avisa a un vendedor cuando el bot no entiende |
 
 ## Endpoints del ERP para n8n
@@ -73,6 +73,24 @@ POST /api/v1/n8n/escalar             body: { "telefono": "...", "mensaje": "..."
 | `N8N_WEBHOOK_SECRET` | Se envía como header `x-webhook-secret` |
 | `ERROR_ALERTA_COOLDOWN_SEG` | Anti-spam por error (default 600 s) |
 | `SUPERADMIN_WHATSAPP_TOKEN` / `SUPERADMIN_WHATSAPP_PHONE_ID` | Envío directo por Meta (alternativa a n8n) |
+
+## Backup a Google Drive (workflow 07)
+
+El workflow 07 ya viene con el nodo **Subir a Google Drive** conectado. Para
+dejarlo andando la primera vez:
+
+1. Importá `07-backup-nube.json` (n8n → **Workflows** → **Import from File**).
+2. Abrí el nodo **Subir a Google Drive** → en **Credential** elegí
+   **Create New** → tipo **Google Drive OAuth2 API**.
+3. Se abre la pantalla de Google: iniciá sesión con la cuenta de Gmail donde
+   querés guardar los backups y aceptá los permisos.
+4. (Opcional) En **Folder** elegí una carpeta, por ejemplo `/Backups ERP`.
+5. Guardá el workflow y activalo.
+
+Todos los días a las 03:00 el backup queda en Drive con el nombre
+`backup-erp-AAAA-MM-DD-HHmm.sqlite`. Google Drive free da 15 GB, de sobra para
+los backups comprimidos. Si preferís no usar Drive, se puede reemplazar ese
+nodo por **S3/Dropbox** o borrarlo y dejar solo la descarga.
 
 ## Cómo importar
 

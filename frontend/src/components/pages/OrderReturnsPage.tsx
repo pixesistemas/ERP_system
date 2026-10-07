@@ -95,6 +95,7 @@ export function OrderReturnsPage() {
       if (r.devolucion?.pdf_url) setPdfModal({ url: normalizarUrlArchivo(r.devolucion.pdf_url), title: `Devolución N° ${r.devolucion.id}` });
       await abrirCliente(cliente);
       await cargarDevoluciones();
+      await buscar();
     } catch (e: any) {
       setError(e.message);
     } finally {

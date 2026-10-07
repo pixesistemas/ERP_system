@@ -35,11 +35,29 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [520, 0]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "upload",
+        "inputDataFieldName": "data",
+        "name": "={{ 'backup-erp-' + $now.format('yyyy-MM-dd-HHmm') + '.sqlite' }}",
+        "driveId": { "__rl": true, "mode": "list", "value": "My Drive" },
+        "folderId": { "__rl": true, "mode": "list", "value": "root", "cachedResultName": "/" },
+        "options": {}
+      },
+      "id": "drive-subir",
+      "name": "Subir a Google Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [780, 0],
+      "notes": "Elegí la cuenta de Google y, si querés, una carpeta propia (por ejemplo /Backups ERP) en las opciones del nodo."
     }
   ],
   "connections": {
     "Cron 03:00": { "main": [[{ "node": "Crear backup", "type": "main", "index": 0 }]] },
-    "Crear backup": { "main": [[{ "node": "Descargar backup", "type": "main", "index": 0 }]] }
+    "Crear backup": { "main": [[{ "node": "Descargar backup", "type": "main", "index": 0 }]] },
+    "Descargar backup": { "main": [[{ "node": "Subir a Google Drive", "type": "main", "index": 0 }]] }
   },
   "settings": { "executionOrder": "v1" },
   "pinData": {}
