@@ -125,6 +125,15 @@ function listarModulosEmpresa(req, res, next) {
   }
 }
 
+function catalogoModulos(req, res, next) {
+  try {
+    const { MODULOS_SISTEMA } = require("../utils/catalogoModulos");
+    return res.json({ ok: true, modulos: MODULOS_SISTEMA });
+  } catch (e) {
+    next(e);
+  }
+}
+
 function setModuloEmpresa(req, res, next) {
   try {
     const db = require("../db/database");
@@ -839,6 +848,7 @@ module.exports = {
   crearLicencia,
   cambiarEstadoLicencia,
   listarModulosEmpresa,
+  catalogoModulos,
   setModuloEmpresa,
   getTemaEmpresa,
   setTemaEmpresa,

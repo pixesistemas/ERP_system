@@ -3,7 +3,7 @@ import { Save, Settings, ReceiptText, Bot } from "lucide-react";
 import { api } from "../../services/api";
 
 export function SettingsPage(){
-  const [settings,setSettings]=useState<any>({stockPolicy:'WARN',stockAlertsEnabled:true,stockAlertDashboard:true,logoUrl:'',reciboDobleCopia:true,requireCashierOnStart:false,posAgruparPorCodigo:true,tipoInicialVenta:'FACTURA'}); const [notice,setNotice]=useState(""); const [error,setError]=useState("");
+  const [settings,setSettings]=useState<any>({stockPolicy:'WARN',stockAlertsEnabled:true,stockAlertDashboard:true,logoUrl:'',reciboDobleCopia:true,requireCashierOnStart:false,posAgruparPorCodigo:true,tipoInicialVenta:'FACTURA',manualEnVenta:false}); const [notice,setNotice]=useState(""); const [error,setError]=useState("");
   useEffect(()=>{api.getCompanySettings().then(r=>setSettings(r.settings)).catch((e:any)=>setError(e.message))},[]);
   async function save(){try{const r=await api.saveCompanySettings(settings);setSettings(r.settings);setNotice("Configuración guardada correctamente.");setTimeout(()=>setNotice(""),2500)}catch(e:any){setError(e.message)}}
   function setInicial(t:'NOTA_PEDIDO'|'PRESUPUESTO'|'FACTURA'){setSettings({...settings,tipoInicialVenta:t})}
@@ -11,6 +11,7 @@ export function SettingsPage(){
     <div className="settings-card"><div className="settings-head"><ReceiptText/><div><h3>Comprobante inicial de ventas</h3><p>Con qué comprobante arranca una venta en el punto de venta. Si querés arrancar en factura, no marques ningún check.</p></div></div>
       <label className="toggle-row"><div><strong>Arrancar en nota de pedido</strong><span>La venta nueva abre directamente como nota de pedido.</span></div><input type="checkbox" checked={settings.tipoInicialVenta==='NOTA_PEDIDO'} onChange={e=>setInicial(e.target.checked?'NOTA_PEDIDO':'FACTURA')}/></label>
       <label className="toggle-row"><div><strong>Arrancar en presupuesto</strong><span>La venta nueva abre directamente como presupuesto.</span></div><input type="checkbox" checked={settings.tipoInicialVenta==='PRESUPUESTO'} onChange={e=>setInicial(e.target.checked?'PRESUPUESTO':'FACTURA')}/></label>
+      <label className="toggle-row"><div><strong>Artículo manual en ventas</strong><span>Habilita el botón "Manual" también en las ventas (factura, nota de venta y notas de crédito/débito), además de presupuestos. Permite cargar una descripción y un código libre; si no ponés código queda <strong>MANUAL</strong>. No se crea en el catálogo de productos ni descuenta stock.</span></div><input type="checkbox" checked={Boolean(settings.manualEnVenta)} onChange={e=>setSettings({...settings,manualEnVenta:e.target.checked})}/></label>
       <p className="report-sub">Actual: {settings.tipoInicialVenta==='NOTA_PEDIDO'?'Nota de pedido':settings.tipoInicialVenta==='PRESUPUESTO'?'Presupuesto':'Factura'} (ningún check activo)</p>
       <button className="primary-action" onClick={save}><Save size={17}/> Guardar configuración</button>
     </div>

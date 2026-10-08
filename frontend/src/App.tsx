@@ -255,7 +255,28 @@ export function App() {
     }
   }}/>;
   const pantallas: string[] | null = session.pantallas ?? null;
-  function canSee(key: string) { return canSeeScreen(pantallas, key); }
+  /*
+   * Cada pantalla pertenece a un módulo del sistema. Los módulos base vienen
+   * activos y el superadmin puede desactivarlos por empresa; los opcionales
+   * se activan por empresa. Acá se oculta la pantalla si el módulo no está.
+   */
+  const MODULO_DE_PANTALLA: Record<string, string> = {
+    pos: "VENTAS", sales: "VENTAS", documents: "VENTAS", budgets: "VENTAS", "sales-notes": "VENTAS", reservations: "VENTAS", "reserve-funds": "VENTAS", orders: "VENTAS", "order-returns": "VENTAS", remitos: "VENTAS", sellers: "VENTAS",
+    products: "PRODUCTOS", categories: "PRODUCTOS", units: "PRODUCTOS", "price-update": "PRODUCTOS", imports: "PRODUCTOS", "shelf-labels": "PRODUCTOS",
+    stock: "STOCK", "stock-moves": "STOCK", "stock-transfers": "STOCK", "branch-stock": "STOCK", combos: "STOCK", "quantity-discounts": "STOCK", promotions: "STOCK", raffles: "STOCK",
+    clients: "CLIENTES",
+    suppliers: "COMPRAS", purchases: "COMPRAS",
+    "vat-books": "IVA", "borrador-iva": "IVA",
+    cash: "TESORERIA", accounts: "TESORERIA", receipts: "TESORERIA", checks: "TESORERIA", cards: "TESORERIA", "bank-list": "TESORERIA", banks: "TESORERIA", "payment-orders": "TESORERIA", "cash-closures": "TESORERIA", currencies: "TESORERIA", "check-deposits": "TESORERIA",
+    reports: "REPORTES", "dynamic-orders-report": "REPORTES", "sales-reports": "REPORTES",
+    "whatsapp-auth": "WHATSAPP", "whatsapp-orders": "WHATSAPP", "whatsapp-tray": "WHATSAPP",
+    branches: "CONFIGURACION", cashiers: "CONFIGURACION", "point-sales": "CONFIGURACION", "pos-comprobantes": "CONFIGURACION", "document-designer": "CONFIGURACION", company: "CONFIGURACION", settings: "CONFIGURACION", users: "CONFIGURACION", roles: "CONFIGURACION",
+  };
+  function canSee(key: string) {
+    const modulo = MODULO_DE_PANTALLA[key];
+    if (modulo && session.modulos?.[modulo] === false) return false;
+    return canSeeScreen(pantallas, key);
+  }
 
   if (hostApp) {
     const titulo = hostApp === "vendedor" ? "App vendedor" : hostApp === "repartidor" ? "App repartidor" : "App de compras";

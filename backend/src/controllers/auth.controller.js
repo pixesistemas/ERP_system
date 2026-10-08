@@ -1,6 +1,7 @@
 const AuthService = require("../services/auth.service");
 const { getPantallasUsuario } = require("../repositories/rol.repository");
 const passwordRecovery = require("../services/passwordRecovery.service");
+const { modulosEfectivos } = require("../utils/catalogoModulos");
 const db = require("../db/database");
 
 function getPuntosVentaUsuario(usuarioId, empresaId) {
@@ -26,12 +27,7 @@ function getPuntosVentaUsuario(usuarioId, empresaId) {
 }
 
 function getModulosEmpresa(empresaId) {
-  const rows = db
-    .prepare(
-      "SELECT modulo FROM modulos_empresa WHERE empresa_id=? AND activo=1",
-    )
-    .all(empresaId);
-  return Object.fromEntries(rows.map((r) => [r.modulo, true]));
+  return modulosEfectivos(empresaId);
 }
 
 function login(req, res, next) {

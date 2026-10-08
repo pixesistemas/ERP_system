@@ -102,6 +102,8 @@ export function SuperAdminPage() {
   const [errores, setErrores] = useState<any[]>([]);
   const [errorDetalle, setErrorDetalle] = useState<any>(null);
   const [avisos, setAvisos] = useState<any>({ telefono: "", whatsapp_activo: 0 });
+  const [modulosModal, setModulosModal] = useState<any>(null);
+  const [catalogoModulos, setCatalogoModulos] = useState<any[]>([]);
 
   const nombreSa = sessionStorage.getItem("afip_superadmin_nombre") || "Administrador";
 
@@ -128,6 +130,51 @@ export function SuperAdminPage() {
   }
 
   useEffect(() => { load(); }, []);
+
+  async function abrirModulos(empresa: any) {
+    setModulosModal({ empresa, cargando: true, guardando: false, estados: {}, inicial: {} });
+    try {
+      const [cat, mods] = await Promise.all([
+        catalogoModulos.length ? Promise.resolve({ modulos: catalogoModulos }) : call<any>("GET", "/catalogo-modulos"),
+        call<any>("GET", `/empresas/${empresa.id}/modulos`),
+      ]);
+      const lista = cat.modulos || [];
+      if (!catalogoModulos.length) setCatalogoModulos(lista);
+      const guardado: Record<string, boolean> = Object.fromEntries(
+        (mods.modulos || []).map((r: any) => [String(r.modulo || "").toUpperCase(), Boolean(r.activo)]),
+      );
+      const estados: Record<string, boolean> = {};
+      for (const m of lista) {
+        estados[m.clave] = m.tipo === "base" ? (guardado[m.clave] == null ? true : guardado[m.clave]) : Boolean(guardado[m.clave]);
+      }
+      setModulosModal({ empresa, cargando: false, guardando: false, estados, inicial: { ...estados } });
+    } catch (err: any) {
+      setError(err.message);
+      setModulosModal(null);
+    }
+  }
+
+  async function guardarModulos() {
+    if (!modulosModal) return;
+    const actual = modulosModal;
+    try {
+      setModulosModal({ ...actual, guardando: true });
+      const cambios = catalogoModulos.filter(
+        (m) => Boolean(actual.estados[m.clave]) !== Boolean(actual.inicial[m.clave]),
+      );
+      await Promise.all(
+        cambios.map((m) =>
+          call<any>("PUT", `/empresas/${actual.empresa.id}/modulos`, { modulo: m.clave, activo: Boolean(actual.estados[m.clave]) }),
+        ),
+      );
+      setOk(cambios.length ? `Módulos de ${actual.empresa.nombre} actualizados (${cambios.length} cambio/s).` : `Sin cambios en ${actual.empresa.nombre}.`);
+      setModulosModal(null);
+      await load();
+    } catch (err: any) {
+      setError(err.message);
+      setModulosModal({ ...actual, guardando: false });
+    }
+  }
 
   function salir() {
     sessionStorage.removeItem("afip_superadmin_token");
@@ -593,47 +640,32 @@ export function SuperAdminPage() {
       </div>}
     {tab === "MODULOS" && <div className="products-page">
         <div className="products-toolbar">
-          <div><h3>Módulos por empresa</h3><p>Activá funciones opcionales. Si una empresa no tiene el tilde, no ve el módulo en el sistema.</p></div>
+          <div><h3>Módulos por empresa</h3><p>Configurá qué funciones tiene cada empresa. Los módulos opcionales se activan; los incluidos vienen activos y se pueden desactivar si la empresa no los usa.</p></div>
         </div>
         <div className="products-card"><table>
-          <thead><tr><th>ID</th><th>Empresa</th><th>Pedidos móviles + reparto</th><th>POS simplificado (solo facturar y nota de venta)</th><th>App de compras</th><th>API ARCA (sistemas externos)</th><th>Guardar</th></tr></thead>
+          <thead><tr><th>ID</th><th>Empresa</th><th>Módulos opcionales activos</th><th>Configurar</th></tr></thead>
           <tbody>{empresas.map((e) => {
-            const partes = () => String(e.modulos_activos || "").split(",").filter(Boolean);
-            const activo = partes().includes("PREVENTA_MOVIL");
-            const simple = partes().includes("POS_SIMPLE");
-            const compras = partes().includes("COMPRAS_MOVIL");
-            const arca = partes().includes("ARCA_API");
-            const setModulo = (modulo: string, on: boolean) => {
-              const lista = partes().filter((m) => m !== modulo);
-              if (on) lista.push(modulo);
-              e.modulos_activos = lista.join(",");
-              setEmpresas([...empresas]);
-            };
+            const activos = String(e.modulos_activos || "").split(",").filter(Boolean);
             return <tr key={e.id}>
               <td>{e.id}</td>
               <td><strong>{e.nombre}</strong><small>{e.razon_social}</small></td>
-              <td><label className="toggle-row"><span>Activo</span><input type="checkbox" checked={activo} onChange={(ev) => setModulo("PREVENTA_MOVIL", ev.target.checked)}/></label></td>
-              <td><label className="toggle-row"><span>Activo</span><input type="checkbox" checked={simple} onChange={(ev) => setModulo("POS_SIMPLE", ev.target.checked)}/></label></td>
-              <td><label className="toggle-row"><span>Activo</span><input type="checkbox" checked={compras} onChange={(ev) => setModulo("COMPRAS_MOVIL", ev.target.checked)}/></label></td>
-              <td><label className="toggle-row"><span>Activo</span><input type="checkbox" checked={arca} onChange={(ev) => setModulo("ARCA_API", ev.target.checked)}/></label></td>
-              <td><button className="sa-icon-btn" title="Guardar módulos" onClick={async () => {
-                setLoading(true);
-                try {
-                  await Promise.all([
-                    call("PUT", `/empresas/${e.id}/modulos`, { modulo: "PREVENTA_MOVIL", activo: partes().includes("PREVENTA_MOVIL") }),
-                    call("PUT", `/empresas/${e.id}/modulos`, { modulo: "POS_SIMPLE", activo: partes().includes("POS_SIMPLE") }),
-                    call("PUT", `/empresas/${e.id}/modulos`, { modulo: "COMPRAS_MOVIL", activo: partes().includes("COMPRAS_MOVIL") }),
-                    call("PUT", `/empresas/${e.id}/modulos`, { modulo: "ARCA_API", activo: partes().includes("ARCA_API") }),
-                  ]);
-                  setOk(`Módulos de ${e.nombre} actualizados.`);
-                  await load();
-                } catch (err: any) { setError(err.message); } finally { setLoading(false); }
-              }}><Pencil size={15}/></button></td>
+              <td><div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{activos.length ? activos.map((m: string) => <span key={m} className="badge success">{m}</span>) : <span className="badge">Sin módulos opcionales</span>}</div></td>
+              <td><button className="secondary-action" onClick={() => abrirModulos(e)}><Tags size={15} /> Módulos</button></td>
             </tr>;
           })}</tbody></table>
           {!empresas.length && <div className="empty-table">No hay empresas.</div>}
         </div>
       </div>}
+    {modulosModal && <div className="modal-backdrop"><form className="product-modal polished-modal" onSubmit={(ev) => { ev.preventDefault(); guardarModulos(); }}>
+      <div className="modal-head"><div><h3>Módulos de {modulosModal.empresa.nombre}</h3><p>Activá o desactivá las funciones de esta empresa. Al guardar, los usuarios las ven al volver a entrar.</p></div><button type="button" onClick={() => setModulosModal(null)}><X /></button></div>
+      {modulosModal.cargando ? <div className="empty-table">Cargando módulos...</div> : <>
+        <h4 style={{ margin: "10px 0 4px" }}>Módulos opcionales</h4>
+        {catalogoModulos.filter((m) => m.tipo === "opcional").map((m) => <label key={m.clave} className="toggle-row"><div><strong>{m.nombre}</strong><span>{m.descripcion}</span></div><input type="checkbox" checked={Boolean(modulosModal.estados[m.clave])} onChange={(ev) => setModulosModal((prev: any) => ({ ...prev, estados: { ...prev.estados, [m.clave]: ev.target.checked } }))} /></label>)}
+        <h4 style={{ margin: "14px 0 4px" }}>Módulos incluidos</h4>
+        {catalogoModulos.filter((m) => m.tipo === "base").map((m) => <label key={m.clave} className="toggle-row"><div><strong>{m.nombre}</strong><span>{m.descripcion}</span></div><input type="checkbox" checked={Boolean(modulosModal.estados[m.clave])} onChange={(ev) => setModulosModal((prev: any) => ({ ...prev, estados: { ...prev.estados, [m.clave]: ev.target.checked } }))} /></label>)}
+      </>}
+      <div className="modal-actions"><button type="button" className="secondary" onClick={() => setModulosModal(null)}>Cancelar</button><button className="primary-action" disabled={modulosModal.guardando || modulosModal.cargando}>{modulosModal.guardando ? "Guardando..." : "Guardar módulos"}</button></div>
+    </form></div>}
     {tab === "COMPROBANTES" && <div className="products-page">
         <div className="products-toolbar">
           <div><h3>Qué se muestra en los comprobantes</h3><p>Elegí la empresa y el comprobante, y destildá lo que no querés que salga en los PDF (A4) y en los tickets de 80 mm.</p></div>
