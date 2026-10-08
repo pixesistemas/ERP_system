@@ -115,6 +115,10 @@ export function UsersPage() {
   async function submit(e: any) {
     e.preventDefault();
     setError("");
+    if (!creating.usuario?.trim() && !creating.email?.trim()) {
+      setError("Indicá un nombre de usuario o un email para el login.");
+      return;
+    }
     try {
       await api.createUser(creating);
       setCreating(null);
@@ -147,15 +151,16 @@ export function UsersPage() {
   return <div className="products-page">
     <div className="products-toolbar">
       <div><h3>Usuarios</h3><p>Quién puede entrar al sistema y con qué rol.</p></div>
-      <button className="primary-action" onClick={() => setCreating({ nombre: "", email: "", telefono: "", password: "", rol: roles[0]?.nombre || "ADMIN" })}><Plus /> Nuevo usuario</button>
+      <button className="primary-action" onClick={() => setCreating({ nombre: "", usuario: "", email: "", telefono: "", password: "", rol: roles[0]?.nombre || "ADMIN" })}><Plus /> Nuevo usuario</button>
     </div>
     {error && <div className="error-box">{error}</div>}
     <div className="products-card">
       <table>
-        <thead><tr><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Rol</th><th>Estado</th><th></th><th></th><th></th><th></th></tr></thead>
+        <thead><tr><th>Nombre</th><th>Usuario</th><th>Email</th><th>Teléfono</th><th>Rol</th><th>Estado</th><th></th><th></th><th></th><th></th></tr></thead>
         <tbody>{users.map((u: any) => <tr key={u.id}>
           <td><strong>{u.nombre}</strong></td>
-          <td>{u.email}</td>
+          <td>{u.usuario || "-"}</td>
+          <td>{u.email || "-"}</td>
           <td>{u.telefono || "-"}</td>
           <td><select value={u.rol || ""} onChange={e => changeRole(u, e.target.value)}>{!u.rol && <option value="">Sin rol</option>}{roles.map((r: any) => <option key={r.id} value={r.nombre}>{r.nombre}</option>)}</select></td>
           <td>{u.activo ? "ACTIVO" : "INACTIVO"}</td>
@@ -171,7 +176,8 @@ export function UsersPage() {
       <div className="modal-head"><div><UserRound /><h3>Nuevo usuario</h3></div><button type="button" onClick={() => setCreating(null)}><X /></button></div>
       <div className="form-grid">
         <label>Nombre<input required value={creating.nombre} onChange={e => setCreating({ ...creating, nombre: e.target.value })} /></label>
-        <label>Email<input required type="email" value={creating.email} onChange={e => setCreating({ ...creating, email: e.target.value })} /></label>
+        <label>Usuario<em>Para entrar al sistema (sin @). Si lo dejás vacío, se usa el email.</em><input value={creating.usuario} onChange={e => setCreating({ ...creating, usuario: e.target.value })} placeholder="Ej.: juan" /></label>
+        <label>Email (opcional)<input type="email" value={creating.email} onChange={e => setCreating({ ...creating, email: e.target.value })} /></label>
         <label>Teléfono<input value={creating.telefono} onChange={e => setCreating({ ...creating, telefono: e.target.value })} /></label>
         <label>Contraseña<input required type="password" value={creating.password} onChange={e => setCreating({ ...creating, password: e.target.value })} /></label>
         <label>Rol<select value={creating.rol} onChange={e => setCreating({ ...creating, rol: e.target.value })}>{roles.map((r: any) => <option key={r.id} value={r.nombre}>{r.nombre}</option>)}</select></label>

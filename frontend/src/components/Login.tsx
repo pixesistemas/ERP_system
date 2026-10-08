@@ -71,7 +71,7 @@ export function Login({ onLogin }: { onLogin: (data: any) => void }) {
     <form className="login-card" onSubmit={submit}>
       <div className="logo"><Bot size={25}/></div>
       <h2>Asistente Comercial</h2><p>Ingresá con tu cuenta del sistema.</p>
-      <label>Correo<input value={email} onChange={e=>setEmail(e.target.value)} /></label>
+      <label>Usuario o correo<input value={email} onChange={e=>setEmail(e.target.value)} /></label>
       <label>Contraseña<input type="password" value={password} onChange={e=>setPassword(e.target.value)} /></label>
       {error && <div className="error-box">{error}</div>}
       <button disabled={loading}>{loading ? <RefreshCw className="spin"/> : <><span>Ingresar</span><ChevronRight size={18}/></>}</button>

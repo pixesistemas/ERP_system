@@ -95,7 +95,7 @@ function login({ email, password, empresaNombre, empresaId }) {
   const token = jwt.sign(
     {
       usuarioId: usuario.id,
-      email: usuario.email,
+      email: usuario.email || usuario.usuario || null,
       empresaId: empresa.id,
       empresaNombre: empresa.nombre,
       permisos,
@@ -115,7 +115,7 @@ function login({ email, password, empresaNombre, empresaId }) {
     usuario: {
       id: usuario.id,
       nombre: usuario.nombre,
-      email: usuario.email,
+      email: usuario.email || usuario.usuario || null,
     },
     empresa: {
       id: empresa.id,
@@ -173,7 +173,7 @@ function refresh({ refreshToken }) {
   const token = jwt.sign(
     {
       usuarioId: usuario.id,
-      email: usuario.email,
+      email: usuario.email || usuario.usuario || null,
       empresaId: empresa.id,
       empresaNombre: empresa.nombre,
       permisos,
@@ -192,7 +192,7 @@ function refresh({ refreshToken }) {
     usuario: {
       id: usuario.id,
       nombre: usuario.nombre,
-      email: usuario.email,
+      email: usuario.email || usuario.usuario || null,
     },
     empresa: {
       id: empresa.id,

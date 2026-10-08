@@ -4,6 +4,7 @@ const { getEmpresaByNombre } = require("../repositories/empresa.repository");
 
 const {
   getUsuarioByEmail,
+  getUsuarioActivoById,
   usuarioPerteneceAEmpresa,
   getPermisosUsuario,
 } = require("../repositories/security.repository");
@@ -23,7 +24,8 @@ function jwtMiddleware(req, res, next) {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    const usuario = getUsuarioByEmail(decoded.email);
+    const usuario =
+      getUsuarioActivoById(decoded.usuarioId) || getUsuarioByEmail(decoded.email);
 
     if (!usuario) {
       return res.status(401).json({

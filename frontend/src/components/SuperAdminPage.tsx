@@ -267,7 +267,8 @@ export function SuperAdminPage() {
       if (usuarioModal.id) {
         await call("PATCH", `/usuarios/${usuarioModal.id}`, {
           nombre: usuarioModal.nombre,
-          email: usuarioModal.email,
+          usuario: usuarioModal.usuario || undefined,
+          email: usuarioModal.email || undefined,
           empresaId: Number(usuarioModal.empresaId),
           rol: Number(usuarioModal.rol),
           activo: usuarioModal.activo !== false,
@@ -277,7 +278,8 @@ export function SuperAdminPage() {
       } else {
         await call("POST", "/usuarios", {
           nombre: usuarioModal.nombre,
-          email: usuarioModal.email,
+          usuario: usuarioModal.usuario || undefined,
+          email: usuarioModal.email || undefined,
           password: usuarioModal.password,
           empresaId: Number(usuarioModal.empresaId),
           rol: Number(usuarioModal.rol),
@@ -562,19 +564,20 @@ export function SuperAdminPage() {
           <div><h3>Usuarios</h3><p>Creá usuarios y vincúlalos a una empresa con rol ADMIN o VENDEDOR.</p></div>
           <div className="sa-toolbar-right">
             <label className="sa-filtro">Empresa<select value={filtroEmpresa} onChange={(e) => setFiltroEmpresa(e.target.value)}><option value="">Todas</option>{empresas.map((en) => <option key={en.id} value={en.id}>{en.nombre}</option>)}</select></label>
-            <button className="primary-action" onClick={() => setUsuarioModal({ nombre: "", email: "", password: "", empresaId: empresas[0]?.id || "", rol: "3" })}><Plus/> Nuevo usuario</button>
+            <button className="primary-action" onClick={() => setUsuarioModal({ nombre: "", usuario: "", email: "", password: "", empresaId: empresas[0]?.id || "", rol: "3" })}><Plus/> Nuevo usuario</button>
           </div>
         </div>
         <div className="products-card"><table>
-          <thead><tr><th>ID</th><th>Nombre</th><th>Email</th><th>Empresas</th><th>Estado</th><th></th></tr></thead>
+          <thead><tr><th>ID</th><th>Nombre</th><th>Usuario</th><th>Email</th><th>Empresas</th><th>Estado</th><th></th></tr></thead>
           <tbody>{usuariosVisibles.map((u) => <tr key={u.id}>
             <td>{u.id}</td>
             <td><strong>{u.nombre}</strong></td>
-            <td>{u.email}</td>
+            <td>{u.usuario || "—"}</td>
+            <td>{u.email || "—"}</td>
             <td>{u.empresas || "—"}</td>
             <td>{u.activo ? <span className="sa-badge ok">Activo</span> : <span className="sa-badge off">Inactivo</span>}</td>
             <td><div className="sa-row-actions">
-              <button className="sa-icon-btn" title="Editar" onClick={() => setUsuarioModal({ id: u.id, nombre: u.nombre, email: u.email, password: "", empresaId: u.empresa_id || empresas[0]?.id || "", rol: String(u.rol_id || 3), activo: !!u.activo })}><Pencil size={15}/></button>
+              <button className="sa-icon-btn" title="Editar" onClick={() => setUsuarioModal({ id: u.id, nombre: u.nombre, usuario: u.usuario || "", email: u.email || "", password: "", empresaId: u.empresa_id || empresas[0]?.id || "", rol: String(u.rol_id || 3), activo: !!u.activo })}><Pencil size={15}/></button>
               <button className="sa-icon-btn" title="Cambiar clave" onClick={() => setClaveModal({ id: u.id, nombre: u.nombre, password: "" })}><KeyRound size={15}/></button>
               <button className="sa-icon-btn" title={u.activo ? "Desactivar" : "Activar"} onClick={async () => { try { await call("PATCH", `/usuarios/${u.id}`, { activo: !u.activo }); setOk(u.activo ? "Usuario desactivado." : "Usuario activado."); await load(); } catch (err: any) { setError(err.message); } }}><Trash2 size={15}/></button>
             </div></td>
@@ -585,7 +588,7 @@ export function SuperAdminPage() {
 
       {tab === "LICENCIAS" && <div className="products-page">
         <div className="products-toolbar">
-          <div><h3>Licencias</h3><p>Vendé o alquilá el ERP por empresa: mensual, trimestral o definitivo.</p></div>
+          <div><h3>Licencias</h3><p>Vendé o alquilá el ERP por empresa: mensual, trimestral, anual o definitivo.</p></div>
           <button className="primary-action" onClick={() => setLicenciaModal({ empresaId: empresas[0]?.id || "", plan: "MENSUAL", precio: "", descuento: "", fechaInicio: new Date().toISOString().slice(0, 10), notas: "" })}><Plus/> Nueva licencia</button>
         </div>
         <div className="products-card"><table>
@@ -656,13 +659,13 @@ export function SuperAdminPage() {
           {!empresas.length && <div className="empty-table">No hay empresas.</div>}
         </div>
       </div>}
-    {modulosModal && <div className="modal-backdrop"><form className="product-modal polished-modal" onSubmit={(ev) => { ev.preventDefault(); guardarModulos(); }}>
+    {modulosModal && <div className="modal-backdrop"><form className="product-modal polished-modal module-modal" onSubmit={(ev) => { ev.preventDefault(); guardarModulos(); }}>
       <div className="modal-head"><div><h3>Módulos de {modulosModal.empresa.nombre}</h3><p>Activá o desactivá las funciones de esta empresa. Al guardar, los usuarios las ven al volver a entrar.</p></div><button type="button" onClick={() => setModulosModal(null)}><X /></button></div>
       {modulosModal.cargando ? <div className="empty-table">Cargando módulos...</div> : <>
-        <h4 style={{ margin: "10px 0 4px" }}>Módulos opcionales</h4>
-        {catalogoModulos.filter((m) => m.tipo === "opcional").map((m) => <label key={m.clave} className="toggle-row"><div><strong>{m.nombre}</strong><span>{m.descripcion}</span></div><input type="checkbox" checked={Boolean(modulosModal.estados[m.clave])} onChange={(ev) => setModulosModal((prev: any) => ({ ...prev, estados: { ...prev.estados, [m.clave]: ev.target.checked } }))} /></label>)}
-        <h4 style={{ margin: "14px 0 4px" }}>Módulos incluidos</h4>
-        {catalogoModulos.filter((m) => m.tipo === "base").map((m) => <label key={m.clave} className="toggle-row"><div><strong>{m.nombre}</strong><span>{m.descripcion}</span></div><input type="checkbox" checked={Boolean(modulosModal.estados[m.clave])} onChange={(ev) => setModulosModal((prev: any) => ({ ...prev, estados: { ...prev.estados, [m.clave]: ev.target.checked } }))} /></label>)}
+        <h4>Módulos opcionales</h4>
+        {catalogoModulos.filter((m) => m.tipo === "opcional").map((m) => <label key={m.clave} className="module-row"><div className="module-info"><strong>{m.nombre}</strong><span>{m.descripcion}</span></div><input type="checkbox" checked={Boolean(modulosModal.estados[m.clave])} onChange={(ev) => setModulosModal((prev: any) => ({ ...prev, estados: { ...prev.estados, [m.clave]: ev.target.checked } }))} /></label>)}
+        <h4>Módulos incluidos</h4>
+        {catalogoModulos.filter((m) => m.tipo === "base").map((m) => <label key={m.clave} className="module-row"><div className="module-info"><strong>{m.nombre}</strong><span>{m.descripcion}</span></div><input type="checkbox" checked={Boolean(modulosModal.estados[m.clave])} onChange={(ev) => setModulosModal((prev: any) => ({ ...prev, estados: { ...prev.estados, [m.clave]: ev.target.checked } }))} /></label>)}
       </>}
       <div className="modal-actions"><button type="button" className="secondary" onClick={() => setModulosModal(null)}>Cancelar</button><button className="primary-action" disabled={modulosModal.guardando || modulosModal.cargando}>{modulosModal.guardando ? "Guardando..." : "Guardar módulos"}</button></div>
     </form></div>}
@@ -757,7 +760,7 @@ export function SuperAdminPage() {
         </div>
         <h4>Licencia</h4>
         <div className="form-grid">
-          <label>Plan<select value={alta.plan} onChange={(e) => setAlta({ ...alta, plan: e.target.value })}><option value="MENSUAL">Mensual</option><option value="TRIMESTRAL">Trimestral</option><option value="DEFINITIVO">Definitivo</option></select></label>
+          <label>Plan<select value={alta.plan} onChange={(e) => setAlta({ ...alta, plan: e.target.value })}><option value="MENSUAL">Mensual</option><option value="TRIMESTRAL">Trimestral</option><option value="ANUAL">Anual</option><option value="DEFINITIVO">Definitivo</option></select></label>
           <label>Precio (sin IVA)<input type="number" min="0" value={alta.precio} onChange={(e) => setAlta({ ...alta, precio: e.target.value })} placeholder="90000" /></label>
           <label>Descuento %<input type="number" min="0" max="100" value={alta.descuento} onChange={(e) => setAlta({ ...alta, descuento: e.target.value })} placeholder="10" /></label>
         </div>
@@ -853,7 +856,8 @@ export function SuperAdminPage() {
       <div className="modal-head"><h3>{usuarioModal.id ? "Editar usuario" : "Nuevo usuario"}</h3><button type="button" onClick={() => setUsuarioModal(null)}><X/></button></div>
       <div className="form-grid">
         <label>Nombre<input required value={usuarioModal.nombre} onChange={(e) => setUsuarioModal({ ...usuarioModal, nombre: e.target.value })} /></label>
-        <label>Email (usuario de login)<input required type="email" value={usuarioModal.email} onChange={(e) => setUsuarioModal({ ...usuarioModal, email: e.target.value })} /></label>
+        <label>Usuario<em>Para el login (sin @). Opcional si ya tiene email.</em><input value={usuarioModal.usuario || ""} onChange={(e) => setUsuarioModal({ ...usuarioModal, usuario: e.target.value })} placeholder="Ej.: juan" /></label>
+        <label>Email (usuario de login)<em>Opcional si ya tiene nombre de usuario.</em><input type="email" value={usuarioModal.email || ""} onChange={(e) => setUsuarioModal({ ...usuarioModal, email: e.target.value })} /></label>
         <label>{usuarioModal.id ? "Nueva clave (opcional)" : "Clave inicial"}<input required={!usuarioModal.id} type="text" value={usuarioModal.password} onChange={(e) => setUsuarioModal({ ...usuarioModal, password: e.target.value })} placeholder={usuarioModal.id ? "Dejar vacío para no cambiarla" : ""} /></label>
         <label>Empresa<select required value={usuarioModal.empresaId} onChange={(e) => setUsuarioModal({ ...usuarioModal, empresaId: e.target.value })}>{empresas.map((en) => <option key={en.id} value={en.id}>{en.nombre}</option>)}</select></label>
         <label>Rol<select value={usuarioModal.rol} onChange={(e) => setUsuarioModal({ ...usuarioModal, rol: e.target.value })}><option value="1">ADMIN</option><option value="3">VENDEDOR</option></select></label>
@@ -866,7 +870,7 @@ export function SuperAdminPage() {
       <div className="modal-head"><h3>Nueva licencia</h3><button type="button" onClick={() => setLicenciaModal(null)}><X/></button></div>
       <div className="form-grid">
         <label>Empresa<select required value={licenciaModal.empresaId} onChange={(e) => setLicenciaModal({ ...licenciaModal, empresaId: e.target.value })}>{empresas.map((en) => <option key={en.id} value={en.id}>{en.nombre}</option>)}</select></label>
-        <label>Plan<select value={licenciaModal.plan} onChange={(e) => setLicenciaModal({ ...licenciaModal, plan: e.target.value })}><option value="MENSUAL">Mensual (1 mes)</option><option value="TRIMESTRAL">Trimestral (3 meses)</option><option value="DEFINITIVO">Definitivo</option></select></label>
+        <label>Plan<select value={licenciaModal.plan} onChange={(e) => setLicenciaModal({ ...licenciaModal, plan: e.target.value })}><option value="MENSUAL">Mensual (1 mes)</option><option value="TRIMESTRAL">Trimestral (3 meses)</option><option value="ANUAL">Anual (12 meses)</option><option value="DEFINITIVO">Definitivo</option></select></label>
         <label>Precio ($)<input type="number" min="0" step="0.01" value={licenciaModal.precio} onChange={(e) => setLicenciaModal({ ...licenciaModal, precio: e.target.value })} /></label>
         <label>Descuento (%)<em>Ej.: 10 = 10% de descuento</em><input type="number" min="0" max="100" step="0.01" value={licenciaModal.descuento} onChange={(e) => setLicenciaModal({ ...licenciaModal, descuento: e.target.value })} /></label>
         <label>Fecha de inicio<input type="date" value={licenciaModal.fechaInicio} onChange={(e) => setLicenciaModal({ ...licenciaModal, fechaInicio: e.target.value })} /></label>

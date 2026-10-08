@@ -118,7 +118,7 @@ function listarUsuarios(empresaId) {
   return db
     .prepare(
       `
-    SELECT u.id, u.nombre, u.email, u.telefono, u.activo, u.created_at,
+    SELECT u.id, u.nombre, u.usuario, u.email, u.telefono, u.activo, u.created_at,
       GROUP_CONCAT(DISTINCT e.nombre) AS empresas,
       MAX(ue.empresa_id) AS empresa_id,
       (SELECT rol_id FROM usuario_roles ur WHERE ur.usuario_id = u.id LIMIT 1) AS rol_id
@@ -133,10 +133,12 @@ function listarUsuarios(empresaId) {
     .all(...params);
 }
 
-function crearUsuario({ nombre, email, password, empresaId, rol }) {
+function crearUsuario({ nombre, usuario, email, password, empresaId, rol }) {
   const nombreOk = (nombre || "").trim();
-  if (!nombreOk || !email || !password) {
-    const error = new Error("Nombre, email y clave son obligatorios");
+  const usuarioOk = usuario ? String(usuario).trim().toLowerCase() : null;
+  const emailOk = email ? String(email).trim() : null;
+  if (!nombreOk || (!usuarioOk && !emailOk) || !password) {
+    const error = new Error("Nombre, usuario (o email) y clave son obligatorios");
     error.statusCode = 400;
     throw error;
   }
@@ -156,16 +158,29 @@ function crearUsuario({ nombre, email, password, empresaId, rol }) {
     throw error;
   }
 
+  if (usuarioOk) {
+    const dupUsuario = db.prepare("SELECT id FROM usuarios WHERE usuario = ?").get(usuarioOk);
+    if (dupUsuario) {
+      const error = new Error("Ya existe otro usuario con ese nombre de usuario");
+      error.statusCode = 409;
+      throw error;
+    }
+  }
+
   const hash = bcrypt.hashSync(password, 10);
 
   const tx = db.transaction(() => {
     let usuarioId;
-    const existente = db.prepare("SELECT id FROM usuarios WHERE email = ?").get(email);
+    const existente = emailOk
+      ? db.prepare("SELECT id FROM usuarios WHERE email = ?").get(emailOk)
+      : null;
     if (existente) {
-      db.prepare("UPDATE usuarios SET nombre = ?, password_hash = ?, activo = 1 WHERE id = ?").run(nombreOk, hash, existente.id);
+      db.prepare(
+        "UPDATE usuarios SET nombre = ?, password_hash = ?, activo = 1, usuario = COALESCE(?, usuario) WHERE id = ?",
+      ).run(nombreOk, hash, usuarioOk, existente.id);
       usuarioId = existente.id;
     } else {
-      const res = db.prepare("INSERT INTO usuarios (nombre, email, password_hash, activo) VALUES (?, ?, ?, 1)").run(nombreOk, email, hash);
+      const res = db.prepare("INSERT INTO usuarios (nombre, usuario, email, password_hash, activo) VALUES (?, ?, ?, ?, 1)").run(nombreOk, usuarioOk, emailOk, hash);
       usuarioId = res.lastInsertRowid;
     }
     db.prepare(
@@ -179,11 +194,11 @@ function crearUsuario({ nombre, email, password, empresaId, rol }) {
   });
 
   const usuarioId = tx();
-  return db.prepare("SELECT id, nombre, email FROM usuarios WHERE id = ?").get(usuarioId);
+  return db.prepare("SELECT id, nombre, usuario, email FROM usuarios WHERE id = ?").get(usuarioId);
 }
 
-function actualizarUsuario(id, { nombre, email, password, activo, empresaId, rol }) {
-  const existe = db.prepare("SELECT id, email FROM usuarios WHERE id = ?").get(id);
+function actualizarUsuario(id, { nombre, usuario, email, password, activo, empresaId, rol }) {
+  const existe = db.prepare("SELECT id, usuario, email FROM usuarios WHERE id = ?").get(id);
   if (!existe) {
     const error = new Error("Usuario no encontrado");
     error.statusCode = 404;
@@ -193,6 +208,20 @@ function actualizarUsuario(id, { nombre, email, password, activo, empresaId, rol
   const tx = db.transaction(() => {
     if (nombre !== undefined && String(nombre).trim()) {
       db.prepare("UPDATE usuarios SET nombre = ? WHERE id = ?").run(String(nombre).trim(), id);
+    }
+    if (usuario !== undefined && String(usuario || "").trim()) {
+      const nuevoUsuario = String(usuario).trim().toLowerCase();
+      if (nuevoUsuario !== String(existe.usuario || "").toLowerCase()) {
+        const dup = db
+          .prepare("SELECT id FROM usuarios WHERE usuario = ? AND id <> ?")
+          .get(nuevoUsuario, id);
+        if (dup) {
+          const error = new Error("Ya existe otro usuario con ese nombre de usuario");
+          error.statusCode = 409;
+          throw error;
+        }
+        db.prepare("UPDATE usuarios SET usuario = ? WHERE id = ?").run(nuevoUsuario, id);
+      }
     }
     if (email !== undefined && String(email).trim() && String(email).trim() !== existe.email) {
       const nuevoEmail = String(email).trim();
@@ -271,8 +300,8 @@ function crearLicencia({ empresaId, plan, precio, descuentoPorc, fechaInicio, no
     error.statusCode = 400;
     throw error;
   }
-  if (!["MENSUAL", "TRIMESTRAL", "DEFINITIVO"].includes(plan)) {
-    const error = new Error("El plan debe ser MENSUAL, TRIMESTRAL o DEFINITIVO");
+  if (!["MENSUAL", "TRIMESTRAL", "ANUAL", "DEFINITIVO"].includes(plan)) {
+    const error = new Error("El plan debe ser MENSUAL, TRIMESTRAL, ANUAL o DEFINITIVO");
     error.statusCode = 400;
     throw error;
   }
@@ -284,7 +313,7 @@ function crearLicencia({ empresaId, plan, precio, descuentoPorc, fechaInicio, no
   let fechaVencimiento = null;
   if (plan !== "DEFINITIVO") {
     const inicio = fechaInicio ? new Date(fechaInicio) : new Date();
-    const meses = plan === "MENSUAL" ? 1 : 3;
+    const meses = plan === "MENSUAL" ? 1 : plan === "TRIMESTRAL" ? 3 : 12;
     const venc = new Date(inicio);
     venc.setMonth(venc.getMonth() + meses);
     fechaVencimiento = venc.toISOString().slice(0, 10);

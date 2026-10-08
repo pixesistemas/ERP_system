@@ -1,16 +1,29 @@
 const db = require("../db/database");
 
 function getUsuarioByEmail(email) {
+  const credencial = String(email || "").trim();
+  if (!credencial) return null;
   return db
     .prepare(
       `
     SELECT *
     FROM usuarios
-    WHERE email = ?
-      AND activo = 1
+    WHERE activo = 1
+      AND (
+        LOWER(email) = LOWER(?)
+        OR LOWER(COALESCE(usuario, '')) = LOWER(?)
+      )
   `,
     )
-    .get(email);
+    .get(credencial, credencial);
+}
+
+function getUsuarioActivoById(id) {
+  const usuarioId = Number(id);
+  if (!usuarioId) return null;
+  return db
+    .prepare("SELECT * FROM usuarios WHERE id = ? AND activo = 1")
+    .get(usuarioId);
 }
 
 function getUsuarioByTelefono(telefono) {
@@ -81,6 +94,7 @@ function usuarioTienePermiso({ usuarioId, empresaId, permiso }) {
 
 module.exports = {
   getUsuarioByEmail,
+  getUsuarioActivoById,
   getUsuarioByTelefono,
   usuarioPerteneceAEmpresa,
   getPermisosUsuario,

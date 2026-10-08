@@ -13,18 +13,19 @@ const db = require("../db/database");
 
 function crear(req, res, next) {
   try {
-    const { nombre, email, telefono, password, rol } = req.body;
+    const { nombre, usuario, email, telefono, password, rol } = req.body;
 
-    if (!nombre || !email || !password) {
+    if (!nombre || (!email && !usuario) || !password) {
       return res.status(400).json({
         ok: false,
-        error: "Debe informar nombre, email y password",
+        error: "Debe informar nombre, un usuario o email, y password",
       });
     }
 
-    const usuario = crearUsuario({
+    const usuarioCreado = crearUsuario({
       nombre,
-      email,
+      usuario,
+      email: email || null,
       telefono,
       password,
       empresaId: req.empresa.id,
@@ -33,7 +34,7 @@ function crear(req, res, next) {
 
     res.json({
       ok: true,
-      usuario,
+      usuario: usuarioCreado,
     });
   } catch (error) {
     next(error);

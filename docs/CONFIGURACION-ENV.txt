@@ -1,0 +1,182 @@
+==========================================================
+ ERP EMPRESARIAL - TODO LO QUE FALTA EN EL ARCHIVO .ENV
+==========================================================
+
+DONDE SE CARGA
+- Producción (el servidor): Portainer → Stacks → "afip-conversacional-erp"
+  → Environment variables → pegá cada variable → "Update the stack".
+- Desarrollo (tu PC): backend\.env
+
+CÓMO LEERLO
+- [OBLIGATORIA] = sin esto algo no funciona.
+- [RECOMENDADA] = conviene completarla.
+- [OPCIONAL]    = solo si la vas a usar.
+
+
+==========================================================
+ COPIA Y PEGA ESTO (completá los <...>)
+==========================================================
+
+# ---------- NÚCLEO ----------
+JWT_SECRET=<cadena larga y secreta, 40+ caracteres al azar>          # [OBLIGATORIA]
+JWT_EXPIRES_IN=8h
+DB_PATH=/app/data/afip_api.db
+DEMO_MODE=false
+AFIP_PRODUCTION=true
+OPENSSL=/usr/bin/openssl
+PUBLIC_BASE_URL=https://erp.pixesistemas.com.ar                     # [OBLIGATORIA]
+TZ=America/Argentina/Buenos_Aires
+
+# ---------- BACKUP Y MANTENIMIENTO ----------
+BACKUP_API_KEY=<clave larga propia para el workflow 07 de n8n>      # [RECOMENDADA]
+PDF_RETENCION_DIAS=30
+ERROR_ALERTA_COOLDOWN_SEG=600
+
+# ---------- TELEGRAM (GRATIS) ----------
+TELEGRAM_BOT_TOKEN=<token que te da @BotFather>                     # [RECOMENDADA]
+TELEGRAM_EMPRESA_ID=<id de tu empresa en el ERP>
+
+# ---------- OCR DE FACTURAS DE COMPRA ----------
+OCR_API_KEY=<sk-... de OpenAI u otro proveedor>                    # [RECOMENDADA]
+OCR_BASE_URL=https://api.openai.com/v1
+OCR_MODEL=gpt-4.1-mini
+
+# ---------- IA CONVERSACIONAL (opcional) ----------
+AI_ENABLED=false
+AI_BASE_URL=https://api.openai.com/v1
+AI_API_KEY=
+AI_MODEL=gpt-4.1-mini
+
+# ---------- n8n (automatizaciones, opcional) ----------
+N8N_ALERT_WEBHOOK_URL=
+N8N_ESCALAMIENTO_WEBHOOK_URL=
+N8N_WEBHOOK_SECRET=
+
+# ---------- AVISOS DEL SISTEMA POR WHATSAPP (superadmin, opcional) ----------
+SUPERADMIN_WHATSAPP_TOKEN=
+SUPERADMIN_WHATSAPP_PHONE_ID=
+SUPERADMIN_WHATSAPP_TO=
+
+# ---------- EMAIL (recuperar contraseñas, opcional) ----------
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=
+SMTP_PASS=
+MAIL_FROM=
+RESET_EXPIRA_MIN=60
+
+# ---------- MERCADOPAGO (opcional) ----------
+MERCADOPAGO_ACCESS_TOKEN=
+MERCADOPAGO_POS_ID=
+MERCADOPAGO_WEBHOOK_URL=
+
+# ---------- SUPERADMIN inicial (solo primera instalación) ----------
+SUPERADMIN_EMAIL=
+SUPERADMIN_PASSWORD=
+
+
+==========================================================
+ QUÉ ES CADA UNA Y DÓNDE SACAR EL VALOR
+==========================================================
+
+JWT_SECRET            Firma de las sesiones. Generá una cadena larga al azar
+                      (en PowerShell: -join ((65..90)+(97..122)+(48..57) |
+                      Get-Random -Count 48 | % {[char]$_})).
+JWT_EXPIRES_IN        Cuánto dura la sesión (8h está bien).
+DB_PATH               Ruta de la base dentro del contenedor. No cambiar.
+DEMO_MODE             false en producción (si es true crea datos de demo).
+AFIP_PRODUCTION       true = ARCA producción; false = homologación.
+OPENSSL               /usr/bin/openssl en Docker (ya viene así).
+PUBLIC_BASE_URL       Tu dirección pública exacta, sin barra final.
+                      La usan QR, PDFs y webhooks.
+TZ                    Zona horaria; dejá America/Argentina/Buenos_Aires.
+
+BACKUP_API_KEY        Clave propia para que n8n descargue el backup
+                      (workflow 07). Inventala vos, larga. Sin esto el
+                      endpoint de backup responde 503.
+PDF_RETENCION_DIAS    Los PDF del servidor se borran solos después de
+                      estos días (se regeneran al pedirlos). 30 = 1 mes.
+
+TELEGRAM_BOT_TOKEN    Telegram es GRATIS y sin límites. Pasos:
+                      1) En Telegram buscá @BotFather → /newbot → nombre →
+                         te da un token (ej: 123456:AA...).
+                      2) Pegalo acá y reiniciá el stack.
+                      3) Entrá al ERP → Bandeja WhatsApp → tarjeta
+                         "Canal de pruebas por Telegram": ahí tenés el link
+                         para registrar el webhook (abrilo una vez).
+TELEGRAM_EMPRESA_ID   ID de la empresa que atiende el bot. Lo ves en
+                      Superadmin → Empresas (columna ID).
+
+OCR_API_KEY           Para leer fotos de facturas de compra (app compras).
+                      Se saca en platform.openai.com → API keys.
+                      Costo: centavos por foto.
+OCR_BASE_URL/MODEL    Endpoint y modelo del OCR. Los valores por defecto
+                      funcionan con OpenAI.
+
+AI_ENABLED / AI_*     IA conversacional del asistente (opcional). Si está
+                      en false, el sistema usa el parser de reglas local
+                      (funciona igual, sin costo).
+
+N8N_*                 Webhooks de n8n para alertas de error y escalamiento.
+                      Los completa el workflow correspondiente.
+
+SUPERADMIN_WHATSAPP_* Solo si querés que el superadmin reciba avisos por
+                      WhatsApp Cloud API (Meta). Requiere token de Meta.
+
+SMTP_* / MAIL_FROM    Servidor de correo para "olvidé mi contraseña".
+                      Con Gmail: SMTP_HOST=smtp.gmail.com, PORT=587,
+                      SECURE=false, USER=tu@gmail.com y SMTP_PASS=una
+                      "contraseña de aplicación" de Google.
+
+MERCADOPAGO_*         Cobros con QR reales. Sin esto, el QR es simulado.
+
+SUPERADMIN_EMAIL /    Usuario técnico inicial (solo se usa la primera vez
+SUPERADMIN_PASSWORD   que arranca la base). Después se cambia con
+                      npm run db:reset-superadmin <clave>.
+
+
+==========================================================
+ CÓMO MANDAR COMPROBANTES Y NOTIFICACIONES SIN QUE TE COBREEN
+==========================================================
+
+WhatsApp (Meta) cobra los mensajes que inicia la empresa (desde octubre de
+2026: 1.000 gratis por número por mes y después se paga). Para no gastar:
+
+1) TELEGRAM (100% gratis, ideal para avisos internos)
+   Configurá el bot como arriba. Los pedidos, avisos y pruebas del asistente
+   salen y entran por Telegram sin costo. Es la mejor opción para que el
+   equipo reciba notificaciones.
+
+2) VENTANA DE 24 HORAS DE WHATSAPP (gratis cuando el cliente escribe primero)
+   Si el cliente te escribe, tenés 24 horas para responderle y mandarle el
+   comprobante (PDF o link) dentro de esa conversación. Aprovechá para
+   mandar el comprobante justo cuando el cliente consulta.
+
+3) LAS 1.000 GRATIS POR MES
+   Meta regala 1.000 mensajes de servicio por número por mes. Usalos para
+   los avisos importantes (cheques, entregas) y dejá el resto para Telegram
+   o email.
+
+4) EMAIL (gratis)
+   Los comprobantes se pueden mandar por email con el SMTP configurado.
+
+5) WHATSAPP BUSINESS (app del celular, gratis pero manual)
+   Para mensajes sueltos escritos a mano desde la app del teléfono.
+
+RECOMENDACIÓN: clientes finales → WhatsApp (ventana de 24 h + 1.000
+gratis) y email para comprobantes; equipo interno → Telegram.
+
+
+==========================================================
+ CHECKLIST PARA QUE QUEDE ANDANDO
+==========================================================
+
+[ ] JWT_SECRET definido (nunca vacío).
+[ ] PUBLIC_BASE_URL con tu dominio real.
+[ ] TELEGRAM_BOT_TOKEN + TELEGRAM_EMPRESA_ID + webhook registrado.
+[ ] BACKUP_API_KEY (y workflow 07 en n8n con Google Drive conectado).
+[ ] OCR_API_KEY (si usás la app de compras con foto).
+[ ] SMTP cargado (si querés recuperación de contraseña por email).
+[ ] En Portainer: Update the stack y verificar que arranca sin errores.
+[ ] Entrar al ERP con un usuario y probar: POS, un pedido y una factura.

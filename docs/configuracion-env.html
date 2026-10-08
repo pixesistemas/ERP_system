@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Configuración del ERP - Variables y puesta en marcha</title>
+<style>
+  @page { size: A4; margin: 12mm; }
+  * { box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; font-size: 12.5px; color: #222; line-height: 1.45; max-width: 900px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 24px; margin: 0 0 2px; color: #4a3d8f; }
+  .sub { color: #666; font-size: 13px; margin-bottom: 12px; }
+  h2 { font-size: 16px; color: #4a3d8f; border-bottom: 2px solid #ded8f2; padding-bottom: 3px; margin: 18px 0 8px; }
+  h3 { font-size: 13.5px; margin: 10px 0 3px; color: #2E3A59; }
+  p, li { margin: 4px 0; }
+  ul, ol { padding-left: 20px; margin: 5px 0; }
+  .nota { background: #FFF8E6; border: 1px solid #F0C36D; border-radius: 8px; padding: 8px 12px; margin: 8px 0; }
+  .clave { background: #EAF7EF; border: 1px solid #8FD3A8; border-radius: 8px; padding: 8px 12px; margin: 8px 0; }
+  .paso { background: #F7F9FD; border-left: 4px solid #6952C4; border-radius: 6px; padding: 8px 12px; margin: 8px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 11.5px; }
+  th, td { border: 1px solid #bbb; padding: 5px 7px; text-align: left; vertical-align: top; }
+  th { background: #2E3A59; color: #fff; }
+  code { font-family: Consolas, monospace; background: #F0F1F5; border-radius: 4px; padding: 0 4px; font-size: 11.5px; }
+  .prioridad { font-size: 9.5px; font-weight: bold; color: #b3541e; letter-spacing: .4px; }
+  pre { background: #1F2430; color: #E8EAF2; border-radius: 8px; padding: 10px 12px; font-family: Consolas, monospace; font-size: 11px; white-space: pre-wrap; margin: 6px 0; }
+  footer { margin-top: 20px; color: #777; font-size: 11px; text-align: center; }
+  @media print { body { padding: 0; } h2 { break-after: avoid; } tr, .nota, .clave, .paso { break-inside: avoid; } }
+</style>
+</head>
+<body>
+
+<h1>Configuración del ERP · Guía para dejar todo andando</h1>
+<div class="sub">Variables del servidor (.env), Telegram gratis, backups y WhatsApp sin costos · PixeSistemas</div>
+
+<h2>1. Dónde se cargan las variables</h2>
+<ul>
+  <li><strong>Producción:</strong> Portainer → Stacks → <strong>afip-conversacional-erp</strong> → <strong>Environment variables</strong> → pegás cada variable → <strong>Update the stack</strong>.</li>
+  <li><strong>Desarrollo (PC):</strong> archivo <code>backend\.env</code>.</li>
+</ul>
+<div class="nota">Todo lo que sigue también está en el archivo de texto <strong>CONFIGURACION-ENV.txt</strong> listo para copiar y pegar.</div>
+
+<h2>2. Las variables, una por una</h2>
+<table>
+  <tr><th>Variable</th><th>Para qué sirve</th><th>Valor / dónde se obtiene</th></tr>
+  <tr><td><code>JWT_SECRET</code><br/><span class="prioridad">OBLIGATORIA</span></td><td>Firma las sesiones de los usuarios.</td><td>Cadena larga al azar (40+ caracteres). Si queda vacía, la app no arranca.</td></tr>
+  <tr><td><code>PUBLIC_BASE_URL</code><br/><span class="prioridad">OBLIGATORIA</span></td><td>URL pública para QR, PDFs y webhooks.</td><td><code>https://erp.pixesistemas.com.ar</code> (sin barra final).</td></tr>
+  <tr><td><code>JWT_EXPIRES_IN</code></td><td>Duración de la sesión.</td><td><code>8h</code></td></tr>
+  <tr><td><code>DB_PATH</code></td><td>Ruta de la base dentro del contenedor.</td><td><code>/app/data/afip_api.db</code> (no cambiar).</td></tr>
+  <tr><td><code>DEMO_MODE</code></td><td>Si crea datos de demo al iniciar.</td><td><code>false</code> en producción.</td></tr>
+  <tr><td><code>AFIP_PRODUCTION</code></td><td>ARCA producción u homologación.</td><td><code>true</code> = producción.</td></tr>
+  <tr><td><code>OPENSSL</code></td><td>Firma digital de ARCA.</td><td><code>/usr/bin/openssl</code> en Docker.</td></tr>
+  <tr><td><code>TZ</code></td><td>Zona horaria de fechas y tickets.</td><td><code>America/Argentina/Buenos_Aires</code></td></tr>
+  <tr><td><code>BACKUP_API_KEY</code><br/><span class="prioridad">RECOMENDADA</span></td><td>Clave para que n8n baje el backup diario (workflow 07).</td><td>Inventala vos: cadena larga. Va también en n8n como <code>ERP_BACKUP_KEY</code>.</td></tr>
+  <tr><td><code>PDF_RETENCION_DIAS</code></td><td>Días que se guardan los PDF en disco antes de borrarse solos (se regeneran).</td><td><code>30</code></td></tr>
+  <tr><td><code>TELEGRAM_BOT_TOKEN</code><br/><span class="prioridad">RECOMENDADA</span></td><td>Asistente y pedidos por Telegram, gratis.</td><td>Te lo da <strong>@BotFather</strong> en Telegram (paso a paso en la sección 3).</td></tr>
+  <tr><td><code>TELEGRAM_EMPRESA_ID</code></td><td>Empresa que atiende el bot.</td><td>El ID lo ves en Superadmin → Empresas.</td></tr>
+  <tr><td><code>OCR_API_KEY</code><br/><span class="prioridad">RECOMENDADA</span></td><td>Leer fotos de facturas de compra (app compras).</td><td>platform.openai.com → API keys. Costo: centavos por foto.</td></tr>
+  <tr><td><code>OCR_BASE_URL</code> / <code>OCR_MODEL</code></td><td>Proveedor y modelo del OCR.</td><td><code>https://api.openai.com/v1</code> / <code>gpt-4.1-mini</code></td></tr>
+  <tr><td><code>AI_ENABLED</code> + <code>AI_API_KEY</code> / <code>AI_BASE_URL</code> / <code>AI_MODEL</code></td><td>IA conversacional del asistente (opcional).</td><td>En <code>false</code> usa el parser local: funciona igual y sin costo.</td></tr>
+  <tr><td><code>N8N_ALERT_WEBHOOK_URL</code> / <code>N8N_ESCALAMIENTO_WEBHOOK_URL</code> / <code>N8N_WEBHOOK_SECRET</code></td><td>Alertas de error y escalamiento por n8n.</td><td>Los da cada workflow al importarlo.</td></tr>
+  <tr><td><code>SUPERADMIN_WHATSAPP_TOKEN</code> / <code>..._PHONE_ID</code> / <code>..._TO</code></td><td>Avisos al superadmin por WhatsApp Cloud API.</td><td>Token y Phone ID de Meta; TO es el número que recibe.</td></tr>
+  <tr><td><code>SMTP_HOST</code> / <code>SMTP_PORT</code> / <code>SMTP_SECURE</code> / <code>SMTP_USER</code> / <code>SMTP_PASS</code> / <code>MAIL_FROM</code></td><td>Correo para "olvidé mi contraseña".</td><td>Con Gmail: <code>smtp.gmail.com</code>, 587, false, tu casilla y una <em>contraseña de aplicación</em>.</td></tr>
+  <tr><td><code>RESET_EXPIRA_MIN</code></td><td>Validez del link de recuperación.</td><td><code>60</code> minutos.</td></tr>
+  <tr><td><code>MERCADOPAGO_ACCESS_TOKEN</code> / <code>..._POS_ID</code> / <code>..._WEBHOOK_URL</code></td><td>Cobros con QR reales.</td><td>Panel de MercadoPago. Sin esto, el QR es simulado.</td></tr>
+  <tr><td><code>SUPERADMIN_EMAIL</code> / <code>SUPERADMIN_PASSWORD</code></td><td>Usuario técnico inicial (solo primera instalación).</td><td>Después se cambia con <code>npm run db:reset-superadmin</code>.</td></tr>
+</table>
+
+<h2>3. Telegram: el asistente de conversación GRATIS</h2>
+<div class="paso">
+  <strong>1.</strong> En Telegram buscá <strong>@BotFather</strong> → escribí <code>/newbot</code> → elegí un nombre → te devuelve un <strong>token</strong>.<br/>
+  <strong>2.</strong> En Portainer agregá <code>TELEGRAM_BOT_TOKEN</code> (lo que te dio BotFather) y <code>TELEGRAM_EMPRESA_ID</code> (el ID de tu empresa) → Update the stack.<br/>
+  <strong>3.</strong> Entrá al ERP → <strong>Bandeja WhatsApp</strong> → tarjeta <strong>"Canal de pruebas por Telegram (gratis)"</strong>: ahí está el enlace para registrar el webhook. Abrilo una vez en el navegador y listo.<br/>
+  <strong>4.</strong> Escribile al bot: por ejemplo <em>"quiero 2 paquetes a Bariloche"</em> y después <em>"sí"</em>. El bot arma el pedido y cae en la Bandeja de pedidos.
+</div>
+<div class="clave">Telegram es <strong>gratis y sin límites</strong>: sirve para avisos internos, pedidos de prueba y para que el equipo reciba notificaciones sin pagar nada.</div>
+
+<h2>4. WhatsApp sin que te cobren</h2>
+<p>Meta cobra los mensajes que inicia la empresa (desde octubre de 2026 incluye los mensajes de servicio, con <strong>1.000 gratis por número por mes</strong>). Para no gastar:</p>
+<ol>
+  <li><strong>Telegram</strong> para todo lo interno (pedidos, avisos al equipo): 100% gratis.</li>
+  <li><strong>Ventana de 24 horas</strong>: si el cliente escribe primero, respondés y mandás el comprobante (PDF o link) dentro de esas 24 h.</li>
+  <li><strong>Las 1.000 gratis por mes</strong>: reservalas para lo importante (aviso de entrega, cheque por vencer).</li>
+  <li><strong>Email</strong>: comprobantes y estados de cuenta sin costo (con el SMTP configurado).</li>
+  <li><strong>WhatsApp Business del celular</strong>: escribir a mano desde la app es gratis (pero no automático).</li>
+</ol>
+<div class="nota">Recomendación: <strong>clientes finales</strong> → WhatsApp aprovechando la ventana de 24 h y las 1.000 gratis + email; <strong>tu equipo y avisos internos</strong> → Telegram.</div>
+
+<h2>5. Backups automáticos a Google Drive</h2>
+<ol>
+  <li>Definí <code>BACKUP_API_KEY</code> en el servidor.</li>
+  <li>En n8n importá el workflow <strong>07-backup-nube.json</strong>.</li>
+  <li>Abrí el nodo <strong>Subir a Google Drive</strong> → <em>Create New</em> credencial → iniciar sesión con la cuenta de Gmail → aceptar.</li>
+  <li>Activá el workflow. Todos los días a las 03:00 queda el archivo <code>backup-erp-AAAA-MM-DD.sqlite</code> en Drive.</li>
+</ol>
+
+<h2>6. Checklist final</h2>
+<table>
+  <tr><th>Listo</th><th>Tarea</th></tr>
+  <tr><td>☐</td><td><code>JWT_SECRET</code> y <code>PUBLIC_BASE_URL</code> cargados en Portainer y stack actualizado.</td></tr>
+  <tr><td>☐</td><td>Bot de Telegram creado, variables cargadas y webhook registrado.</td></tr>
+  <tr><td>☐</td><td><code>BACKUP_API_KEY</code> + workflow 07 con Google Drive conectado y activado.</td></tr>
+  <tr><td>☐</td><td><code>OCR_API_KEY</code> (si usás la app de compras con foto).</td></tr>
+  <tr><td>☐</td><td>SMTP cargado (si querés recuperación de contraseña por email).</td></tr>
+  <tr><td>☐</td><td>Probar: iniciar sesión (usuario o email), hacer una venta, un pedido y una factura.</td></tr>
+  <tr><td>☐</td><td>Revisar que el contenedor arrancó sin errores (Portainer → Logs).</td></tr>
+</table>
+
+<footer>PixeSistemas · ERP Empresarial · Guía de configuración · Ante cualquier duda, comunicate con el soporte.</footer>
+
+</body>
+</html>

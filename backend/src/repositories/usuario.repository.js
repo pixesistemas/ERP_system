@@ -5,7 +5,7 @@ function getUsuarioById(id) {
   return db
     .prepare(
       `
-    SELECT id, nombre, email, telefono, activo, created_at
+    SELECT id, nombre, usuario, email, telefono, activo, created_at
     FROM usuarios
     WHERE id = ?
   `,
@@ -15,6 +15,7 @@ function getUsuarioById(id) {
 
 function crearUsuario({
   nombre,
+  usuario = null,
   email,
   telefono = null,
   password,
@@ -22,18 +23,19 @@ function crearUsuario({
   rolNombre = "ADMIN",
 }) {
   const passwordHash = bcrypt.hashSync(password, 10);
+  const nombreUsuario = usuario ? String(usuario).trim().toLowerCase() : null;
 
   const transaction = db.transaction(() => {
     const result = db
       .prepare(
         `
       INSERT INTO usuarios (
-        nombre, email, telefono, password_hash, activo
+        nombre, usuario, email, telefono, password_hash, activo
       )
-      VALUES (?, ?, ?, ?, 1)
+      VALUES (?, ?, ?, ?, ?, 1)
     `,
       )
-      .run(nombre, email, telefono, passwordHash);
+      .run(nombre, nombreUsuario, email || null, telefono, passwordHash);
 
     const usuarioId = result.lastInsertRowid;
 
@@ -82,6 +84,7 @@ function listUsuariosByEmpresa(empresaId) {
     SELECT 
       u.id,
       u.nombre,
+      u.usuario,
       u.email,
       u.telefono,
       u.activo,
