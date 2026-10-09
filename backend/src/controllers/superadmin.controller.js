@@ -286,6 +286,84 @@ function uploadArchivoFiscalEmpresa(req, res, next) {
   }
 }
 
+function generarClaveCsrEmpresa(req, res, next) {
+  try {
+    const db = require("../db/database");
+    const fs = require("fs");
+    const path = require("path");
+    const { execFileSync } = require("child_process");
+
+    const empresaId = Number(req.params.id);
+    const empresa = db.prepare("SELECT * FROM empresas WHERE id=?").get(empresaId);
+    if (!empresa) return res.status(404).json({ ok: false, error: "Empresa no encontrada" });
+
+    const cuit = String(req.body?.cuit || empresa.cuit || "").replace(/\D/g, "");
+    const razonSocial = String(req.body?.razonSocial || empresa.razon_social || empresa.nombre || "").trim();
+    const alias = String(req.body?.alias || empresa.nombre || "").trim() || `empresa-${empresaId}`;
+    if (cuit.length !== 11) {
+      return res.status(400).json({
+        ok: false,
+        error: "La empresa necesita un CUIT de 11 números (cargalo en Datos fiscales) para generar el CSR.",
+      });
+    }
+    if (!razonSocial) {
+      return res.status(400).json({ ok: false, error: "Cargá la razón social de la empresa." });
+    }
+
+    const limpiar = (v) => String(v).replace(/[\\/=\n\r]/g, " ").replace(/\s+/g, " ").trim();
+    const subject = `/C=AR/O=${limpiar(razonSocial)}/CN=${limpiar(alias)}/serialNumber=CUIT ${cuit}`;
+    const openssl = String(process.env.OPENSSL || "openssl").trim() || "openssl";
+
+    const dir = path.join(process.cwd(), "storage", "private", "fiscal");
+    fs.mkdirSync(dir, { recursive: true });
+    const base = `empresa-${empresaId}-${Date.now()}`;
+    const keyPath = path.join(dir, `${base}.key`);
+    const csrPath = path.join(dir, `${base}.csr`);
+
+    try {
+      execFileSync(
+        openssl,
+        ["req", "-new", "-newkey", "rsa:2048", "-nodes", "-keyout", keyPath, "-out", csrPath, "-subj", subject],
+        { stdio: "pipe" },
+      );
+    } catch (error) {
+      const detalle = String(error.stderr || error.message || "").trim();
+      return res.status(500).json({
+        ok: false,
+        error: `No se pudo generar con OpenSSL (${openssl}). ${detalle || "Verificá OPENSSL en el servidor."}`,
+      });
+    }
+
+    const csr = fs.readFileSync(csrPath, "utf8");
+    const size = fs.statSync(keyPath).size;
+    const anterior = db
+      .prepare("SELECT * FROM empresa_archivos_fiscales WHERE empresa_id=? AND tipo='LLAVE_PRIVADA'")
+      .get(empresaId);
+    if (anterior?.ruta_segura && anterior.ruta_segura !== keyPath && fs.existsSync(anterior.ruta_segura)) {
+      try { fs.unlinkSync(anterior.ruta_segura); } catch (e) {}
+    }
+    db.prepare(
+      `INSERT INTO empresa_archivos_fiscales(empresa_id,tipo,nombre_original,ruta_segura,mime_type,size_bytes) VALUES(?,'LLAVE_PRIVADA',?,?,?,?)
+       ON CONFLICT(empresa_id,tipo) DO UPDATE SET nombre_original=excluded.nombre_original,ruta_segura=excluded.ruta_segura,mime_type=excluded.mime_type,size_bytes=excluded.size_bytes,activo=1,created_at=CURRENT_TIMESTAMP`,
+    ).run(empresaId, path.basename(keyPath), keyPath, "application/octet-stream", size);
+    db.prepare("UPDATE empresas SET key_path=? WHERE id=?").run(keyPath, empresaId);
+
+    return res.json({
+      ok: true,
+      csr,
+      subject,
+      archivoCsr: path.basename(csrPath),
+      pasos: [
+        "Descargá el CSR y subilo en AFIP → Administración de Certificados (WSASS).",
+        "AFIP te devuelve el certificado .crt: descargalo.",
+        "Subí el .crt en este mismo panel (Certificado ARCA) y guardá.",
+      ],
+    });
+  } catch (e) {
+    next(e);
+  }
+}
+
 function listarChangelog(req, res, next) {
   try {
     const db = require("../db/database");
@@ -855,6 +933,7 @@ module.exports = {
   getDatosFiscalesEmpresa,
   setDatosFiscalesEmpresa,
   uploadArchivoFiscalEmpresa,
+  generarClaveCsrEmpresa,
   listarChangelog,
   crearChangelog,
   actualizarChangelog,

@@ -352,6 +352,7 @@ export function SuperAdminPage() {
       setFiscalModal({
         empresaId: e.id,
         nombre: e.nombre,
+        alias: e.nombre,
         data: { ...r.data },
         archivos: r.archivos || [],
         conectado: r.conectado || { certificado: false, llave: false },
@@ -399,6 +400,42 @@ export function SuperAdminPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function generarClaveCsr() {
+    if (!fiscalModal) return;
+    setLoading(true);
+    setError("");
+    try {
+      const r = await call<any>("POST", `/empresas/${fiscalModal.empresaId}/fiscal/generar-clave-csr`, {
+        cuit: fiscalModal.data.cuit,
+        razonSocial: fiscalModal.data.razonSocial,
+        alias: fiscalModal.alias || fiscalModal.nombre,
+      });
+      setOk("Clave privada y CSR generados. Descargá el CSR y subilo a AFIP (WSASS) para obtener el .crt.");
+      try {
+        const g = await call<any>("GET", `/empresas/${fiscalModal.empresaId}/datos-fiscales`);
+        setFiscalModal((prev: any) => (prev ? { ...prev, csr: r.csr, archivos: g.archivos || prev.archivos, conectado: g.conectado || prev.conectado } : prev));
+      } catch (err: any) {
+        setFiscalModal((prev: any) => (prev ? { ...prev, csr: r.csr } : prev));
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function descargarTexto(nombre: string, contenido: string) {
+    const blob = new Blob([contenido], { type: "application/octet-stream" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = nombre;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
   }
 
   async function importarRubrosMarcas(e: React.FormEvent) {
@@ -661,12 +698,12 @@ export function SuperAdminPage() {
       </div>}
     {modulosModal && <div className="modal-backdrop"><form className="product-modal polished-modal module-modal" onSubmit={(ev) => { ev.preventDefault(); guardarModulos(); }}>
       <div className="modal-head"><div><h3>Módulos de {modulosModal.empresa.nombre}</h3><p>Activá o desactivá las funciones de esta empresa. Al guardar, los usuarios las ven al volver a entrar.</p></div><button type="button" onClick={() => setModulosModal(null)}><X /></button></div>
-      {modulosModal.cargando ? <div className="empty-table">Cargando módulos...</div> : <>
+      {modulosModal.cargando ? <div className="empty-table">Cargando módulos...</div> : <div className="module-modal-body">
         <h4>Módulos opcionales</h4>
         {catalogoModulos.filter((m) => m.tipo === "opcional").map((m) => <label key={m.clave} className="module-row"><div className="module-info"><strong>{m.nombre}</strong><span>{m.descripcion}</span></div><input type="checkbox" checked={Boolean(modulosModal.estados[m.clave])} onChange={(ev) => setModulosModal((prev: any) => ({ ...prev, estados: { ...prev.estados, [m.clave]: ev.target.checked } }))} /></label>)}
         <h4>Módulos incluidos</h4>
         {catalogoModulos.filter((m) => m.tipo === "base").map((m) => <label key={m.clave} className="module-row"><div className="module-info"><strong>{m.nombre}</strong><span>{m.descripcion}</span></div><input type="checkbox" checked={Boolean(modulosModal.estados[m.clave])} onChange={(ev) => setModulosModal((prev: any) => ({ ...prev, estados: { ...prev.estados, [m.clave]: ev.target.checked } }))} /></label>)}
-      </>}
+      </div>}
       <div className="modal-actions"><button type="button" className="secondary" onClick={() => setModulosModal(null)}>Cancelar</button><button className="primary-action" disabled={modulosModal.guardando || modulosModal.cargando}>{modulosModal.guardando ? "Guardando..." : "Guardar módulos"}</button></div>
     </form></div>}
     {tab === "COMPROBANTES" && <div className="products-page">
@@ -907,6 +944,15 @@ export function SuperAdminPage() {
           <input type="file" accept=".key,.pem" onChange={(e) => { const f = e.target.files?.[0]; if (f) subirArchivoFiscal("key", f); }} />
           <small>{fiscalModal.archivos.find((x: any) => x.tipo === "LLAVE_PRIVADA")?.nombre_original || "No cargada"} — {fiscalModal.conectado.llave ? "conectada" : "no conectada"}</small>
         </label>
+      </div>
+      <div className="form-grid" style={{ borderTop: "1px solid var(--line)" }}>
+        <label className="full">Alias del certificado<em>Lo elige AFIP al emitirlo; si no, dejá el nombre de la empresa.</em><input value={fiscalModal.alias || ""} onChange={(e) => setFiscalModal({ ...fiscalModal, alias: e.target.value })} /></label>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", gridColumn: "1 / -1" }}>
+          <button type="button" className="secondary-action" onClick={generarClaveCsr} disabled={loading}><FileKey2 size={15} /> Generar clave privada + CSR</button>
+          {fiscalModal.csr && <button type="button" className="secondary-action" onClick={() => descargarTexto(`csr-${fiscalModal.nombre}.csr`, fiscalModal.csr)}>Descargar CSR</button>}
+        </div>
+        {fiscalModal.csr && <label className="full">CSR generado (subilo en AFIP → Administración de Certificados)<textarea readOnly value={fiscalModal.csr} rows={7} /></label>}
+        <p className="report-sub" style={{ gridColumn: "1 / -1" }}>Pasos: 1) generá la clave y el CSR · 2) descargalo y subilo en AFIP (WSASS) · 3) AFIP te devuelve el .crt: subilo arriba en "Certificado ARCA". La clave privada ya queda guardada en el servidor.</p>
       </div>
       {fiscalModal.data.logoUrl && <img className="company-logo-preview" src={fiscalModal.data.logoUrl} />}
       <div className="modal-actions"><button type="button" className="secondary" onClick={() => setFiscalModal(null)}>Cancelar</button><button className="primary-action" disabled={loading}>Guardar datos fiscales</button></div>

@@ -41,6 +41,7 @@ router.put("/empresas/:id/tema", controller.setTemaEmpresa);
 router.get("/empresas/:id/datos-fiscales", controller.getDatosFiscalesEmpresa);
 router.put("/empresas/:id/datos-fiscales", controller.setDatosFiscalesEmpresa);
 router.post("/empresas/:id/archivos-fiscales/:type", upload.single("file"), controller.uploadArchivoFiscalEmpresa);
+router.post("/empresas/:id/fiscal/generar-clave-csr", controller.generarClaveCsrEmpresa);
 const uploadCsv = multer({ storage: multer.diskStorage({ destination: uploadDir, filename: (req, file, cb) => cb(null, `import-${req.params.id || 0}-${Date.now()}.csv`) }) });
 router.post("/empresas/:id/importar-clientes", uploadCsv.single("file"), controller.importarClientesEmpresa);
 router.post("/empresas/:id/importar-productos", uploadCsv.single("file"), controller.importarProductosEmpresa);

@@ -3180,9 +3180,17 @@ button {
   width:20px;
   height:20px;
 }
-.module-modal {
-  max-height:86vh;
+.product-modal.module-modal {
+  max-height:88vh;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.module-modal .module-modal-body {
+  flex:1;
+  min-height:0;
   overflow-y:auto;
+  padding:4px 24px 8px;
 }
 .module-modal h4 {
   margin:14px 0 6px;
