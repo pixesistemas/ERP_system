@@ -42,6 +42,7 @@ export function MobileOrdersAdminPage() {
   const [cantidades, setCantidades] = useState<Record<number, number>>({});
   const [noDisponibles, setNoDisponibles] = useState<Set<number>>(new Set());
   const [detalleTexto, setDetalleTexto] = useState("");
+  const [aCuenta, setACuenta] = useState(false);
   const [pdfModal, setPdfModal] = useState<{ url: string; title: string } | null>(null);
   const fmtMon = (n: any) => Number(n || 0).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -127,6 +128,7 @@ export function MobileOrdersAdminPage() {
       setCantidades(iniciales);
       setNoDisponibles(new Set());
       setDetalleTexto("");
+      setACuenta(false);
     } catch (e: any) {
       setError(e.message);
     }
@@ -154,11 +156,13 @@ export function MobileOrdersAdminPage() {
         estado: nuevoEstado,
         items: detalle.items.map((i: any) => ({ venta_item_id: i.id, cantidad: Number(cantidades[i.id] ?? i.cantidad) })),
         detalle: detalleTexto,
+        a_cuenta_corriente: aCuenta,
       });
+      const extraCuenta = r.a_cuenta_corriente ? ` El pedido quedó a cuenta corriente${r.deuda_registrada ? ` ($${fmtMon(r.deuda_registrada)} registrado como deuda)` : ""}.` : "";
       if (r.recibo) {
-        setNotice(`Pedido ${nuevoEstado === "CONFIRMADO" ? "confirmado" : "confirmado parcialmente"} y recibo ${String(r.recibo.punto_venta || 1).padStart(4, "0")}-${String(r.recibo.numero || 0).padStart(8, "0")} generado por el dinero recibido (enviado a cuenta corriente).`);
+        setNotice(`Pedido ${nuevoEstado === "CONFIRMADO" ? "confirmado" : "confirmado parcialmente"} y recibo ${String(r.recibo.punto_venta || 1).padStart(4, "0")}-${String(r.recibo.numero || 0).padStart(8, "0")} generado por el dinero recibido (acreditado en cuenta corriente).${extraCuenta}`);
       } else {
-        setNotice(`Pedido ${nuevoEstado === "CONFIRMADO" ? "confirmado" : nuevoEstado === "PARCIAL" ? "confirmado parcialmente" : "rechazado"}.`);
+        setNotice(`Pedido ${nuevoEstado === "CONFIRMADO" ? "confirmado" : nuevoEstado === "PARCIAL" ? "confirmado parcialmente" : "rechazado"}.${extraCuenta}`);
       }
       setDetalle(null);
       await cargar();
@@ -252,7 +256,7 @@ export function MobileOrdersAdminPage() {
     {detalle && <div className="modal-backdrop"><div className="modal polished-modal order-review-modal">
       <div className="modal-head">
         <div>
-          <h3>Pedido #{String(detalle.pedido.numero || "").padStart(6, "0")} · {detalle.pedido.cliente || "CONSUMIDOR FINAL"}</h3>
+          <h3>Pedido #{String(detalle.pedido.numero || "").padStart(6, "0")} · {detalle.pedido.cliente || "CONSUMIDOR FINAL"} {String(detalle.pedido.condicion_pago || "").toUpperCase().startsWith("CUENTA") && <span className="badge">CUENTA CORRIENTE</span>}</h3>
           <p>Vendedor: <strong>{detalle.pedido.vendedor || "-"}</strong> · {String(detalle.pedido.fecha || "").slice(0, 10)} {detalle.pedido.hora_visita || ""} {detalle.pedido.canal ? `· Canal ${detalle.pedido.canal}` : ""}</p>
           {detalle.pedido.latitud != null && <p><a className="link-button" href={`https://www.google.com/maps?q=${detalle.pedido.latitud},${detalle.pedido.longitud}`} target="_blank" rel="noreferrer"><MapPin size={14} /> Ubicación registrada</a></p>}
         </div>
@@ -296,7 +300,9 @@ export function MobileOrdersAdminPage() {
           <div>· <strong>Confirmar todo</strong>: prepara el pedido completo, tal como quedó la lista de arriba.</div>
           <div>· <strong>Confirmar parcial</strong>: prepara <em>solo</em> las cantidades finales que dejaste; lo que quitaste o marcaste "No disponible" no se prepara.</div>
           <div>· <strong>Rechazar</strong>: anula el pedido.</div>
+          <div>· <strong>A cuenta corriente</strong>: el total del pedido queda como deuda del cliente en su cuenta; el dinero recibido se imputa como pago (recibo automático si hay dinero pendiente).</div>
         </div>
+        <label className="toggle-row"><div><strong>El pedido queda a cuenta corriente</strong><span>El total ({fmtMon(detalle.pedido.total)}) se registra como deuda del cliente; el dinero recibido se resta como pago.</span></div><input type="checkbox" checked={aCuenta} onChange={(e) => setACuenta(e.target.checked)} /></label>
         <label className="full">Observación de la revisión<input value={detalleTexto} onChange={(e) => setDetalleTexto(e.target.value)} placeholder="Ej.: faltaba stock de un producto" /></label>
         <div className="modal-actions">
           <button className="danger-action" disabled={busy} onClick={() => revisar("RECHAZADO")} title="Anula el pedido">Rechazar</button>
