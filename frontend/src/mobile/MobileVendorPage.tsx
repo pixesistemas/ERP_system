@@ -81,6 +81,8 @@ export function MobileVendorPage() {
   const [visitaObs, setVisitaObs] = useState("");
   const [geoPendiente, setGeoPendiente] = useState(false);
   const [pagos, setPagos] = useState<any[]>([]);
+  const [pagoBorrador, setPagoBorrador] = useState<any>(null);
+  const [resetPagos, setResetPagos] = useState(0);
   const [detallePedido, setDetallePedido] = useState<any>(null);
 
   async function refrescarCola() {
@@ -253,6 +255,8 @@ export function MobileVendorPage() {
 
   function limpiarCobro() {
     setPagos([]);
+    setPagoBorrador(null);
+    setResetPagos((n) => n + 1);
   }
 
   async function abrirDetallePedido(id: number) {
@@ -300,6 +304,7 @@ export function MobileVendorPage() {
 
   async function enviarPedido() {
     if (!clienteSel || !carrito.length) return;
+    const cobrosFinales = [...pagos, ...(pagoBorrador ? [pagoBorrador] : [])];
     const uuid = uuidMovil();
     const g = await pedirGps();
     if (g.lat == null) setGeoPendiente(true);
@@ -319,7 +324,7 @@ export function MobileVendorPage() {
       longitud: g.lng,
       observaciones,
       dispositivo: navigator.userAgent.slice(0, 150),
-      cobros: pagos.length ? pagos : undefined,
+      cobros: cobrosFinales.length ? cobrosFinales : undefined,
     };
     const totalPedido = totalCarrito(carrito);
     const local = {
@@ -340,7 +345,7 @@ export function MobileVendorPage() {
     limpiarCobro();
     if (online) {
       await sincronizar();
-      setNotice(pagos.length ? "Pedido enviado. El dinero declarado queda pendiente hasta que la oficina lo confirme." : "Pedido enviado al sistema.");
+      setNotice(cobrosFinales.length ? "Pedido enviado. El dinero declarado queda pendiente hasta que la oficina lo confirme." : "Pedido enviado al sistema.");
     } else {
       setNotice("📴 Pedido guardado. Se enviará cuando vuelva Internet.");
     }
@@ -484,7 +489,7 @@ export function MobileVendorPage() {
         </div>)}
         {carrito.length > 0 && <>
           <label className="mobile-obs">Observaciones<input value={observaciones} onChange={(e) => setObservaciones(e.target.value)} placeholder="Opcional" /></label>
-          <PagosEditor pagos={pagos} setPagos={setPagos} />
+          <PagosEditor pagos={pagos} setPagos={setPagos} onDraftChange={setPagoBorrador} resetSignal={resetPagos} />
           <div className="mobile-total"><span>TOTAL PRODUCTOS</span><strong>{carrito.reduce((n, i) => n + Number(i.cantidad), 0)}</strong></div>
           <div className="mobile-total"><span>TOTAL</span><strong>$ {totalCarrito(carrito).toLocaleString("es-AR", { minimumFractionDigits: 2 })}</strong></div>
           <button className="mobile-btn-primario" onClick={enviarPedido}><Send size={18} /> ENVIAR PEDIDO</button>

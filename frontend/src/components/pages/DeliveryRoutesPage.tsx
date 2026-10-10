@@ -64,6 +64,7 @@ export function DeliveryRoutesPage() {
   const [repartidores, setRepartidores] = useState<any[]>([]);
   const [seleccion, setSeleccion] = useState<Set<number>>(new Set());
   const [repartidorId, setRepartidorId] = useState<number | null>(null);
+  const [repartidorSel, setRepartidorSel] = useState<Record<number, number | null>>({});
   const [fecha, setFecha] = useState(() => new Date().toISOString().slice(0, 10));
   const [observaciones, setObservaciones] = useState("");
   const [detalle, setDetalle] = useState<any>(null);
@@ -130,6 +131,22 @@ export function DeliveryRoutesPage() {
       setOrdenCambiado(false);
     } catch (e: any) {
       setError(e.message);
+    }
+  }
+
+  async function guardarRepartidor(rutaId: number) {
+    setBusy(true);
+    setError("");
+    try {
+      const rep = repartidorSel[rutaId] ?? null;
+      const r = await erpApi.asignarRepartidorRuta(rutaId, rep);
+      setNotice(r.repartidor_nombre ? `Repartidor asignado: ${r.repartidor_nombre}. La ruta ya se ve en su app.` : "La ruta quedó sin repartidor.");
+      await cargar();
+      if (detalle && Number(detalle.ruta.id) === Number(rutaId)) await abrirRuta(rutaId);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -258,7 +275,16 @@ export function DeliveryRoutesPage() {
       }).map((r: any) => <tr key={r.id}>
         <td><strong>{r.numero}</strong></td>
         <td>{fmtFecha(r.fecha)}</td>
-        <td>{r.repartidor_nombre || "Sin asignar"}</td>
+        <td>
+          {r.repartidor_nombre || "Sin asignar"}
+          {r.estado !== "CERRADA" && <div className="inline-actions" style={{ marginTop: 4 }}>
+            <select value={repartidorSel[r.id] ?? ""} onChange={(e) => setRepartidorSel({ ...repartidorSel, [r.id]: Number(e.target.value) || null })}>
+              <option value="">Sin asignar</option>
+              {repartidores.map((u: any) => <option key={u.id} value={u.id}>{u.nombre}</option>)}
+            </select>
+            <button className="link-button" disabled={busy} onClick={() => guardarRepartidor(r.id)}>Asignar</button>
+          </div>}
+        </td>
         <td>{r.pedidos}</td>
         <td className="price">$ {Number(r.total || 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}</td>
         <td><span className={r.estado === "CERRADA" ? "badge" : "badge success"}>{r.estado}</span></td>
@@ -291,6 +317,11 @@ export function DeliveryRoutesPage() {
           <tbody>{detalle.carga.map((c: any) => <tr key={`${c.codigo}-${c.descripcion}`}><td>{c.codigo}</td><td>{c.descripcion}</td><td><strong>{Number(c.cantidad).toLocaleString("es-AR")}</strong></td></tr>)}</tbody>
         </table>
       </div>
+
+      {detalle.ruta.estado !== "CERRADA" && <div className="inline-actions" style={{ justifyContent: "center", marginBottom: 8 }}>
+        <label className="pv-filter-label">Repartidor<select value={repartidorSel[detalle.ruta.id] ?? detalle.ruta.repartidor_id ?? ""} onChange={(e) => setRepartidorSel({ ...repartidorSel, [detalle.ruta.id]: Number(e.target.value) || null })}><option value="">Sin asignar</option>{repartidores.map((u: any) => <option key={u.id} value={u.id}>{u.nombre}</option>)}</select></label>
+        <button className="secondary-action" disabled={busy} onClick={() => guardarRepartidor(detalle.ruta.id)}>Asignar repartidor</button>
+      </div>}
 
       <div className="modal-actions">
         <button onClick={imprimirHoja}><Printer size={15} /> Imprimir hoja</button>

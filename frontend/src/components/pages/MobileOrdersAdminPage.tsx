@@ -302,7 +302,7 @@ export function MobileOrdersAdminPage() {
           <div>· <strong>Rechazar</strong>: anula el pedido.</div>
           <div>· <strong>A cuenta corriente</strong>: el total del pedido queda como deuda del cliente en su cuenta; el dinero recibido se imputa como pago (recibo automático si hay dinero pendiente).</div>
         </div>
-        <label className="toggle-row"><div><strong>El pedido queda a cuenta corriente</strong><span>El total ({fmtMon(detalle.pedido.total)}) se registra como deuda del cliente; el dinero recibido se resta como pago.</span></div><input type="checkbox" checked={aCuenta} onChange={(e) => setACuenta(e.target.checked)} /></label>
+        <label className="order-cuenta-check"><input type="checkbox" checked={aCuenta} onChange={(e) => setACuenta(e.target.checked)} /><div><strong>El pedido queda a cuenta corriente</strong><span>El total ({fmtMon(detalle.pedido.total)}) se registra como deuda del cliente; el dinero recibido se resta como pago.</span></div></label>
         <label className="full">Observación de la revisión<input value={detalleTexto} onChange={(e) => setDetalleTexto(e.target.value)} placeholder="Ej.: faltaba stock de un producto" /></label>
         <div className="modal-actions">
           <button className="danger-action" disabled={busy} onClick={() => revisar("RECHAZADO")} title="Anula el pedido">Rechazar</button>

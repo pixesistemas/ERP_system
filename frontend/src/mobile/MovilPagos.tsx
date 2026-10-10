@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 
 /*
@@ -53,7 +53,7 @@ export function descripcionPago(p: Pago): string {
   return p.medio;
 }
 
-export function PagosEditor({ pagos, setPagos }: { pagos: Pago[]; setPagos: (p: Pago[]) => void }) {
+export function PagosEditor({ pagos, setPagos, onDraftChange, resetSignal }: { pagos: Pago[]; setPagos: (p: Pago[]) => void; onDraftChange?: (pago: Pago | null) => void; resetSignal?: number }) {
   const [medio, setMedio] = useState("EFECTIVO");
   const [importe, setImporte] = useState("");
   const [banco, setBanco] = useState("");
@@ -62,6 +62,45 @@ export function PagosEditor({ pagos, setPagos }: { pagos: Pago[]; setPagos: (p: 
   const [vencimiento, setVencimiento] = useState("");
   const [foto, setFoto] = useState("");
   const [errorLocal, setErrorLocal] = useState("");
+
+  /*
+   * Si el usuario completa el importe y se olvida de tocar "Agregar pago",
+   * el pago se incluye igual al enviar el pedido: el borrador se informa
+   * al componente padre con onDraftChange.
+   */
+  useEffect(() => {
+    const valor = parseImporte(importe);
+    if (!(valor > 0)) {
+      onDraftChange?.(null);
+      return;
+    }
+    if (medio === "CHEQUE" && !numero.trim()) {
+      onDraftChange?.(null);
+      return;
+    }
+    const pago: Pago = { medio, importe: valor };
+    if (medio === "TRANSFERENCIA") pago.banco = banco.trim() || undefined;
+    if (medio === "CHEQUE") {
+      pago.banco = banco.trim() || undefined;
+      pago.numero = numero.trim();
+      pago.librador = librador.trim() || undefined;
+      pago.vencimiento = vencimiento || undefined;
+      pago.foto = foto || undefined;
+    }
+    onDraftChange?.(pago);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [medio, importe, banco, numero, librador, vencimiento, foto]);
+
+  useEffect(() => {
+    if (!resetSignal) return;
+    setImporte("");
+    setNumero("");
+    setLibrador("");
+    setVencimiento("");
+    setFoto("");
+    setErrorLocal("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetSignal]);
 
   function onFoto(e: any) {
     const f = e.target.files?.[0];
@@ -105,7 +144,7 @@ export function PagosEditor({ pagos, setPagos }: { pagos: Pago[]; setPagos: (p: 
 
   return <div className="mobile-pagos">
     <h4>¿Entrega dinero a cuenta?</h4>
-    <p className="mobile-pagos-ayuda">Se pueden cargar varios pagos juntos: efectivo, transferencias y todos los cheques que quieras.</p>
+    <p className="mobile-pagos-ayuda">Se pueden cargar varios pagos juntos: efectivo, transferencias y todos los cheques que quieras. Si completás un importe y no tocás "Agregar pago", se incluye igual al enviar.</p>
     <label className="mobile-obs">Forma de pago
       <select value={medio} onChange={(e) => setMedio(e.target.value)}>
         {MEDIOS_PAGO.map((m) => <option key={m.valor} value={m.valor}>{m.label}</option>)}
@@ -124,6 +163,7 @@ export function PagosEditor({ pagos, setPagos }: { pagos: Pago[]; setPagos: (p: 
       {foto && <img src={foto} alt="Cheque" className="mobile-cheque-foto" />}
     </>}
     {errorLocal && <div className="mobile-aviso">{errorLocal}</div>}
+    {parseImporte(importe) > 0 && <div className="mobile-aviso">Se incluirá también al enviar: <strong>{medio} $ {fmtMoneda(parseImporte(importe))}</strong></div>}
     <button type="button" className="mobile-btn-sec full" onClick={agregar}><Plus size={16} /> Agregar pago</button>
     {pagos.length > 0 && <div className="mobile-pagos-lista">
       {pagos.map((p, i) => <div className="mobile-linea" key={i}>

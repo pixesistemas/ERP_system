@@ -22,9 +22,13 @@ export function MobileDriverPage() {
   const [obsEntrega, setObsEntrega] = useState("");
   const [devueltos, setDevueltos] = useState<Record<string, number>>({});
   const [pagos, setPagos] = useState<any[]>([]);
+  const [pagoBorrador, setPagoBorrador] = useState<any>(null);
+  const [resetPagos, setResetPagos] = useState(0);
 
   function limpiarCobro() {
     setPagos([]);
+    setPagoBorrador(null);
+    setResetPagos((n) => n + 1);
   }
 
   const claveItem = (item: any) => String(item.producto_id ?? item.codigo ?? item.descripcion);
@@ -100,15 +104,16 @@ export function MobileDriverPage() {
           cantidad: Number(devueltos[claveItem(i)] || 0),
         }))
         .filter((x: any) => x.cantidad > 0);
+      const cobrosFinales = [...pagos, ...(pagoBorrador ? [pagoBorrador] : [])];
       await erpApi.marcarEntregaRuta(ruta.ruta.id, entrega.ruta_pedido_id, {
         estado_entrega: estadoEntrega,
         observaciones: obsEntrega,
         devoluciones,
         latitud: g.lat,
         longitud: g.lng,
-        cobros: pagos.length ? pagos : undefined,
+        cobros: cobrosFinales.length ? cobrosFinales : undefined,
       });
-      setNotice(estadoEntrega === "NO_ENTREGADO" ? "Parada marcada como no entregada." : `Entrega ${estadoEntrega === "ENTREGADO" ? "registrada" : "parcial registrada"}.${pagos.length ? " El dinero declarado queda pendiente hasta que la oficina lo confirme." : ""}`);
+      setNotice(estadoEntrega === "NO_ENTREGADO" ? "Parada marcada como no entregada." : `Entrega ${estadoEntrega === "ENTREGADO" ? "registrada" : "parcial registrada"}.${cobrosFinales.length ? " El dinero declarado queda pendiente hasta que la oficina lo confirme." : ""}`);
       setEntrega(null);
       setObsEntrega("");
       limpiarCobro();
@@ -204,7 +209,7 @@ export function MobileDriverPage() {
         </label>)}
       </div>
       <label className="mobile-obs">Observaciones<input value={obsEntrega} onChange={(e) => setObsEntrega(e.target.value)} placeholder="Opcional" /></label>
-      {estadoEntrega !== "NO_ENTREGADO" && <PagosEditor pagos={pagos} setPagos={setPagos} />}
+      {estadoEntrega !== "NO_ENTREGADO" && <PagosEditor pagos={pagos} setPagos={setPagos} onDraftChange={setPagoBorrador} resetSignal={resetPagos} />}
       {(entrega.items || []).length > 0 && <div className="mobile-card" style={{ marginTop: 8 }}>
         <h4>¿Te devolvieron algo?</h4>
         <p>Marcá la cantidad que el cliente devolvió. Si no devolvió nada, dejalo en 0. El administrador lo va a ver en la ruta.</p>

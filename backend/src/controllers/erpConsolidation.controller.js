@@ -651,12 +651,19 @@ function crearPedidoMovil(req,res){
     let subtotal=0,importeIva=0,total=0;
     const lineas=items.map(x=>{
       const prod=productoStmt.get(Number(x.producto_id||x.id),e)||{};
-      const precio=Number(x.precio_unitario??x.precio??prod.precio??0);
+      /*
+       * La app manda el precio FINAL (IVA incluido), igual que la lista de
+       * precios. Si la empresa discrimina IVA, se separa el neto; si no,
+       * el total es el precio final tal cual (sin sumarle IVA de nuevo).
+       */
+      const precioFinal=Number(x.precio_unitario??x.precio??prod.precio??0);
       const cant=Number(x.cantidad)||0;
       const desc=Number(x.descuento||0);
       const ivaPorc=Number(x.iva??21);
-      const netoLine=precio*cant*(1-desc/100);
-      const netoFiscal=discriminaIva?netoLine:(ivaPorc>0?Math.round(netoLine*(1+ivaPorc/100)*100)/100:netoLine);
+      const finalConDesc=precioFinal*(1-desc/100);
+      const precio=discriminaIva&&ivaPorc>0?Math.round(finalConDesc/(1+ivaPorc/100)*10000)/10000:finalConDesc;
+      const netoLine=precio*cant;
+      const netoFiscal=netoLine;
       const ivaLine=discriminaIva?Math.round(netoLine*ivaPorc/100*100)/100:0;
       subtotal=Math.round((subtotal+netoFiscal)*100)/100;
       importeIva=Math.round((importeIva+ivaLine)*100)/100;
@@ -1193,6 +1200,23 @@ function reabrirRutaReparto(req,res){
   db.prepare("UPDATE rutas_reparto SET estado='ARMADA',updated_at=CURRENT_TIMESTAMP WHERE id=?").run(id);
   res.json({ok:true});
 }
+/*
+ * Asignar (o cambiar) el repartidor de una ruta ya armada. Antes, si te
+ * olvidabas de asignarlo al crearla, no había forma de hacerlo después.
+ */
+function asignarRepartidorRuta(req,res){
+  const e=empresaId(req),id=Number(req.params.id),repartidorId=Number(req.body?.repartidor_id)||null;
+  const ruta=db.prepare('SELECT * FROM rutas_reparto WHERE id=? AND empresa_id=?').get(id,e);
+  if(!ruta)return res.status(404).json({ok:false,error:'La ruta no existe.'});
+  if(ruta.estado==='CERRADA')return res.status(409).json({ok:false,error:'La ruta está finalizada: reabrila antes de cambiar el repartidor.'});
+  if(repartidorId){
+    const usuario=db.prepare('SELECT id,nombre FROM usuarios WHERE id=? AND activo=1').get(repartidorId);
+    if(!usuario)return res.status(404).json({ok:false,error:'El repartidor no existe o está inactivo.'});
+  }
+  db.prepare('UPDATE rutas_reparto SET repartidor_id=?,updated_at=CURRENT_TIMESTAMP WHERE id=?').run(repartidorId,id);
+  const nombre=repartidorId?db.prepare('SELECT nombre FROM usuarios WHERE id=?').get(repartidorId)?.nombre:null;
+  res.json({ok:true,repartidor_id:repartidorId,repartidor_nombre:nombre||null});
+}
 
 /*
  * Reportes fijos por vendedor (Etapa 5).
@@ -1450,7 +1474,7 @@ function updatePrices(req,res){
 function createReserveFund(req,res){const e=empresaId(req),d=req.body,amount=Number(d.importe_original||d.importe||0);if(!d.cliente_id||amount<=0)return res.status(400).json({ok:false,error:'Cliente e importe son obligatorios.'});const count=db.prepare('SELECT COUNT(*) n FROM reservas_monto WHERE empresa_id=?').get(e).n;const number=`RM-${String(count+1).padStart(8,'0')}`;const products=db.prepare('SELECT id,codigo,precio FROM productos WHERE empresa_id=? AND activo=1').all(e);const snapshot=Object.fromEntries(products.map(p=>[String(p.id),{codigo:p.codigo,precio:Number(p.precio)}]));const info=db.prepare(`INSERT INTO reservas_monto(empresa_id,cliente_id,numero,fecha,importe_original,saldo,lista_precio_id,lista_precio_nombre,precios_snapshot,observaciones) VALUES(?,?,?,?,?,?,?,?,?,?)`).run(e,Number(d.cliente_id),number,d.fecha||nowLocal().slice(0,10),amount,amount,d.lista_precio_id||null,d.lista_precio_nombre||'GENERAL',JSON.stringify(snapshot),d.observaciones||'');res.status(201).json({ok:true,reservation:db.prepare('SELECT * FROM reservas_monto WHERE id=?').get(info.lastInsertRowid)})}
 function consumeReserveFund(req,res){const e=empresaId(req),id=Number(req.params.id),amount=Number(req.body.importe||0);const tx=db.transaction(()=>{const r=db.prepare('SELECT * FROM reservas_monto WHERE id=? AND empresa_id=?').get(id,e);if(!r)throw Object.assign(new Error('Reserva inexistente.'),{status:404});if(amount<=0||amount>Number(r.saldo))throw Object.assign(new Error('El importe supera el saldo reservado.'),{status:409});db.prepare('UPDATE reservas_monto SET saldo=saldo-?,estado=CASE WHEN saldo-?<=0 THEN \'AGOTADA\' ELSE \'VIGENTE\' END,updated_at=CURRENT_TIMESTAMP WHERE id=?').run(amount,amount,id);db.prepare('INSERT INTO reserva_monto_consumos(reserva_id,documento_tipo,documento_id,importe,detalle) VALUES(?,?,?,?,?)').run(id,req.body.documento_tipo||'POS',req.body.documento_id||null,amount,req.body.detalle||'Consumo desde punto de venta');return db.prepare('SELECT * FROM reservas_monto WHERE id=?').get(id)});res.json({ok:true,reservation:tx()})}
 
-module.exports={listBanks,saveBank,listPos,savePos,listChecks,createCheck,deleteCajero,depositChecks,listWhatsapp,saveWhatsapp,uploadFiscal,fiscalFiles,listPurchases,savePurchase,deletePurchase,importarComprasExcel,ocrCompraFoto,listComprasPendientes,confirmarCompraPendiente,descartarCompraPendiente,listPedidosClientes,listPedidosActivos,listDevoluciones,devolverItemsPedido,listVendedorClientes,guardarVendedorClientes,crearVisita,listVisitas,movilBootstrap,crearPedidoMovil,listPedidosMovil,listBandejaPedidos,detallePedidoMovil,revisarPedidoMovil,cambiarEstadoPedidoMovil,confirmarCobroPedido,confirmarCobrosPedido,reciboProvisorioMovil,pdfPedidosPendientes,rentabilidadRubros,listPedidosParaRuta,crearRutaReparto,listRutasReparto,detalleRutaReparto,reordenarRutaReparto,marcarEntregaRuta,cerrarRutaReparto,reabrirRutaReparto,miRutaReparto,listRepartoDevoluciones,confirmarDevolucion,reporteVendedoresDetalle,crearReporteUsuario,listFiscalIntentos,vatBook,borradorIva,saveBorradorIvaAjuste,renameBorradorIvaRubro,updatePrices,listReserveFunds,createReserveFund,consumeReserveFund};
+module.exports={listBanks,saveBank,listPos,savePos,listChecks,createCheck,deleteCajero,depositChecks,listWhatsapp,saveWhatsapp,uploadFiscal,fiscalFiles,listPurchases,savePurchase,deletePurchase,importarComprasExcel,ocrCompraFoto,listComprasPendientes,confirmarCompraPendiente,descartarCompraPendiente,listPedidosClientes,listPedidosActivos,listDevoluciones,devolverItemsPedido,listVendedorClientes,guardarVendedorClientes,crearVisita,listVisitas,movilBootstrap,crearPedidoMovil,listPedidosMovil,listBandejaPedidos,detallePedidoMovil,revisarPedidoMovil,cambiarEstadoPedidoMovil,confirmarCobroPedido,confirmarCobrosPedido,reciboProvisorioMovil,pdfPedidosPendientes,rentabilidadRubros,listPedidosParaRuta,crearRutaReparto,listRutasReparto,detalleRutaReparto,reordenarRutaReparto,marcarEntregaRuta,cerrarRutaReparto,reabrirRutaReparto,asignarRepartidorRuta,miRutaReparto,listRepartoDevoluciones,confirmarDevolucion,reporteVendedoresDetalle,crearReporteUsuario,listFiscalIntentos,vatBook,borradorIva,saveBorradorIvaAjuste,renameBorradorIvaRubro,updatePrices,listReserveFunds,createReserveFund,consumeReserveFund};
 
 function userId(req){ return Number(req.usuario?.id || req.user?.id || req.user?.userId || 1); }
 function listPosCatalogs(req,res){

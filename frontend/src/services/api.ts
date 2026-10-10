@@ -246,6 +246,7 @@ export const erpApi = {
   reordenarRutaReparto: (id:number,orden:number[]) => request<any>(`/erp/reparto/rutas/${id}/orden`,{method:'POST',body:JSON.stringify({orden})}),
   cerrarRutaReparto: (id:number) => request<any>(`/erp/reparto/rutas/${id}/cerrar`,{method:'POST',body:JSON.stringify({})}),
   reabrirRutaReparto: (id:number) => request<any>(`/erp/reparto/rutas/${id}/reabrir`,{method:'POST',body:JSON.stringify({})}),
+  asignarRepartidorRuta: (id:number,repartidorId:number|null) => request<any>(`/erp/reparto/rutas/${id}/repartidor`,{method:'POST',body:JSON.stringify({repartidor_id:repartidorId})}),
   marcarEntregaRuta: (rutaId:number,entregaId:number,data:any) => request<any>(`/erp/reparto/rutas/${rutaId}/entregas/${entregaId}`,{method:'POST',body:JSON.stringify(data)}),
   miRutaReparto: () => request<any>('/erp/reparto/mi-ruta'),
   listRepartoDevoluciones: (estado='PENDIENTE') => request<any>(`/erp/reparto/devoluciones?estado=${encodeURIComponent(estado)}`),
