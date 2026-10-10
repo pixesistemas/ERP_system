@@ -128,7 +128,7 @@ export function MobileOrdersAdminPage() {
       setCantidades(iniciales);
       setNoDisponibles(new Set());
       setDetalleTexto("");
-      setACuenta(false);
+      setACuenta(String(r.pedido?.condicion_pago || "").toUpperCase().includes("CUENTA"));
     } catch (e: any) {
       setError(e.message);
     }
@@ -209,6 +209,7 @@ export function MobileOrdersAdminPage() {
   }
 
   const yaRevisado = detalle && ["CONFIRMADO", "PARCIAL", "RECHAZADO"].includes(String(detalle.pedido.estado_pedido || "PENDIENTE").toUpperCase());
+  const yaACuenta = Boolean(detalle && String(detalle.pedido?.condicion_pago || "").toUpperCase().includes("CUENTA"));
 
   return <div className="products-page">
     <div className="products-toolbar">
@@ -246,7 +247,7 @@ export function MobileOrdersAdminPage() {
         <td>{p.latitud != null && p.longitud != null ? <a className="link-button" href={`https://www.google.com/maps?q=${p.latitud},${p.longitud}`} target="_blank" rel="noreferrer"><MapPin size={14} /> Ver mapa</a> : "—"}</td>
         <td className="price">$ {Number(p.total || 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}</td>
         <td><span className={claseEstado(p.estado_pedido)}>{p.estado_pedido || "PENDIENTE"}</span>{p.facturado ? <span className="badge success" style={{ marginLeft: 6 }} title={p.cae ? `CAE ${p.cae}` : "Facturado"}>FACTURADO</span> : null}</td>
-        <td>{Number(p.cobro_pendiente || 0) > 0 ? <span className="badge warning" title="Dinero declarado por vendedor/repartidor, pendiente de confirmar">$ {fmtMon(p.cobro_pendiente)}</span> : "—"}</td>
+        <td>{Number(p.cobro_pendiente || 0) > 0 ? <span className="badge warning" title="Dinero declarado por vendedor/repartidor, pendiente de confirmar">$ {fmtMon(p.cobro_pendiente)}</span> : Number(p.cobro_confirmado || 0) > 0 ? <span className="badge success" title="Dinero confirmado y acreditado en cuenta corriente">$ {fmtMon(p.cobro_confirmado)} ✔</span> : "—"}</td>
         <td><button className="secondary-action" onClick={() => abrir(p.id)}>Abrir</button></td>
       </tr>)}</tbody>
     </table>
@@ -268,7 +269,7 @@ export function MobileOrdersAdminPage() {
           <td>{i.codigo}</td>
           <td>{i.descripcion}</td>
           <td>{Number(i.cantidad).toLocaleString("es-AR")}</td>
-          <td className="price">$ {Number(i.precio_unitario || 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}</td>
+          <td className="price" title="Precio final (IVA incluido)">$ {(Number(i.precio_unitario || 0) * (1 + Number(i.iva || 0) / 100)).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
           <td><input type="number" min={0} value={cantidades[i.id] ?? Number(i.cantidad)} onFocus={(e) => e.currentTarget.select()} onChange={(e) => setCantidades({ ...cantidades, [i.id]: Math.max(0, Number(e.target.value) || 0) })} disabled={yaRevisado || noDisponibles.has(i.id)} /></td>
           <td><div className="order-item-actions">{!yaRevisado && <>
             <button className={noDisponibles.has(i.id) ? "secondary-action" : "link-button"} onClick={() => marcarNoDisponible(i)}>{noDisponibles.has(i.id) ? "Restituir" : "No disponible"}</button>
@@ -302,7 +303,7 @@ export function MobileOrdersAdminPage() {
           <div>· <strong>Rechazar</strong>: anula el pedido.</div>
           <div>· <strong>A cuenta corriente</strong>: el total del pedido queda como deuda del cliente en su cuenta; el dinero recibido se imputa como pago (recibo automático si hay dinero pendiente).</div>
         </div>
-        <label className="order-cuenta-check"><input type="checkbox" checked={aCuenta} onChange={(e) => setACuenta(e.target.checked)} /><div><strong>El pedido queda a cuenta corriente</strong><span>El total ({fmtMon(detalle.pedido.total)}) se registra como deuda del cliente; el dinero recibido se resta como pago.</span></div></label>
+        <label className="order-cuenta-check"><input type="checkbox" disabled={yaACuenta} checked={aCuenta || yaACuenta} onChange={(e) => setACuenta(e.target.checked)} /><div><strong>El pedido queda a cuenta corriente</strong><span>{yaACuenta ? "Este pedido ya está registrado en la cuenta corriente del cliente: no se vuelve a imputar el mismo importe." : `El total (${fmtMon(detalle.pedido.total)}) se registra como deuda del cliente; el dinero recibido se resta como pago.`}</span></div></label>
         <label className="full">Observación de la revisión<input value={detalleTexto} onChange={(e) => setDetalleTexto(e.target.value)} placeholder="Ej.: faltaba stock de un producto" /></label>
         <div className="modal-actions">
           <button className="danger-action" disabled={busy} onClick={() => revisar("RECHAZADO")} title="Anula el pedido">Rechazar</button>

@@ -64,9 +64,9 @@ export function ClientAccountsPage() {
     api.listClients("").then(async r => {
       const cs = r.clientes || [];
       setClients(cs);
-      const pairs = await Promise.all(cs.filter((c: Client) => c.cuit || c.dni).map(async (c: Client) => {
+      const pairs = await Promise.all(cs.map(async (c: Client) => {
         try {
-          const x = await api.getClientAccount(c.cuit || c.dni || "");
+          const x = await api.getClientAccount(String(c.cuit || c.dni || c.id));
           const v = calcularVencidos(x.movimientos || []);
           return [String(c.id), { saldo: Number(x.saldo || 0), vencido: v.vencido, aVencer: v.aVencer }];
         }
@@ -94,7 +94,7 @@ export function ClientAccountsPage() {
   async function consult(c: Client) {
     try {
       setSelected(c);
-      setData(await api.getClientAccount(c.cuit || c.dni || ""));
+      setData(await api.getClientAccount(String(c.cuit || c.dni || c.id)));
       setPayments({ efectivo: 0, tarjeta: 0, qr: 0, transferencia: 0, cheque: 0 });
       setReceivedChecks([]);
     } catch (e: any) { setError(e.message); }
@@ -102,7 +102,6 @@ export function ClientAccountsPage() {
 
   function exportarSaldos(soloVencidos: boolean) {
     const filas = clients
-      .filter((c) => c.cuit || c.dni)
       .map((c) => ({ c, s: summaries[String(c.id)] || { saldo: 0, vencido: 0, aVencer: 0 } }))
       .filter((x) => (soloVencidos ? Number(x.s.vencido) > 0 : Number(x.s.saldo) > 0))
       .sort((a, b) => Number(b.s.saldo) - Number(a.s.saldo));
@@ -111,7 +110,7 @@ export function ClientAccountsPage() {
     const lineas = [
       soloVencidos ? `LISTADO DE SALDOS VENCIDOS (>30 DÍAS) · ${new Date().toLocaleDateString("es-AR")}` : `LISTADO DE SALDOS ADEUDADOS · ${new Date().toLocaleDateString("es-AR")}`,
       "CLIENTE;DOCUMENTO;SALDO TOTAL;VENCIDO (>30 DÍAS);A VENCER",
-      ...filas.map(({ c: cli, s }) => `${c(cli.razonSocial)};${c(cli.cuit || cli.dni || "")};${Number(s.saldo).toFixed(2)};${Number(s.vencido).toFixed(2)};${Number(s.aVencer).toFixed(2)}`),
+      ...filas.map(({ c: cli, s }) => `${c(cli.razonSocial)};${c(cli.cuit || cli.dni || String(cli.id))};${Number(s.saldo).toFixed(2)};${Number(s.vencido).toFixed(2)};${Number(s.aVencer).toFixed(2)}`),
       `TOTALES;;${filas.reduce((n, x) => n + Number(x.s.saldo), 0).toFixed(2)};${filas.reduce((n, x) => n + Number(x.s.vencido), 0).toFixed(2)};${filas.reduce((n, x) => n + Number(x.s.aVencer), 0).toFixed(2)}`,
     ];
     const csv = "\uFEFF" + lineas.join("\r\n");
@@ -140,7 +139,7 @@ export function ClientAccountsPage() {
           } as any);
         }
       }
-      const r = await api.collectClientAccount({ clienteId: selected.id, clienteDoc: selected.cuit || selected.dni, clienteNombre: selected.razonSocial, importe: totalPayment, puntoVenta: pvSeleccionado || undefined, detalles });
+      const r = await api.collectClientAccount({ clienteId: selected.id, clienteDoc: selected.cuit || selected.dni || String(selected.id), clienteNombre: selected.razonSocial, importe: totalPayment, puntoVenta: pvSeleccionado || undefined, detalles });
       setError("");
       setLastReceipt(r.recibo || null);
       await consult(selected);
@@ -157,8 +156,8 @@ export function ClientAccountsPage() {
       <div className="account-title"><BadgeDollarSign /><h3>Cuentas Corrientes</h3></div>
       <div className="account-tools"><button className="primary-action" onClick={() => exportarSaldos(false)} title="Descargar Excel de todos los clientes con deuda"><Printer size={16} /> Exportar adeudados</button><button className="primary-action" onClick={() => exportarSaldos(true)} title="Descargar Excel de clientes con saldo vencido mayor a 30 días"><Printer size={16} /> Exportar vencidos</button></div>
       <div className="account-search"><Search /><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar deudor por nombre o documento..." /></div>
-      <div className="debtor-grid">{filtered.filter(c => c.cuit || c.dni).map(c => { const s = summaries[String(c.id)] || { saldo: 0, vencido: 0, aVencer: 0 }; return <button key={c.id} onClick={() => consult(c)}>
-        <div><strong>{c.razonSocial}</strong><span>Doc: {c.cuit || c.dni}</span></div>
+      <div className="debtor-grid">{filtered.map(c => { const s = summaries[String(c.id)] || { saldo: 0, vencido: 0, aVencer: 0 }; return <button key={c.id} onClick={() => consult(c)}>
+        <div><strong>{c.razonSocial}</strong><span>Doc: {c.cuit || c.dni || `Interno #${c.id}`}</span></div>
         <div className="debtor-balance"><small>{Number(s.saldo) > 0 ? 'SALDO ADEUDADO' : 'AL DÍA'}</small><b className={Number(s.saldo) > 0 ? 'debt' : 'ok'}>$ {Number(s.saldo).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</b>
           {Number(s.vencido) > 0 && <em className="saldo-vencido">Vencidos: $ {Number(s.vencido).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</em>}
           {Number(s.aVencer) > 0 && <em className="saldo-a-vencer">A vencer: $ {Number(s.aVencer).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</em>}

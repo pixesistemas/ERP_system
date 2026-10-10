@@ -661,10 +661,12 @@ function crearPedidoMovil(req,res){
       const desc=Number(x.descuento||0);
       const ivaPorc=Number(x.iva??21);
       const finalConDesc=precioFinal*(1-desc/100);
-      const precio=discriminaIva&&ivaPorc>0?Math.round(finalConDesc/(1+ivaPorc/100)*10000)/10000:finalConDesc;
+      const totalLineaFinal=Math.round(finalConDesc*cant*100)/100;
+      const precio=discriminaIva&&ivaPorc>0?Math.round(finalConDesc/(1+ivaPorc/100)*100)/100:finalConDesc;
       const netoLine=precio*cant;
       const netoFiscal=netoLine;
-      const ivaLine=discriminaIva?Math.round(netoLine*ivaPorc/100*100)/100:0;
+      /* El IVA sale de la diferencia con el total final así no se pierden centavos. */
+      const ivaLine=discriminaIva?Math.round((totalLineaFinal-netoLine)*100)/100:0;
       subtotal=Math.round((subtotal+netoFiscal)*100)/100;
       importeIva=Math.round((importeIva+ivaLine)*100)/100;
       total=Math.round((total+netoFiscal+ivaLine)*100)/100;
@@ -735,7 +737,8 @@ function listBandejaPedidos(req,res){
   if(q){where+=' AND (c.razon_social LIKE ? OR vd.nombre LIKE ? OR CAST(v.numero AS TEXT) LIKE ?)';params.push(`%${q}%`,`%${q}%`,`%${q}%`)}
   const pedidos=db.prepare(`SELECT v.id,v.tipo,v.estado,v.estado_pedido,v.numero,v.punto_venta,v.total,v.fecha,v.fecha_visita,v.hora_visita,v.latitud,v.longitud,c.razon_social cliente,vd.nombre vendedor,d.canal,d.cae,d.afip_estado,
       CASE WHEN v.tipo='FACTURA' THEN 1 ELSE 0 END facturado,
-      (SELECT COALESCE(SUM(pc.importe),0) FROM pedido_cobros pc WHERE pc.venta_id=v.id AND pc.estado='PENDIENTE') cobro_pendiente
+      (SELECT COALESCE(SUM(pc.importe),0) FROM pedido_cobros pc WHERE pc.venta_id=v.id AND pc.estado='PENDIENTE') cobro_pendiente,
+      (SELECT COALESCE(SUM(pc.importe),0) FROM pedido_cobros pc WHERE pc.venta_id=v.id AND pc.estado='CONFIRMADO') cobro_confirmado
     FROM ventas_pos v LEFT JOIN clientes c ON c.id=v.cliente_id LEFT JOIN vendedores vd ON vd.id=v.vendedor_id LEFT JOIN documentos_comerciales d ON d.id=v.documento_id
     WHERE ${where} ORDER BY v.id DESC LIMIT 300`).all(...params);
   const resumen=db.prepare(`SELECT COALESCE(v.estado_pedido,'PENDIENTE') estado,COUNT(1) n FROM ventas_pos v LEFT JOIN documentos_comerciales d ON d.id=v.documento_id WHERE v.empresa_id=? AND v.estado<>'ANULADO' AND (v.tipo='NOTA_PEDIDO' OR (v.tipo='FACTURA' AND d.documento_origen_id IS NOT NULL)) GROUP BY COALESCE(v.estado_pedido,'PENDIENTE')`).all(e);
@@ -1631,6 +1634,20 @@ function generarReciboDeCobros(e,venta,cobros,usuarioId){
   const marcar=db.prepare("UPDATE pedido_cobros SET estado='CONFIRMADO',recibo_id=?,confirmado_por=?,confirmado_en=? WHERE id=?");
   for(const cobro of cobros)marcar.run(recibo.id,usuarioId,nowLocal(),cobro.id);
   const total=cobros.reduce((n,c)=>n+Number(c.importe||0),0);
+  /* El dinero recibido también se refleja en la caja del día. */
+  try{
+    const medios={};
+    for(const c of cobros)medios[c.medio]=Math.round(((medios[c.medio]||0)+Number(c.importe||0))*100)/100;
+    const session=openOrGetCashSession(e,{punto_venta:pvDelUsuario(e,usuarioId)},usuarioId);
+    db.prepare('INSERT INTO caja_movimientos(empresa_id,tipo,concepto,importe,medios_json,cliente_nombre,caja_sesion_id,sucursal_id,cajero_id,venta_id) VALUES(?,?,?,?,?,?,?,?,?,?)').run(
+      e,'COBRO_PEDIDO',
+      `Cobro pedido ${String(venta.punto_venta||1).padStart(4,'0')}-${String(venta.numero||0).padStart(8,'0')} · Recibo ${String(recibo.punto_venta||1).padStart(4,'0')}-${String(recibo.numero||0).padStart(8,'0')}`,
+      total,JSON.stringify(medios),clienteNombre,session.id,null,null,venta.id,
+    );
+    db.prepare('UPDATE caja_sesiones SET saldo_teorico=saldo_teorico+? WHERE id=?').run(total,session.id);
+  }catch(error){
+    console.error('[caja] no se pudo registrar el cobro del pedido',venta.id,error.message);
+  }
   const usuario=db.prepare('SELECT nombre FROM usuarios WHERE id=?').get(usuarioId);
   db.prepare('INSERT INTO pedido_estado_historial(empresa_id,venta_id,documento_id,estado,estado_anterior,usuario_id,usuario_nombre,detalle,created_at) VALUES(?,?,?,?,?,?,?,?,?)').run(
     e,venta.id,venta.documento_id||null,venta.estado_pedido||'PENDIENTE',venta.estado_pedido||'PENDIENTE',usuarioId,usuario?.nombre||'ADMIN',
