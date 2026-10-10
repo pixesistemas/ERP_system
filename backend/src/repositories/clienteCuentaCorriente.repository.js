@@ -1,4 +1,5 @@
 const db = require("../db/database");
+const { nowLocal } = require("../utils/time");
 
 function getSaldoCliente({ empresaId, clienteDoc }) {
   const row = db
@@ -51,7 +52,8 @@ function registrarMovimientoCC({
       saldo,
       factura_id,
       documento_id,
-      observaciones
+      observaciones,
+      created_at
     )
     VALUES (
       @empresa_id,
@@ -65,7 +67,8 @@ function registrarMovimientoCC({
       @saldo,
       @factura_id,
       @documento_id,
-      @observaciones
+      @observaciones,
+      @created_at
     )
   `,
     )
@@ -82,6 +85,7 @@ function registrarMovimientoCC({
       factura_id: facturaId,
       documento_id: documentoId,
       observaciones,
+      created_at: nowLocal(),
     });
 
   return getMovimientoById(result.lastInsertRowid);

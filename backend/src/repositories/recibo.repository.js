@@ -1,5 +1,6 @@
 const db = require("../db/database");
 const { getNextNumero } = require("./numerador.repository");
+const { nowLocal } = require("../utils/time");
 
 const {
   registrarMovimientoCC,
@@ -83,10 +84,12 @@ function crearRecibo({
       cliente_nombre,
       punto_venta,
       numero,
+      fecha,
       importe_total,
       estado,
       observaciones,
-      usuario_id
+      usuario_id,
+      created_at
     )
     VALUES (
       @empresa_id,
@@ -95,10 +98,12 @@ function crearRecibo({
       @cliente_nombre,
       @punto_venta,
       @numero,
+      @fecha,
       @importe_total,
       'BORRADOR',
       @observaciones,
-      @usuario_id
+      @usuario_id,
+      @created_at
     )
   `);
 
@@ -153,9 +158,11 @@ function crearRecibo({
       cliente_nombre: clienteNombre,
       punto_venta: puntoVenta,
       numero,
+      fecha: nowLocal().slice(0, 10),
       importe_total: importeTotal,
       observaciones,
       usuario_id: usuarioId,
+      created_at: nowLocal(),
     });
 
     const reciboId = result.lastInsertRowid;

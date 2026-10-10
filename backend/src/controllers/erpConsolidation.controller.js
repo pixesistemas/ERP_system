@@ -609,7 +609,7 @@ function movilBootstrap(req,res){
   /* Saldo de cuenta corriente por cliente para que el vendedor lo vea. */
   const saldosRows=db.prepare('SELECT cliente_doc,SUM(debe)-SUM(haber) saldo FROM cliente_cc_movimientos WHERE empresa_id=? GROUP BY cliente_doc').all(e);
   const saldosPorDoc=new Map(saldosRows.map(r=>[String(r.cliente_doc||''),Number(r.saldo||0)]));
-  const clientesConSaldo=clientes.map(c=>({...c,saldo:saldosPorDoc.get(String(c.cuit||c.dni||''))||0}));
+  const clientesConSaldo=clientes.map(c=>({...c,saldo:saldosPorDoc.get(String(c.cuit||c.dni||c.id))||0}));
   const productos=db.prepare('SELECT id,codigo,codigo_barra codigoBarra,descripcion,precio,iva,unidad,unidad_id,rubro_id,(SELECT COALESCE(SUM(sp.cantidad),0) FROM stock_productos sp WHERE sp.empresa_id=p.empresa_id AND sp.producto_id=p.id) stock FROM productos p WHERE empresa_id=? AND activo=1 ORDER BY descripcion LIMIT 5000').all(e);
   let packs=[];
   try{
@@ -755,7 +755,7 @@ function detallePedidoMovil(req,res){
   const items=ventaItems.map((vi,idx)=>({...vi,doc_item_id:docItems[idx]?.id||null}));
   const historial=db.prepare('SELECT * FROM pedido_estado_historial WHERE empresa_id=? AND venta_id=? ORDER BY id DESC').all(e,id);
   const cobros=db.prepare('SELECT pc.*,u.nombre confirmado_por_nombre FROM pedido_cobros pc LEFT JOIN usuarios u ON u.id=pc.confirmado_por WHERE pc.empresa_id=? AND pc.venta_id=? ORDER BY pc.id DESC').all(e,id);
-  const docCliente=String(pedido.cuit||pedido.dni||'').trim();
+  const docCliente=String(pedido.cuit||pedido.dni||pedido.cliente_id||'').trim();
   const saldo=docCliente?Number(db.prepare('SELECT IFNULL(SUM(debe),0)-IFNULL(SUM(haber),0) saldo FROM cliente_cc_movimientos WHERE empresa_id=? AND cliente_doc=?').get(e,docCliente)?.saldo||0):0;
   res.json({ok:true,pedido,items,historial,cobros,saldo});
 }
@@ -1050,7 +1050,7 @@ function datosRutaReparto(e,id){
   const pedidos=db.prepare(`SELECT rp.id ruta_pedido_id,rp.orden,rp.estado_entrega,rp.fecha_entrega,rp.hora_entrega,rp.observaciones,
       v.id,v.numero,v.punto_venta,v.total,v.fecha,v.latitud,v.longitud,
       c.razon_social cliente,c.domicilio,c.localidad,c.telefono,c.latitud clat,c.longitud clng,
-      COALESCE((SELECT SUM(cc.debe)-SUM(cc.haber) FROM cliente_cc_movimientos cc WHERE cc.empresa_id=v.empresa_id AND cc.cliente_doc=COALESCE(NULLIF(c.cuit,''),c.dni,'')),0) saldo
+      COALESCE((SELECT SUM(cc.debe)-SUM(cc.haber) FROM cliente_cc_movimientos cc WHERE cc.empresa_id=v.empresa_id AND cc.cliente_doc=COALESCE(NULLIF(c.cuit,''),NULLIF(c.dni,''),CAST(c.id AS TEXT))),0) saldo
     FROM ruta_pedidos rp JOIN ventas_pos v ON v.id=rp.venta_id LEFT JOIN clientes c ON c.id=v.cliente_id
     WHERE rp.ruta_id=? ORDER BY rp.orden,rp.id`).all(id);
   const items=db.prepare(`SELECT i.venta_id,i.producto_id,i.codigo,i.descripcion,SUM(i.cantidad) cantidad
