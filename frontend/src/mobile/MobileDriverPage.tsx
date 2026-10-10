@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ChevronDown, ChevronUp, MapPin, Package, Phone, RefreshCw, Truck, X } from "lucide-react";
 import { erpApi } from "../services/api";
 import { fmtFecha } from "../utils/fecha";
+import { PagosEditor } from "./MovilPagos";
 
 /*
  * App del repartidor (PWA): hoja de ruta del día con paradas ordenadas,
@@ -20,34 +21,10 @@ export function MobileDriverPage() {
   const [estadoEntrega, setEstadoEntrega] = useState("ENTREGADO");
   const [obsEntrega, setObsEntrega] = useState("");
   const [devueltos, setDevueltos] = useState<Record<string, number>>({});
-  const [cobroMedio, setCobroMedio] = useState("");
-  const [cobroImporte, setCobroImporte] = useState(0);
-  const [chequeNumero, setChequeNumero] = useState("");
-  const [chequeBanco, setChequeBanco] = useState("");
-  const [chequeLibrador, setChequeLibrador] = useState("");
-  const [chequeVencimiento, setChequeVencimiento] = useState("");
-  const [chequeFoto, setChequeFoto] = useState("");
+  const [pagos, setPagos] = useState<any[]>([]);
 
   function limpiarCobro() {
-    setCobroMedio("");
-    setCobroImporte(0);
-    setChequeNumero("");
-    setChequeBanco("");
-    setChequeLibrador("");
-    setChequeVencimiento("");
-    setChequeFoto("");
-  }
-
-  function fotoCheque(e: any) {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    if (f.size > 3 * 1024 * 1024) {
-      setError("La foto es muy grande (máximo 3 MB). Sacala de nuevo con menos calidad.");
-      return;
-    }
-    const lector = new FileReader();
-    lector.onload = () => setChequeFoto(String(lector.result || ""));
-    lector.readAsDataURL(f);
+    setPagos([]);
   }
 
   const claveItem = (item: any) => String(item.producto_id ?? item.codigo ?? item.descripcion);
@@ -129,17 +106,9 @@ export function MobileDriverPage() {
         devoluciones,
         latitud: g.lat,
         longitud: g.lng,
-        cobro: cobroMedio && Number(cobroImporte) > 0 ? {
-          medio: cobroMedio,
-          importe: Number(cobroImporte),
-          banco: chequeBanco,
-          cheque_numero: cobroMedio === "CHEQUE" ? chequeNumero : undefined,
-          cheque_librador: cobroMedio === "CHEQUE" ? chequeLibrador : undefined,
-          cheque_vencimiento: cobroMedio === "CHEQUE" ? chequeVencimiento || undefined : undefined,
-          foto: cobroMedio === "CHEQUE" && chequeFoto ? chequeFoto : undefined,
-        } : undefined,
+        cobros: pagos.length ? pagos : undefined,
       });
-      setNotice(estadoEntrega === "NO_ENTREGADO" ? "Parada marcada como no entregada." : `Entrega ${estadoEntrega === "ENTREGADO" ? "registrada" : "parcial registrada"}.${cobroMedio && Number(cobroImporte) > 0 ? " El dinero declarado queda pendiente hasta que la oficina lo confirme." : ""}`);
+      setNotice(estadoEntrega === "NO_ENTREGADO" ? "Parada marcada como no entregada." : `Entrega ${estadoEntrega === "ENTREGADO" ? "registrada" : "parcial registrada"}.${pagos.length ? " El dinero declarado queda pendiente hasta que la oficina lo confirme." : ""}`);
       setEntrega(null);
       setObsEntrega("");
       limpiarCobro();
@@ -235,29 +204,7 @@ export function MobileDriverPage() {
         </label>)}
       </div>
       <label className="mobile-obs">Observaciones<input value={obsEntrega} onChange={(e) => setObsEntrega(e.target.value)} placeholder="Opcional" /></label>
-      {estadoEntrega !== "NO_ENTREGADO" && <>
-        <label className="mobile-obs">¿El cliente entrega dinero a cuenta?
-          <select value={cobroMedio} onChange={(e) => setCobroMedio(e.target.value)}>
-            <option value="">No entrega dinero</option>
-            <option value="EFECTIVO">Efectivo</option>
-            <option value="TRANSFERENCIA">Transferencia</option>
-            <option value="CHEQUE">Cheque</option>
-          </select>
-        </label>
-        {cobroMedio && <>
-          <label className="mobile-obs">Importe que entrega<input type="number" inputMode="decimal" value={cobroImporte || ""} onChange={(e) => setCobroImporte(Number(e.target.value))} placeholder="0.00" /></label>
-          {cobroMedio === "TRANSFERENCIA" && <label className="mobile-obs">Banco de la transferencia<input value={chequeBanco} onChange={(e) => setChequeBanco(e.target.value)} placeholder="Opcional" /></label>}
-          {cobroMedio === "CHEQUE" && <>
-            <label className="mobile-obs">N° de cheque<input value={chequeNumero} onChange={(e) => setChequeNumero(e.target.value)} /></label>
-            <label className="mobile-obs">Banco<input value={chequeBanco} onChange={(e) => setChequeBanco(e.target.value)} /></label>
-            <label className="mobile-obs">Librador<input value={chequeLibrador} onChange={(e) => setChequeLibrador(e.target.value)} placeholder="Quién firma" /></label>
-            <label className="mobile-obs">Vencimiento<input type="date" value={chequeVencimiento} onChange={(e) => setChequeVencimiento(e.target.value)} /></label>
-            <label className="mobile-obs">Foto del cheque<input type="file" accept="image/*" capture="environment" onChange={fotoCheque} /></label>
-            {chequeFoto && <img src={chequeFoto} alt="Cheque" className="mobile-cheque-foto" />}
-          </>}
-          <div className="mobile-aviso">El dinero queda <strong>pendiente</strong> hasta que la oficina lo confirme: ahí va a la cuenta corriente y se genera el recibo.</div>
-        </>}
-      </>}
+      {estadoEntrega !== "NO_ENTREGADO" && <PagosEditor pagos={pagos} setPagos={setPagos} />}
       {(entrega.items || []).length > 0 && <div className="mobile-card" style={{ marginTop: 8 }}>
         <h4>¿Te devolvieron algo?</h4>
         <p>Marcá la cantidad que el cliente devolvió. Si no devolvió nada, dejalo en 0. El administrador lo va a ver en la ruta.</p>

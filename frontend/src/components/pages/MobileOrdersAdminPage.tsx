@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, MapPin, MessageCircle, Printer, RefreshCw, Search, Truck, X } from "lucide-react";
+import { Check, MapPin, MessageCircle, Printer, RefreshCw, Search, Trash2, Truck, X } from "lucide-react";
 import { erpApi, normalizarUrlArchivo } from "../../services/api";
 import { useServerRows } from "../../hooks/useServerStorage";
 import { fmtFecha, fmtFechaHora } from "../../utils/fecha";
@@ -150,13 +150,36 @@ export function MobileOrdersAdminPage() {
     setBusy(true);
     setError("");
     try {
-      await erpApi.revisarPedidoMovil(detalle.pedido.id, {
+      const r = await erpApi.revisarPedidoMovil(detalle.pedido.id, {
         estado: nuevoEstado,
         items: detalle.items.map((i: any) => ({ venta_item_id: i.id, cantidad: Number(cantidades[i.id] ?? i.cantidad) })),
         detalle: detalleTexto,
       });
-      setNotice(`Pedido ${nuevoEstado === "CONFIRMADO" ? "confirmado" : nuevoEstado === "PARCIAL" ? "confirmado parcialmente" : "rechazado"}.`);
+      if (r.recibo) {
+        setNotice(`Pedido ${nuevoEstado === "CONFIRMADO" ? "confirmado" : "confirmado parcialmente"} y recibo ${String(r.recibo.punto_venta || 1).padStart(4, "0")}-${String(r.recibo.numero || 0).padStart(8, "0")} generado por el dinero recibido (enviado a cuenta corriente).`);
+      } else {
+        setNotice(`Pedido ${nuevoEstado === "CONFIRMADO" ? "confirmado" : nuevoEstado === "PARCIAL" ? "confirmado parcialmente" : "rechazado"}.`);
+      }
       setDetalle(null);
+      await cargar();
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmarTodoElDinero() {
+    if (!detalle) return;
+    const pendientes = (detalle.cobros || []).filter((c: any) => c.estado === "PENDIENTE");
+    const total = pendientes.reduce((n: number, c: any) => n + Number(c.importe || 0), 0);
+    if (!confirm(`¿Confirmar todo el dinero pendiente (${pendientes.length} pago/s por $ ${fmtMon(total)})? Se genera un solo recibo multimedio.`)) return;
+    setBusy(true);
+    setError("");
+    try {
+      const r = await erpApi.confirmarCobrosPedido(detalle.pedido.id);
+      setNotice(`Dinero confirmado. Recibo ${String(r.recibo?.punto_venta || 1).padStart(4, "0")}-${String(r.recibo?.numero || 0).padStart(8, "0")} generado y enviado a cuenta corriente.`);
+      await abrir(detalle.pedido.id);
       await cargar();
     } catch (e: any) {
       setError(e.message);
@@ -243,13 +266,17 @@ export function MobileOrdersAdminPage() {
           <td>{Number(i.cantidad).toLocaleString("es-AR")}</td>
           <td className="price">$ {Number(i.precio_unitario || 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}</td>
           <td><input type="number" min={0} value={cantidades[i.id] ?? Number(i.cantidad)} onFocus={(e) => e.currentTarget.select()} onChange={(e) => setCantidades({ ...cantidades, [i.id]: Math.max(0, Number(e.target.value) || 0) })} disabled={yaRevisado || noDisponibles.has(i.id)} /></td>
-          <td>{!yaRevisado && <button className={noDisponibles.has(i.id) ? "secondary-action" : "link-button"} onClick={() => marcarNoDisponible(i)}>{noDisponibles.has(i.id) ? "Restituir" : "No disponible"}</button>}</td>
+          <td><div className="order-item-actions">{!yaRevisado && <>
+            <button className={noDisponibles.has(i.id) ? "secondary-action" : "link-button"} onClick={() => marcarNoDisponible(i)}>{noDisponibles.has(i.id) ? "Restituir" : "No disponible"}</button>
+            <button className="link-button danger" title="Quitar este producto del pedido" onClick={() => { setNoDisponibles(new Set(noDisponibles).add(i.id)); setCantidades({ ...cantidades, [i.id]: 0 }); }}><Trash2 size={15} /> Quitar</button>
+          </>}</div></td>
         </tr>)}</tbody>
       </table>
 
       {(detalle.cobros || []).length > 0 && <div className="order-cobros">
         <h4>Dinero del pedido · cuenta corriente del cliente</h4>
         {Number(detalle.saldo || 0) !== 0 && <p className="report-sub">Saldo actual del cliente: <strong>$ {fmtMon(detalle.saldo)}</strong></p>}
+        {(detalle.cobros || []).filter((c: any) => c.estado === "PENDIENTE").length > 1 && <button className="primary-action" disabled={busy} onClick={confirmarTodoElDinero}><Check size={15} /> Confirmar todo el dinero pendiente ($ {fmtMon((detalle.cobros || []).filter((c: any) => c.estado === "PENDIENTE").reduce((n: number, c: any) => n + Number(c.importe || 0), 0))})</button>}
         {detalle.cobros.map((c: any) => <div key={c.id} className="order-cobros-linea">
           <span className="badge">{c.origen === "REPARTIDOR" ? "Repartidor" : "Vendedor"}</span>
           <strong>{c.medio}</strong>

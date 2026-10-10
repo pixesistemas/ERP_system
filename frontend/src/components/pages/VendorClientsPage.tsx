@@ -56,6 +56,20 @@ export function VendorClientsPage() {
     setAsignados(next);
   }
 
+  function seleccionarTodos() {
+    const next = new Set(asignados);
+    for (const c of clientes) next.add(Number(c.id));
+    setAsignados(next);
+    setNotice("Se marcaron todos los clientes de la lista. No te olvides de Guardar cartera.");
+  }
+
+  function quitarTodos() {
+    const next = new Set(asignados);
+    for (const c of clientes) next.delete(Number(c.id));
+    setAsignados(next);
+    setNotice("Se desmarcaron todos los clientes de la lista. No te olvides de Guardar cartera.");
+  }
+
   return <div className="products-page">
     <div className="products-toolbar">
       <div><h3>Cartera de clientes por vendedor</h3><p>El vendedor solo verá los clientes que le marques acá (lista manual).</p></div>
@@ -68,6 +82,8 @@ export function VendorClientsPage() {
         <label>Vendedor<select value={vendedorId || ""} onChange={e => setVendedorId(Number(e.target.value) || null)}><option value="">Seleccionar vendedor...</option>{activos.map((s: any) => <option key={s.id} value={s.id}>{s.nombre}</option>)}</select></label>
         <label>Buscar cliente<input value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === "Enter" && vendedorId && cargar(vendedorId)} placeholder="Nombre, CUIT o dirección..." /></label>
         <button className="secondary-action" disabled={!vendedorId} onClick={() => vendedorId && cargar(vendedorId)}><Search size={16}/> Buscar</button>
+        <button className="secondary-action" disabled={!vendedorId || !clientes.length} onClick={seleccionarTodos}>Seleccionar todos ({clientes.length})</button>
+        <button className="secondary-action" disabled={!vendedorId || !clientes.length} onClick={quitarTodos}>Quitar todos</button>
       </div>
       {vendedorId ? <table>
         <thead><tr><th></th><th>Cliente</th><th>CUIT</th><th>Domicilio</th><th>Localidad</th><th>Pedidos</th></tr></thead>

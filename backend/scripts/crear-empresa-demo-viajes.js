@@ -313,6 +313,32 @@ for (const [codigo, descripcion, precio, iva, rubroId] of PRODUCTOS) {
 }
 log(`productos/servicios de viajes creados: ${productosCreados}`);
 
+/* ------------------------- depósito y stock ----------------------- */
+
+let depositoViajes = db.prepare("SELECT * FROM depositos WHERE empresa_id=? AND activo=1 ORDER BY id LIMIT 1").get(e);
+if (!depositoViajes) {
+  const info = db
+    .prepare("INSERT INTO depositos(empresa_id,nombre,activo) VALUES(?,'Depósito Principal',1)")
+    .run(e);
+  depositoViajes = { id: Number(info.lastInsertRowid) };
+  log("depósito principal creado");
+}
+let stockCargado = 0;
+for (const [codigo] of PRODUCTOS) {
+  const p = db.prepare("SELECT id FROM productos WHERE empresa_id=? AND codigo=?").get(e, codigo);
+  if (!p) continue;
+  const tiene = db
+    .prepare("SELECT id FROM stock_productos WHERE empresa_id=? AND deposito_id=? AND producto_id=?")
+    .get(e, depositoViajes.id, p.id);
+  if (!tiene) {
+    db.prepare(
+      "INSERT INTO stock_productos(empresa_id,deposito_id,producto_id,cantidad,stock_minimo,updated_at) VALUES(?,?,?,?,0,CURRENT_TIMESTAMP)",
+    ).run(e, depositoViajes.id, p.id, 25);
+    stockCargado++;
+  }
+}
+log(`stock inicial cargado: ${stockCargado} servicios (25 cupos cada uno)`);
+
 /* ------------------------ pedidos de muestra ---------------------- */
 
 function crearPedidoDemo({ numero, cliente, vendedor, estadoPedido, items, observaciones }) {

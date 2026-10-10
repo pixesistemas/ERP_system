@@ -965,12 +965,27 @@ button {
   display:flex;
   align-items:center;
   gap:10px;
+  row-gap:6px;
+  flex-wrap:wrap;
   background:#fff;
   border:1px solid var(--line);
   border-radius:12px;
   padding:8px 10px;
   flex:1;
-  max-width:680px;
+  max-width:100%;
+}
+.pv-filter-label input[type="date"] {
+  border:1px solid var(--line-2);
+  border-radius:8px;
+  padding:6px 8px;
+  font-size:13px;
+  background:#fff;
+  color:var(--ink);
+  outline:none;
+  min-width:0;
+}
+.pv-filter-label input:not([type="date"]) {
+  min-width:120px;
 }
 .search-box input {
   border:0;
@@ -5650,6 +5665,19 @@ table.reporte-fijo td.neg{color:#B23B58;font-weight:700}
   .sale-summary-panel{display:block}
   .report-filters label{flex:1 1 100%;min-width:100%}
 }
+
+/* Multipagos móviles (apps vendedor y repartidor) */
+.mobile-obs input,.mobile-obs select{width:100%;min-width:0;box-sizing:border-box;max-width:100%}
+.mobile-obs input[type="date"]{max-width:100%}
+.mobile-pagos{margin-top:10px;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#FBFAFE}
+.mobile-pagos h4{margin:0 0 4px;font-size:13px;color:var(--ink)}
+.mobile-pagos-ayuda{font-size:11.5px;color:var(--muted);margin:0 0 8px}
+.mobile-pagos-lista{margin-top:6px}
+.mobile-stock{font-style:normal;font-weight:700;color:#2f7a52}
+.mobile-stock.sin{color:#c0392b}
+.mobile-pedido-botones{display:flex;flex-direction:column;gap:4px;align-items:flex-end}
+.order-item-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.link-button.danger{color:#c0392b}
 
 /* Saldo de cuenta corriente y cobros del pedido (apps moviles y bandeja) */
 .mobile-saldo{font-size:13px;color:var(--muted);margin:4px 0}

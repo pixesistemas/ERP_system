@@ -229,6 +229,8 @@ export const erpApi = {
     return request<any>(`/erp/movil/admin/pedidos/pdf?${qs.toString()}`);
   },
   confirmarCobroPedido: (cobroId:number) => request<any>(`/erp/movil/admin/pedidos/cobros/${cobroId}/confirmar`,{method:'POST',body:JSON.stringify({})}),
+  confirmarCobrosPedido: (pedidoId:number) => request<any>(`/erp/movil/admin/pedidos/${pedidoId}/cobros/confirmar`,{method:'POST',body:JSON.stringify({})}),
+  reciboProvisorio: (pedidoId:number) => request<any>(`/erp/movil/pedidos/${pedidoId}/recibo-provisorio`,{method:'POST',body:JSON.stringify({})}),
   rentabilidadRubros: (desde:string,hasta:string) => request<any>(`/erp/rentabilidad/rubros?desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}`),
   revisarPedidoMovil: (id:number,data:any) => request<any>(`/erp/movil/admin/pedidos/${id}/revisar`,{method:'POST',body:JSON.stringify(data)}),
   cambiarEstadoPedidoMovil: (id:number,estado:string,detalle?:string) => request<any>(`/erp/movil/admin/pedidos/${id}/estado`,{method:'POST',body:JSON.stringify({estado,detalle})}),

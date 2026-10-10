@@ -295,6 +295,32 @@ for (const [codigo, descripcion, precio, iva, rubroId] of PRODUCTOS) {
 }
 log(`productos de demo creados: ${productosCreados}`);
 
+/* ------------------------- depósito y stock ----------------------- */
+
+let deposito = db.prepare("SELECT * FROM depositos WHERE empresa_id=? AND activo=1 ORDER BY id LIMIT 1").get(e);
+if (!deposito) {
+  const info = db
+    .prepare("INSERT INTO depositos(empresa_id,nombre,activo) VALUES(?,'Depósito Principal',1)")
+    .run(e);
+  deposito = { id: Number(info.lastInsertRowid) };
+  log("depósito principal creado");
+}
+let stockCargado = 0;
+for (const [codigo] of PRODUCTOS) {
+  const p = db.prepare("SELECT id FROM productos WHERE empresa_id=? AND codigo=?").get(e, codigo);
+  if (!p) continue;
+  const tiene = db
+    .prepare("SELECT id FROM stock_productos WHERE empresa_id=? AND deposito_id=? AND producto_id=?")
+    .get(e, deposito.id, p.id);
+  if (!tiene) {
+    db.prepare(
+      "INSERT INTO stock_productos(empresa_id,deposito_id,producto_id,cantidad,stock_minimo,updated_at) VALUES(?,?,?,?,0,CURRENT_TIMESTAMP)",
+    ).run(e, deposito.id, p.id, 60);
+    stockCargado++;
+  }
+}
+log(`stock inicial cargado: ${stockCargado} productos (60 unidades cada uno)`);
+
 /* ------------------------ pedidos de muestra ---------------------- */
 
 function productoId(codigo) {

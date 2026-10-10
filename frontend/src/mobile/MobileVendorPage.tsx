@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { PagosEditor, fmtMoneda } from "./MovilPagos";
 import {
   Cloud,
   CloudOff,
@@ -79,13 +80,8 @@ export function MobileVendorPage() {
   const [visitaResultado, setVisitaResultado] = useState("NO_COMPRO");
   const [visitaObs, setVisitaObs] = useState("");
   const [geoPendiente, setGeoPendiente] = useState(false);
-  const [cobroMedio, setCobroMedio] = useState("");
-  const [cobroImporte, setCobroImporte] = useState(0);
-  const [chequeNumero, setChequeNumero] = useState("");
-  const [chequeBanco, setChequeBanco] = useState("");
-  const [chequeLibrador, setChequeLibrador] = useState("");
-  const [chequeVencimiento, setChequeVencimiento] = useState("");
-  const [chequeFoto, setChequeFoto] = useState("");
+  const [pagos, setPagos] = useState<any[]>([]);
+  const [detallePedido, setDetallePedido] = useState<any>(null);
 
   async function refrescarCola() {
     const pedidos = await listar("pedidos");
@@ -255,26 +251,35 @@ export function MobileVendorPage() {
     );
   }
 
-  function fotoCheque(e: any) {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    if (f.size > 3 * 1024 * 1024) {
-      setError("La foto es muy grande (máximo 3 MB). Sacala de nuevo con menos calidad.");
-      return;
-    }
-    const lector = new FileReader();
-    lector.onload = () => setChequeFoto(String(lector.result || ""));
-    lector.readAsDataURL(f);
+  function limpiarCobro() {
+    setPagos([]);
   }
 
-  function limpiarCobro() {
-    setCobroMedio("");
-    setCobroImporte(0);
-    setChequeNumero("");
-    setChequeBanco("");
-    setChequeLibrador("");
-    setChequeVencimiento("");
-    setChequeFoto("");
+  async function abrirDetallePedido(id: number) {
+    setError("");
+    try {
+      const r = await erpApi.getPedidoMovil(id);
+      setDetallePedido(r);
+    } catch (e: any) {
+      setError(e.message);
+    }
+  }
+
+  async function reciboProvisorio(p: any) {
+    setError("");
+    try {
+      const r = await erpApi.reciboProvisorio(Number(p.id));
+      const url = String(r.pdf_url || r.url || "");
+      const cliente = clientes.find((c: any) => Number(c.id) === Number(p.cliente_id));
+      const mensaje = `Recibo provisorio del pedido #${String(p.numero || 0).padStart(6, "0")}\nTotal entregado a cuenta: $ ${Number(r.total || 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}\nComprobante: ${url}\n(Pendiente de confirmación por la oficina)`;
+      if (cliente?.telefono && confirm("Recibo provisorio generado. ¿Compartirlo por WhatsApp con el cliente?")) {
+        compartirWhatsapp(cliente.telefono, mensaje);
+      } else {
+        window.open(url, "_blank");
+      }
+    } catch (e: any) {
+      setError(e.message);
+    }
   }
 
   function compartirWhatsapp(telefono: string | null | undefined, mensaje: string) {
@@ -295,19 +300,9 @@ export function MobileVendorPage() {
 
   async function enviarPedido() {
     if (!clienteSel || !carrito.length) return;
-    if (cobroMedio && !(Number(cobroImporte) > 0)) return setError("Indicá el importe que entrega el cliente.");
     const uuid = uuidMovil();
     const g = await pedirGps();
     if (g.lat == null) setGeoPendiente(true);
-    const cobro = cobroMedio && Number(cobroImporte) > 0 ? {
-      medio: cobroMedio,
-      importe: Number(cobroImporte),
-      banco: chequeBanco,
-      cheque_numero: cobroMedio === "CHEQUE" ? chequeNumero : undefined,
-      cheque_librador: cobroMedio === "CHEQUE" ? chequeLibrador : undefined,
-      cheque_vencimiento: cobroMedio === "CHEQUE" ? chequeVencimiento || undefined : undefined,
-      foto: cobroMedio === "CHEQUE" && chequeFoto ? chequeFoto : undefined,
-    } : null;
     const payload = {
       uuid,
       cliente_id: Number(clienteSel.id),
@@ -324,7 +319,7 @@ export function MobileVendorPage() {
       longitud: g.lng,
       observaciones,
       dispositivo: navigator.userAgent.slice(0, 150),
-      cobro: cobro || undefined,
+      cobros: pagos.length ? pagos : undefined,
     };
     const totalPedido = totalCarrito(carrito);
     const local = {
@@ -345,7 +340,7 @@ export function MobileVendorPage() {
     limpiarCobro();
     if (online) {
       await sincronizar();
-      setNotice(cobro ? "Pedido enviado. El dinero declarado queda pendiente hasta que la oficina lo confirme." : "Pedido enviado al sistema.");
+      setNotice(pagos.length ? "Pedido enviado. El dinero declarado queda pendiente hasta que la oficina lo confirme." : "Pedido enviado al sistema.");
     } else {
       setNotice("📴 Pedido guardado. Se enviará cuando vuelva Internet.");
     }
@@ -469,7 +464,7 @@ export function MobileVendorPage() {
       </div>
       {productosFiltrados.length > 0 && <div className="mobile-list">
         {productosFiltrados.map((p: any) => <button key={p.id} className="mobile-producto" onClick={() => agregarProducto(p)}>
-          <div><strong>{p.descripcion}</strong><span>{p.codigo} · $ {Number(p.precio).toLocaleString("es-AR", { minimumFractionDigits: 2 })}</span></div>
+          <div><strong>{p.descripcion}</strong><span>{p.codigo} · $ {Number(p.precio).toLocaleString("es-AR", { minimumFractionDigits: 2 })} · <em className={Number(p.stock || 0) > 0 ? "mobile-stock" : "mobile-stock sin"}>{Number(p.stock || 0) > 0 ? `Stock: ${Number(p.stock).toLocaleString("es-AR", { maximumFractionDigits: 2 })}` : "Sin stock"}</em></span></div>
           <Plus size={18} />
         </button>)}
       </div>}
@@ -477,6 +472,7 @@ export function MobileVendorPage() {
 
       <div className="mobile-carrito">
         <h4>Pedido para {clienteSel.razon_social}</h4>
+        <p className={"mobile-saldo " + (Number(clienteSel.saldo || 0) > 0 ? "debe" : "favor")}>Saldo cuenta corriente: <strong>{Number(clienteSel.saldo || 0) < 0 ? "a favor $ " : "$ "}{Math.abs(Number(clienteSel.saldo || 0)).toLocaleString("es-AR", { minimumFractionDigits: 2 })}</strong>{Number(clienteSel.saldo || 0) > 0 ? " (debe)" : ""}</p>
         {!carrito.length && <p className="mobile-vacio">Buscá productos y tocálos para agregarlos.</p>}
         {carrito.map((i: any) => <div className="mobile-linea" key={i.id}>
           <div><strong>{i.descripcion}</strong><span>$ {Number(i.precio).toLocaleString("es-AR", { minimumFractionDigits: 2 })}</span></div>
@@ -488,27 +484,7 @@ export function MobileVendorPage() {
         </div>)}
         {carrito.length > 0 && <>
           <label className="mobile-obs">Observaciones<input value={observaciones} onChange={(e) => setObservaciones(e.target.value)} placeholder="Opcional" /></label>
-          <label className="mobile-obs">¿Entrega dinero a cuenta?
-            <select value={cobroMedio} onChange={(e) => setCobroMedio(e.target.value)}>
-              <option value="">No entrega dinero</option>
-              <option value="EFECTIVO">Efectivo</option>
-              <option value="TRANSFERENCIA">Transferencia</option>
-              <option value="CHEQUE">Cheque</option>
-            </select>
-          </label>
-          {cobroMedio && <>
-            <label className="mobile-obs">Importe que entrega<input type="number" inputMode="decimal" value={cobroImporte || ""} onChange={(e) => setCobroImporte(Number(e.target.value))} placeholder="0.00" /></label>
-            {cobroMedio === "TRANSFERENCIA" && <label className="mobile-obs">Banco de la transferencia<input value={chequeBanco} onChange={(e) => setChequeBanco(e.target.value)} placeholder="Opcional" /></label>}
-            {cobroMedio === "CHEQUE" && <>
-              <label className="mobile-obs">N° de cheque<input value={chequeNumero} onChange={(e) => setChequeNumero(e.target.value)} /></label>
-              <label className="mobile-obs">Banco<input value={chequeBanco} onChange={(e) => setChequeBanco(e.target.value)} /></label>
-              <label className="mobile-obs">Librador<input value={chequeLibrador} onChange={(e) => setChequeLibrador(e.target.value)} placeholder="Quién firma" /></label>
-              <label className="mobile-obs">Vencimiento<input type="date" value={chequeVencimiento} onChange={(e) => setChequeVencimiento(e.target.value)} /></label>
-              <label className="mobile-obs">Foto del cheque<input type="file" accept="image/*" capture="environment" onChange={fotoCheque} /></label>
-              {chequeFoto && <img src={chequeFoto} alt="Cheque" className="mobile-cheque-foto" />}
-            </>}
-            <div className="mobile-aviso">El dinero queda <strong>pendiente</strong> hasta que la oficina lo confirme: recién ahí va a la cuenta corriente y se genera el recibo.</div>
-          </>}
+          <PagosEditor pagos={pagos} setPagos={setPagos} />
           <div className="mobile-total"><span>TOTAL PRODUCTOS</span><strong>{carrito.reduce((n, i) => n + Number(i.cantidad), 0)}</strong></div>
           <div className="mobile-total"><span>TOTAL</span><strong>$ {totalCarrito(carrito).toLocaleString("es-AR", { minimumFractionDigits: 2 })}</strong></div>
           <button className="mobile-btn-primario" onClick={enviarPedido}><Send size={18} /> ENVIAR PEDIDO</button>
@@ -530,8 +506,12 @@ export function MobileVendorPage() {
           <div><strong>{p.cliente || "CONSUMIDOR FINAL"}</strong><span>{p.tipo} {String(p.punto_venta || "").padStart(4, "0")}-{String(p.numero || "").padStart(8, "0")} · {fmtFecha(p.fecha)}</span></div>
           <div className="mobile-pedido-acciones">
             <small className="badge">{ETIQUETA_ESTADO[String(p.estado_pedido || p.estado || "PENDIENTE").toUpperCase()] || p.estado_pedido || "Enviado"}</small>
-            {Number(p.cobro_pendiente || 0) > 0 && <small className="badge warning">$ {Number(p.cobro_pendiente).toLocaleString("es-AR", { minimumFractionDigits: 2 })} pend.</small>}
-            <button className="mobile-btn-sec" onClick={() => compartirUltimoPedido(p)}>Compartir</button>
+            {Number(p.cobro_pendiente || 0) > 0 && <small className="badge warning">$ {fmtMoneda(p.cobro_pendiente)} pend.</small>}
+            <div className="mobile-pedido-botones">
+              <button className="mobile-btn-sec" onClick={() => abrirDetallePedido(Number(p.id))}>Ver detalle</button>
+              <button className="mobile-btn-sec" onClick={() => compartirUltimoPedido(p)}>Compartir</button>
+              {Number(p.cobro_pendiente || 0) > 0 && <button className="mobile-btn-sec" onClick={() => reciboProvisorio(p)}>Recibo provisorio</button>}
+            </div>
           </div>
         </div>)}
         {!cola.length && !pedidosServer.length && <div className="empty-table">Todavía no enviaste pedidos.</div>}
@@ -552,6 +532,30 @@ export function MobileVendorPage() {
       </div>)}
       {!clientes.length && <div className="empty-table">No tenés clientes asignados todavía.</div>}
     </>}
+
+    {detallePedido && <div className="modal-backdrop"><div className="modal mobile-visita">
+      <div className="modal-head"><div><h3>{detallePedido.pedido?.cliente || "Pedido"} #{String(detallePedido.pedido?.numero || 0).padStart(6, "0")}</h3><p>{fmtFecha(detallePedido.pedido?.fecha)} · {detallePedido.pedido?.estado_pedido || "PENDIENTE"}</p></div><button onClick={() => setDetallePedido(null)}><X /></button></div>
+      <div className="mobile-card" style={{ marginTop: 8 }}>
+        <h4>Productos del pedido</h4>
+        {(detallePedido.items || []).map((i: any) => <div className="mobile-linea" key={i.id}>
+          <div><strong>{i.descripcion}</strong><span>{i.codigo} · $ {Number(i.precio_unitario || 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}</span></div>
+          <b>{Number(i.cantidad).toLocaleString("es-AR")}</b>
+        </div>)}
+        <div className="mobile-total"><span>TOTAL</span><strong>$ {Number(detallePedido.pedido?.total || 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}</strong></div>
+      </div>
+      {(detallePedido.cobros || []).filter((c: any) => c.estado === "PENDIENTE").length > 0 && <div className="mobile-card">
+        <h4>Dinero pendiente de confirmar</h4>
+        {detallePedido.cobros.filter((c: any) => c.estado === "PENDIENTE").map((c: any) => <div className="mobile-linea" key={c.id}>
+          <div><strong>{c.medio}</strong><span>{c.cheque_numero ? `N° ${c.cheque_numero} · ${c.banco || ""}` : c.banco || ""}</span></div>
+          <b>$ {fmtMoneda(c.importe)}</b>
+        </div>)}
+        <button className="mobile-btn-sec full" onClick={() => reciboProvisorio(detallePedido.pedido)}>Recibo provisorio</button>
+      </div>}
+      <div className="modal-actions">
+        <button onClick={() => setDetallePedido(null)}>Cerrar</button>
+        <button className="primary-action" onClick={() => compartirUltimoPedido(detallePedido.pedido)}>Compartir por WhatsApp</button>
+      </div>
+    </div></div>}
 
     {visitaOpen && <div className="modal-backdrop"><div className="modal mobile-visita">
       <div className="modal-head"><div><h3>Visita a {clienteSel?.razon_social}</h3><p>Resultado de la visita</p></div><button onClick={() => setVisitaOpen(false)}><X /></button></div>
