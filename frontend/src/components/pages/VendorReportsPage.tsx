@@ -160,7 +160,7 @@ export function VendorReportsPage() {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
   const [expandidos, setExpandidos] = useState<Set<string>>(new Set());
-  const [verComision, setVerComision] = useState(true);
+  const [verComision, setVerComision] = useState(false);
 
   async function cargar() {
     setCargando(true);

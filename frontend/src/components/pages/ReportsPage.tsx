@@ -7,6 +7,7 @@ const REPORTES: [string, string][] = [
   ["VENTAS_VENDEDOR", "Ventas por vendedor"],
   ["VENTAS_POR_PRODUCTO", "Ventas por producto"],
   ["RENTABILIDAD", "Rentabilidad"],
+  ["RENTABILIDAD_RUBROS", "Pedidos por rubro"],
   ["COMISIONES", "Comisiones"],
   ["CAJA", "Sesiones de caja"],
   ["PEDIDOS", "Notas de pedido"],
@@ -44,6 +45,9 @@ export function ReportsPage() {
   const [productos, setProductos] = useState<any[]>([]);
   const [prodTotales, setProdTotales] = useState<any>({ importe: 0, costo: 0, unidades: 0 });
   const [prodLoading, setProdLoading] = useState(false);
+  const [rubros, setRubros] = useState<any[]>([]);
+  const [rubrosTotales, setRubrosTotales] = useState<any>({ pedidos: 0, unidades: 0, venta: 0, costo: 0, rentabilidad: 0, margen: 0, entregados: 0 });
+  const [rubrosLoading, setRubrosLoading] = useState(false);
   const [ranking, setRanking] = useState<any>({ vendedores: [], cajeros: [] });
   const [rankingLoading, setRankingLoading] = useState(false);
   useEffect(() => {
@@ -60,6 +64,14 @@ export function ReportsPage() {
       .then((r: any) => { setProductos(r.productos || []); setProdTotales(r.totales || {}); })
       .catch((e: any) => setError(e.message))
       .finally(() => setProdLoading(false));
+  }, [type, from, to]);
+  useEffect(() => {
+    if (type !== 'RENTABILIDAD_RUBROS') return;
+    setRubrosLoading(true);
+    erpApi.rentabilidadRubros(from, to)
+      .then((r: any) => { setRubros(r.rubros || []); setRubrosTotales({ ...(r.totales || {}), entregados: r.entregados || 0 }); })
+      .catch((e: any) => setError(e.message))
+      .finally(() => setRubrosLoading(false));
   }, [type, from, to]);
   const porProducto = type === 'VENTAS_POR_PRODUCTO';
   const total = rows.reduce((n, r) => n + Number(r.resultado || 0), 0);
@@ -80,5 +92,17 @@ export function ReportsPage() {
   const chartRows = porProducto ? productos.slice(0, 12) : rows.slice(0, 12);
   const max = Math.max(1, ...chartRows.map(r => Math.abs(Number(porProducto ? r.importe : r.resultado || 0))));
   const chartLabel = (r: any) => String(porProducto ? r.descripcion : r.concepto).slice(-8);
+  if (type === 'RENTABILIDAD_RUBROS') return <div className="products-page">
+    <div className="products-toolbar"><div><h3>Centro de reportes</h3><p>Pedidos entregados por rubro: unidades, venta, costo y rentabilidad del período.</p></div><div className="inline-actions"><button onClick={() => window.print()}><Printer size={16} /> PDF / imprimir</button></div></div>
+    <div className="report-hub">{REPORTES.map(([id, label]) => <button key={id} className={type === id ? 'active' : ''} onClick={() => setType(id)}><strong>{label}</strong><span>Ver detalle por rango de fechas</span></button>)}</div>
+    <div className="report-filters"><label>Desde<input type="date" value={from} onChange={e => setFrom(e.target.value)} /></label><label>Hasta<input type="date" value={to} onChange={e => setTo(e.target.value)} /></label></div>
+    {error && <div className="error-box">{error}</div>}
+    {rubrosLoading ? <div className="empty-table">Calculando rentabilidad por rubro…</div> : <>
+      <div className="products-card"><table><thead><tr><th>Rubro</th><th>Pedidos entregados</th><th>Unidades</th><th>Venta</th><th>Costo</th><th>Rentabilidad</th><th>Margen</th></tr></thead><tbody>
+        {rubros.map((r: any, i: number) => <tr key={i}><td><strong>{r.rubro}</strong></td><td>{r.pedidos}</td><td>{Number(r.unidades).toLocaleString('es-AR', { maximumFractionDigits: 2 })}</td><td className="price">$ {Number(r.venta).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td><td className="price">$ {Number(r.costo).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td><td className="price">$ {Number(r.rentabilidad).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td><td>{Number(r.margen).toLocaleString('es-AR')}%</td></tr>)}
+      </tbody></table>{!rubros.length && <div className="empty-table">No hay pedidos entregados en el período.</div>}</div>
+      <div className="report-total">Pedidos entregados: <strong>{rubrosTotales.entregados || 0}</strong> · Venta: <strong>$ {Number(rubrosTotales.venta || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</strong> · Costo: <strong>$ {Number(rubrosTotales.costo || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</strong> · Rentabilidad: <strong>$ {Number(rubrosTotales.rentabilidad || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</strong> ({Number(rubrosTotales.margen || 0).toLocaleString('es-AR')}%)</div>
+    </>}
+  </div>;
   return <div className="products-page"><div className="products-toolbar"><div><h3>Centro de reportes</h3><p>Reportes sobre datos reales: POS, comprobantes, comisiones, caja y productos.</p></div><div className="inline-actions"><button onClick={exportCsv}><Download size={16} /> Excel/CSV</button><button onClick={() => window.print()}><Printer size={16} /> PDF / imprimir</button></div></div><div className="report-hub">{REPORTES.map(([id, label]) => <button key={id} className={type === id ? 'active' : ''} onClick={() => setType(id)}><strong>{label}</strong><span>Ver detalle por rango de fechas</span></button>)}</div><div className="report-filters"><label>Desde<input type="date" value={from} onChange={e => setFrom(e.target.value)} /></label><label>Hasta<input type="date" value={to} onChange={e => setTo(e.target.value)} /></label></div>{error && <div className="error-box">{error}</div>}<div className="ranking-grid"><div className="ranking-panel"><h4>Vendedores con más ventas</h4>{rankingLoading ? <div className="empty-table">Calculando ranking…</div> : ranking.vendedores.length ? ranking.vendedores.slice(0, 5).map((v: any, i: number) => <div key={i} className={i === 0 ? 'ranking-row top' : 'ranking-row'}><span className="ranking-pos">{i + 1}</span><span className="ranking-name">{v.nombre}</span><span className="ranking-meta">{v.ventas} venta{v.ventas === 1 ? '' : 's'}</span><span className="ranking-total">$ {Number(v.total).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span></div>) : <div className="empty-table">Sin ventas en el período.</div>}</div><div className="ranking-panel"><h4>Cajeros con más ventas</h4>{rankingLoading ? <div className="empty-table">Calculando ranking…</div> : ranking.cajeros.length ? ranking.cajeros.slice(0, 5).map((v: any, i: number) => <div key={i} className={i === 0 ? 'ranking-row top' : 'ranking-row'}><span className="ranking-pos">{i + 1}</span><span className="ranking-name">{v.nombre}</span><span className="ranking-meta">{v.ventas} venta{v.ventas === 1 ? '' : 's'}</span><span className="ranking-total">$ {Number(v.total).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span></div>) : <div className="empty-table">Sin ventas en el período.</div>}</div></div>{porProducto && prodLoading ? <div className="empty-table">Calculando ventas por producto…</div> : chartRows.length > 0 && <div className="report-chart">{chartRows.map((r: any, i: number) => <span key={i} style={{ height: `${Math.max(4, Math.abs(Number(porProducto ? r.importe : r.resultado || 0)) / max * 100)}%` }} title={`${chartLabel(r)}: $ ${Number(porProducto ? r.importe : r.resultado || 0).toLocaleString('es-AR')}`}><small>{chartLabel(r)}</small></span>)}</div>}<div className="products-card"><table><thead>{porProducto ? <tr><th>Código</th><th>Producto</th><th>Unidades</th><th>Ventas</th><th>Importe</th><th>Costo</th><th>Ganancia</th></tr> : <tr><th>Comprobante / concepto</th><th>Persona</th><th>Detalle</th><th>Total</th><th>Resultado</th></tr>}</thead><tbody>{porProducto ? productos.map((p: any, i: number) => <tr key={i}><td><code>{p.codigo}</code></td><td><strong>{p.descripcion}</strong></td><td>{Number(p.cantidad).toLocaleString('es-AR', { maximumFractionDigits: 2 })}</td><td>{p.ventas}</td><td className="price">$ {Number(p.importe).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td><td className="price">$ {Number(p.costo).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td><td className="price">$ {(Number(p.importe) - Number(p.costo)).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td></tr>) : rows.map((r, i) => <tr key={i}><td><strong>{r.concepto}</strong></td><td>{r.persona}</td><td>{r.extra || ''}</td><td className="price">$ {Number(r.total).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td><td className="price">$ {Number(r.resultado).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td></tr>)}</tbody></table>{!porProducto && !rows.length && <div className="empty-table">No hay datos en el período seleccionado.</div>}{porProducto && !prodLoading && !productos.length && <div className="empty-table">No hay ventas confirmadas de productos en el período.</div>}</div><div className="report-total">{porProducto ? <>Ventas de productos del período: <strong>$ {totalProd.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</strong> · {Number(prodTotales.unidades || 0).toLocaleString('es-AR')} unidades</> : <>Resultado del período: <strong>$ {total.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</strong></>}</div></div>;
 }

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Check, MapPin, RefreshCw, Search, Truck, X } from "lucide-react";
-import { erpApi } from "../../services/api";
+import { Check, MapPin, MessageCircle, Printer, RefreshCw, Search, Truck, X } from "lucide-react";
+import { erpApi, normalizarUrlArchivo } from "../../services/api";
 import { useServerRows } from "../../hooks/useServerStorage";
 import { fmtFecha, fmtFechaHora } from "../../utils/fecha";
+import { PdfViewerModal } from "../shared/PdfViewerModal";
 
 /*
  * Bandeja de pedidos del administrador (Etapa 3).
@@ -41,6 +42,59 @@ export function MobileOrdersAdminPage() {
   const [cantidades, setCantidades] = useState<Record<number, number>>({});
   const [noDisponibles, setNoDisponibles] = useState<Set<number>>(new Set());
   const [detalleTexto, setDetalleTexto] = useState("");
+  const [pdfModal, setPdfModal] = useState<{ url: string; title: string } | null>(null);
+  const fmtMon = (n: any) => Number(n || 0).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  async function imprimirPendientes() {
+    setError("");
+    try {
+      const r = await erpApi.pdfPedidosPendientes({
+        estado: estado || "PENDIENTE",
+        vendedor_id: vendedorId || undefined,
+        desde: desde || undefined,
+        hasta: hasta || undefined,
+      });
+      setPdfModal({ url: normalizarUrlArchivo(r.pdf_url || r.url), title: `Pedidos ${estado || "PENDIENTE"} (${r.total})` });
+    } catch (e: any) {
+      setError(e.message);
+    }
+  }
+
+  function compartirWhatsapp(telefono: string | null | undefined, mensaje: string) {
+    const tel = String(telefono || "").replace(/[^0-9]/g, "");
+    const url = tel ? `https://wa.me/${tel}?text=${encodeURIComponent(mensaje)}` : `https://wa.me/?text=${encodeURIComponent(mensaje)}`;
+    window.open(url, "_blank");
+  }
+
+  function compartirPedido() {
+    if (!detalle) return;
+    const p = detalle.pedido;
+    const lineas = (detalle.items || []).map((i: any) => `• ${Number(i.cantidad).toLocaleString("es-AR")} x ${i.descripcion}`).join("\n");
+    compartirWhatsapp(p.telefono, `Pedido #${String(p.numero || 0).padStart(6, "0")} - ${p.cliente || "CONSUMIDOR FINAL"}\n${lineas}\nTotal: $ ${fmtMon(p.total)}\n¡Gracias por su compra!`);
+  }
+
+  function compartirRecibo(cobro: any) {
+    if (!detalle) return;
+    const p = detalle.pedido;
+    compartirWhatsapp(p.telefono, `Recibo de cobro ${String(cobro.recibo_punto_venta || 1).padStart(4, "0")}-${String(cobro.recibo_numero || cobro.recibo_id || 0).padStart(8, "0")}\nCliente: ${p.cliente || "CONSUMIDOR FINAL"}\nImporte: $ ${fmtMon(cobro.importe)} (${cobro.medio})\nAcreditado a su cuenta corriente. ¡Gracias!`);
+  }
+
+  async function confirmarCobro(cobroId: number) {
+    if (!detalle) return;
+    if (!confirm("¿Confirmar este dinero? Se genera el recibo y el movimiento de cuenta corriente del cliente.")) return;
+    setBusy(true);
+    setError("");
+    try {
+      const r = await erpApi.confirmarCobroPedido(cobroId);
+      setNotice(`Cobro confirmado. Recibo ${String(r.recibo?.punto_venta || 1).padStart(4, "0")}-${String(r.recibo?.numero || 0).padStart(8, "0")} generado y enviado a cuenta corriente.`);
+      await abrir(detalle.pedido.id);
+      await cargar();
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function cargar() {
     setError("");
@@ -132,7 +186,10 @@ export function MobileOrdersAdminPage() {
   return <div className="products-page">
     <div className="products-toolbar">
       <div><h3>Bandeja de pedidos</h3><p>Pedidos tomados por los vendedores: revisá, ajustá y confirmá antes de preparar.</p></div>
-      <button className="secondary-action" onClick={cargar}><RefreshCw size={16} /> Actualizar</button>
+      <div className="inline-actions">
+        <button className="secondary-action" onClick={imprimirPendientes}><Printer size={16} /> PDF pendientes</button>
+        <button className="secondary-action" onClick={cargar}><RefreshCw size={16} /> Actualizar</button>
+      </div>
     </div>
     {error && <div className="error-box">{error}</div>}
     {notice && <div className="success-box">{notice}</div>}
@@ -153,7 +210,7 @@ export function MobileOrdersAdminPage() {
     </div>
 
     <div className="products-card"><table>
-      <thead><tr><th>Fecha</th><th>Canal</th><th>Vendedor</th><th>Cliente</th><th>Ubicación</th><th>Total</th><th>Estado</th><th></th></tr></thead>
+      <thead><tr><th>Fecha</th><th>Canal</th><th>Vendedor</th><th>Cliente</th><th>Ubicación</th><th>Total</th><th>Estado</th><th>Dinero</th><th></th></tr></thead>
       <tbody>{pedidos.map((p: any) => <tr key={p.id}>
         <td>{fmtFecha(p.fecha)}<small>{String(p.hora_visita || "").slice(0, 5)}</small></td>
         <td><span className="badge">{p.canal || "POS"}</span></td>
@@ -162,6 +219,7 @@ export function MobileOrdersAdminPage() {
         <td>{p.latitud != null && p.longitud != null ? <a className="link-button" href={`https://www.google.com/maps?q=${p.latitud},${p.longitud}`} target="_blank" rel="noreferrer"><MapPin size={14} /> Ver mapa</a> : "—"}</td>
         <td className="price">$ {Number(p.total || 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}</td>
         <td><span className={claseEstado(p.estado_pedido)}>{p.estado_pedido || "PENDIENTE"}</span>{p.facturado ? <span className="badge success" style={{ marginLeft: 6 }} title={p.cae ? `CAE ${p.cae}` : "Facturado"}>FACTURADO</span> : null}</td>
+        <td>{Number(p.cobro_pendiente || 0) > 0 ? <span className="badge warning" title="Dinero declarado por vendedor/repartidor, pendiente de confirmar">$ {fmtMon(p.cobro_pendiente)}</span> : "—"}</td>
         <td><button className="secondary-action" onClick={() => abrir(p.id)}>Abrir</button></td>
       </tr>)}</tbody>
     </table>
@@ -189,6 +247,22 @@ export function MobileOrdersAdminPage() {
         </tr>)}</tbody>
       </table>
 
+      {(detalle.cobros || []).length > 0 && <div className="order-cobros">
+        <h4>Dinero del pedido · cuenta corriente del cliente</h4>
+        {Number(detalle.saldo || 0) !== 0 && <p className="report-sub">Saldo actual del cliente: <strong>$ {fmtMon(detalle.saldo)}</strong></p>}
+        {detalle.cobros.map((c: any) => <div key={c.id} className="order-cobros-linea">
+          <span className="badge">{c.origen === "REPARTIDOR" ? "Repartidor" : "Vendedor"}</span>
+          <strong>{c.medio}</strong>
+          <b>$ {fmtMon(c.importe)}</b>
+          {c.medio === "CHEQUE" && <small>Cheque {c.cheque_numero || "s/n"} · {c.banco || "sin banco"}{c.cheque_vencimiento ? ` · vence ${fmtFecha(c.cheque_vencimiento)}` : ""}</small>}
+          {c.foto_path && <a className="link-button" href={c.foto_path} target="_blank" rel="noreferrer">Ver foto del cheque</a>}
+          {c.estado === "PENDIENTE"
+            ? <button className="primary-action" disabled={busy} onClick={() => confirmarCobro(c.id)}><Check size={15} /> Confirmar y generar recibo</button>
+            : <span className="badge success" title={c.confirmado_por_nombre ? `Confirmado por ${c.confirmado_por_nombre}` : ""}>Recibo #{c.recibo_id} → cuenta corriente</span>}
+          {c.estado === "CONFIRMADO" && <button className="secondary-action" onClick={() => compartirRecibo(c)}><MessageCircle size={15} /> Compartir recibo</button>}
+        </div>)}
+      </div>}
+
       {!yaRevisado && <>
         <div className="info-note" style={{ marginBottom: 8 }}>
           <strong>¿Qué hace cada botón?</strong>
@@ -206,6 +280,7 @@ export function MobileOrdersAdminPage() {
 
       {yaRevisado && detalle.pedido.estado_pedido !== "RECHAZADO" && <div className="modal-actions">
         {["PREPARANDO", "DESPACHADO", "ENTREGADO"].map((x) => <button key={x} disabled={busy || detalle.pedido.estado_pedido === x} onClick={() => avanzar(x)}><Truck size={15} /> {x}</button>)}
+        <button className="secondary-action" onClick={compartirPedido}><MessageCircle size={15} /> Compartir pedido por WhatsApp</button>
       </div>}
 
       <div className="order-historial">
@@ -219,5 +294,6 @@ export function MobileOrdersAdminPage() {
         {!detalle.historial.length && <div className="empty-table">Sin movimientos.</div>}
       </div>
     </div></div>}
+    {pdfModal && <PdfViewerModal url={pdfModal.url} title={pdfModal.title} onClose={() => setPdfModal(null)} />}
   </div>;
 }

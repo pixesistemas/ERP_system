@@ -10,7 +10,9 @@ const { emitirComprobanteAfip, FiscalNetworkError } = require('../afip/fiscalEmi
 const { getLetraComprobante, getNombreComprobante } = require('../afip/fiscal.constants');
 const { registrarComision } = require('../repositories/comision.repository');
 const { generarPdfDevolucion } = require('../pdf/devolucionPdf.service');
+const { generarPdfPedidosPendientes } = require('../pdf/pedidosPendientesPdf.service');
 const OcrCompra = require('../services/ocrCompra.service');
+const { crearRecibo, confirmarRecibo } = require('../repositories/recibo.repository');
 
 function empresaId(req) { return Number(req.empresa?.id || req.usuario?.empresaId || req.user?.empresaId || 1); }
 function bool(v) { return v === true || v === 1 || v === '1'; }
@@ -603,6 +605,10 @@ function movilBootstrap(req,res){
   const clientes=vendedor?db.prepare(`SELECT c.id,c.razon_social,c.cuit,c.dni,c.domicilio,c.localidad,c.provincia,c.telefono,c.email,c.latitud,c.longitud,c.cliente_pedidos
     FROM vendedor_clientes vc JOIN clientes c ON c.id=vc.cliente_id
     WHERE vc.empresa_id=? AND vc.vendedor_id=? AND vc.activo=1 ORDER BY c.razon_social`).all(e,vendedor.id):[];
+  /* Saldo de cuenta corriente por cliente para que el vendedor lo vea. */
+  const saldosRows=db.prepare('SELECT cliente_doc,SUM(debe)-SUM(haber) saldo FROM cliente_cc_movimientos WHERE empresa_id=? GROUP BY cliente_doc').all(e);
+  const saldosPorDoc=new Map(saldosRows.map(r=>[String(r.cliente_doc||''),Number(r.saldo||0)]));
+  const clientesConSaldo=clientes.map(c=>({...c,saldo:saldosPorDoc.get(String(c.cuit||c.dni||''))||0}));
   const productos=db.prepare('SELECT id,codigo,codigo_barra codigoBarra,descripcion,precio,iva,unidad,unidad_id,rubro_id FROM productos WHERE empresa_id=? AND activo=1 ORDER BY descripcion LIMIT 5000').all(e);
   let packs=[];
   try{
@@ -610,10 +616,10 @@ function movilBootstrap(req,res){
   }catch{}
   const packsPorProducto={};
   for(const p of packs){const k=String(p.producto_id);(packsPorProducto[k]=packsPorProducto[k]||[]).push({codigoBarra:p.codigo_barra,cantidad:Number(p.cantidad||1)})}
-  const pedidos=vendedor?db.prepare(`SELECT v.id,v.tipo,v.estado,v.estado_pedido,v.numero,v.punto_venta,v.total,v.fecha,v.fecha_visita,v.hora_visita,c.razon_social cliente
+  const pedidos=vendedor?db.prepare(`SELECT v.id,v.cliente_id,v.tipo,v.estado,v.estado_pedido,v.numero,v.punto_venta,v.total,v.fecha,v.fecha_visita,v.hora_visita,c.razon_social cliente
     FROM ventas_pos v LEFT JOIN clientes c ON c.id=v.cliente_id
     WHERE v.empresa_id=? AND v.vendedor_id=? ORDER BY v.id DESC LIMIT 100`).all(e,vendedor.id):[];
-  res.json({ok:true,vendedor,clientes,productos:productos.map(p=>({...p,codigosBarras:packsPorProducto[String(p.id)]||[]})),pedidos});
+  res.json({ok:true,vendedor,clientes:clientesConSaldo,productos:productos.map(p=>({...p,codigosBarras:packsPorProducto[String(p.id)]||[]})),pedidos});
 }
 
 function crearPedidoMovil(req,res){
@@ -664,6 +670,8 @@ function crearPedidoMovil(req,res){
     const insItem=db.prepare('INSERT INTO venta_pos_items(venta_id,producto_id,codigo,descripcion,unidad,cantidad,precio_unitario,descuento,iva,costo_unitario,subtotal,promocion,rubro_id) VALUES(?,?,?,?,?,?,?,?,?,0,?,0,?)');
     for(const l of lineas)insItem.run(sale.lastInsertRowid,l.producto_id,l.codigo,l.descripcion,l.unidad,l.cantidad,l.precio,l.descuento,l.iva,l.netoLine,l.rubro_id);
     db.prepare('INSERT INTO pedido_estado_historial(empresa_id,venta_id,documento_id,estado,usuario_id,usuario_nombre,detalle,created_at) VALUES(?,?,?,?,?,?,?,?)').run(e,sale.lastInsertRowid,doc.lastInsertRowid,'PENDIENTE',usuarioId,vendedor.nombre,'Pedido creado desde la app móvil',nowLocal());
+    const cobroId=registrarCobroPendiente({e,ventaId:Number(sale.lastInsertRowid),clienteId,vendedorId:vendedor.id,usuarioId,origen:'VENDEDOR',cobro:d.cobro});
+    if(cobroId)db.prepare('INSERT INTO pedido_estado_historial(empresa_id,venta_id,documento_id,estado,usuario_id,usuario_nombre,detalle,created_at) VALUES(?,?,?,?,?,?,?,?)').run(e,sale.lastInsertRowid,doc.lastInsertRowid,'PENDIENTE',usuarioId,vendedor.nombre,`El vendedor declaró un cobro a cuenta: ${String(d.cobro.medio||'').toUpperCase()} por $ ${Number(d.cobro.importe||0).toLocaleString('es-AR')} (pendiente de confirmar)`,nowLocal());
     if(uuid){
       try{db.prepare(`INSERT OR IGNORE INTO sync_cola(empresa_id,usuario_id,device_id,tipo,uuid,payload_json,estado,procesado_at) VALUES(?,?,?,'PEDIDO',?,?,'PROCESADO',CURRENT_TIMESTAMP)`).run(e,usuarioId,String(d.dispositivo||''),uuid,JSON.stringify({venta_id:Number(sale.lastInsertRowid)}))}catch{}
     }
@@ -677,7 +685,8 @@ function listPedidosMovil(req,res){
   const e=empresaId(req),usuarioId=userId(req);
   const vendedor=db.prepare('SELECT id FROM vendedores WHERE empresa_id=? AND usuario_id=? AND activo=1').get(e,usuarioId);
   if(!vendedor)return res.json({ok:true,pedidos:[]});
-  const rows=db.prepare(`SELECT v.id,v.tipo,v.estado,v.estado_pedido,v.numero,v.punto_venta,v.total,v.fecha,v.fecha_visita,v.hora_visita,v.latitud,v.longitud,c.razon_social cliente,d.afip_estado
+  const rows=db.prepare(`SELECT v.id,v.cliente_id,v.tipo,v.estado,v.estado_pedido,v.numero,v.punto_venta,v.total,v.fecha,v.fecha_visita,v.hora_visita,v.latitud,v.longitud,c.razon_social cliente,d.afip_estado,
+      (SELECT COALESCE(SUM(pc.importe),0) FROM pedido_cobros pc WHERE pc.venta_id=v.id AND pc.estado='PENDIENTE') cobro_pendiente
     FROM ventas_pos v LEFT JOIN clientes c ON c.id=v.cliente_id LEFT JOIN documentos_comerciales d ON d.id=v.documento_id
     WHERE v.empresa_id=? AND v.vendedor_id=? ORDER BY v.id DESC LIMIT 100`).all(e,vendedor.id);
   res.json({ok:true,pedidos:rows});
@@ -706,7 +715,8 @@ function listBandejaPedidos(req,res){
   if(hasta){where+=' AND v.fecha<=?';params.push(hasta)}
   if(q){where+=' AND (c.razon_social LIKE ? OR vd.nombre LIKE ? OR CAST(v.numero AS TEXT) LIKE ?)';params.push(`%${q}%`,`%${q}%`,`%${q}%`)}
   const pedidos=db.prepare(`SELECT v.id,v.tipo,v.estado,v.estado_pedido,v.numero,v.punto_venta,v.total,v.fecha,v.fecha_visita,v.hora_visita,v.latitud,v.longitud,c.razon_social cliente,vd.nombre vendedor,d.canal,d.cae,d.afip_estado,
-      CASE WHEN v.tipo='FACTURA' THEN 1 ELSE 0 END facturado
+      CASE WHEN v.tipo='FACTURA' THEN 1 ELSE 0 END facturado,
+      (SELECT COALESCE(SUM(pc.importe),0) FROM pedido_cobros pc WHERE pc.venta_id=v.id AND pc.estado='PENDIENTE') cobro_pendiente
     FROM ventas_pos v LEFT JOIN clientes c ON c.id=v.cliente_id LEFT JOIN vendedores vd ON vd.id=v.vendedor_id LEFT JOIN documentos_comerciales d ON d.id=v.documento_id
     WHERE ${where} ORDER BY v.id DESC LIMIT 300`).all(...params);
   const resumen=db.prepare(`SELECT COALESCE(v.estado_pedido,'PENDIENTE') estado,COUNT(1) n FROM ventas_pos v LEFT JOIN documentos_comerciales d ON d.id=v.documento_id WHERE v.empresa_id=? AND v.estado<>'ANULADO' AND (v.tipo='NOTA_PEDIDO' OR (v.tipo='FACTURA' AND d.documento_origen_id IS NOT NULL)) GROUP BY COALESCE(v.estado_pedido,'PENDIENTE')`).all(e);
@@ -714,7 +724,7 @@ function listBandejaPedidos(req,res){
 }
 function detallePedidoMovil(req,res){
   const e=empresaId(req),id=Number(req.params.id);
-  const pedido=db.prepare(`SELECT v.*,c.razon_social cliente,c.cuit,c.domicilio,c.localidad,c.telefono,vd.nombre vendedor,d.canal,d.estado documento_estado
+  const pedido=db.prepare(`SELECT v.*,c.razon_social cliente,c.cuit,c.dni,c.domicilio,c.localidad,c.telefono,vd.nombre vendedor,d.canal,d.estado documento_estado
     FROM ventas_pos v LEFT JOIN clientes c ON c.id=v.cliente_id LEFT JOIN vendedores vd ON vd.id=v.vendedor_id LEFT JOIN documentos_comerciales d ON d.id=v.documento_id
     WHERE v.id=? AND v.empresa_id=?`).get(id,e);
   if(!pedido)return res.status(404).json({ok:false,error:'El pedido no existe.'});
@@ -722,7 +732,10 @@ function detallePedidoMovil(req,res){
   const docItems=pedido.documento_id?db.prepare('SELECT * FROM documento_items WHERE documento_id=? ORDER BY id').all(pedido.documento_id):[];
   const items=ventaItems.map((vi,idx)=>({...vi,doc_item_id:docItems[idx]?.id||null}));
   const historial=db.prepare('SELECT * FROM pedido_estado_historial WHERE empresa_id=? AND venta_id=? ORDER BY id DESC').all(e,id);
-  res.json({ok:true,pedido,items,historial});
+  const cobros=db.prepare('SELECT pc.*,u.nombre confirmado_por_nombre FROM pedido_cobros pc LEFT JOIN usuarios u ON u.id=pc.confirmado_por WHERE pc.empresa_id=? AND pc.venta_id=? ORDER BY pc.id DESC').all(e,id);
+  const docCliente=String(pedido.cuit||pedido.dni||'').trim();
+  const saldo=docCliente?Number(db.prepare('SELECT IFNULL(SUM(debe),0)-IFNULL(SUM(haber),0) saldo FROM cliente_cc_movimientos WHERE empresa_id=? AND cliente_doc=?').get(e,docCliente)?.saldo||0):0;
+  res.json({ok:true,pedido,items,historial,cobros,saldo});
 }
 function revisarPedidoMovil(req,res){
   const e=empresaId(req),id=Number(req.params.id),d=req.body||{},usuarioId=userId(req);
@@ -784,6 +797,107 @@ function cambiarEstadoPedidoMovil(req,res){
   db.prepare('INSERT INTO pedido_estado_historial(empresa_id,venta_id,documento_id,estado,estado_anterior,usuario_id,usuario_nombre,detalle,created_at) VALUES(?,?,?,?,?,?,?,?,?)').run(e,id,pedido.documento_id||null,estado,pedido.estado_pedido||'PENDIENTE',usuarioId,usuario?.nombre||'ADMIN',String(d.detalle||'').trim()||null,nowLocal());
   res.json({ok:true});
 }
+
+/*
+ * El administrador confirma el dinero que declaró el vendedor/repartidor:
+ * se crea y confirma el recibo (que registra el movimiento de cuenta
+ * corriente) y queda listo para compartir por WhatsApp.
+ */
+function confirmarCobroPedido(req,res){
+  const e=empresaId(req),id=Number(req.params.id),usuarioId=userId(req);
+  const cobro=db.prepare('SELECT * FROM pedido_cobros WHERE id=? AND empresa_id=?').get(id,e);
+  if(!cobro)return res.status(404).json({ok:false,error:'El cobro no existe.'});
+  if(cobro.estado!=='PENDIENTE')return res.status(409).json({ok:false,error:'Ese cobro ya fue procesado.'});
+  const venta=db.prepare('SELECT v.*,c.razon_social cliente,c.cuit,c.dni FROM ventas_pos v LEFT JOIN clientes c ON c.id=v.cliente_id WHERE v.id=? AND v.empresa_id=?').get(cobro.venta_id,e);
+  if(!venta)return res.status(404).json({ok:false,error:'El pedido del cobro no existe.'});
+  const clienteNombre=venta.cliente||'CONSUMIDOR FINAL';
+  const clienteDoc=String(venta.cuit||venta.dni||'0');
+  const hoy=nowLocal().slice(0,10);
+  const detalle={medioPago:cobro.medio,importe:Number(cobro.importe),observaciones:`Cobro a cuenta confirmado desde la bandeja (${cobro.origen==='REPARTIDOR'?'repartidor':'vendedor'})`};
+  if(cobro.medio==='CHEQUE'){
+    detalle.chequeNumero=cobro.cheque_numero||undefined;
+    detalle.chequeBanco=cobro.banco||undefined;
+    detalle.chequeFechaEmision=hoy;
+    detalle.chequeFechaCobro=cobro.cheque_vencimiento||hoy;
+  }else if(cobro.medio==='TRANSFERENCIA'&&cobro.banco){
+    detalle.banco=cobro.banco;
+  }
+  let recibo;
+  try{
+    recibo=crearRecibo({empresaId:e,clienteId:cobro.cliente_id||venta.cliente_id||null,clienteDoc,clienteNombre,detalles:[detalle],observaciones:`Cobro a cuenta del pedido ${String(venta.punto_venta||1).padStart(4,'0')}-${String(venta.numero||0).padStart(8,'0')}`,usuarioId,puntoVenta:pvDelUsuario(e,usuarioId)});
+    recibo=confirmarRecibo({reciboId:recibo.id,empresaId:e})||recibo;
+  }catch(error){
+    return res.status(400).json({ok:false,error:error.message||'No se pudo generar el recibo.'});
+  }
+  db.prepare("UPDATE pedido_cobros SET estado='CONFIRMADO',recibo_id=?,confirmado_por=?,confirmado_en=? WHERE id=?").run(recibo.id,usuarioId,nowLocal(),id);
+  const usuario=db.prepare('SELECT nombre FROM usuarios WHERE id=?').get(usuarioId);
+  db.prepare('INSERT INTO pedido_estado_historial(empresa_id,venta_id,documento_id,estado,estado_anterior,usuario_id,usuario_nombre,detalle,created_at) VALUES(?,?,?,?,?,?,?,?,?)').run(e,cobro.venta_id,venta.documento_id||null,venta.estado_pedido||'PENDIENTE',venta.estado_pedido||'PENDIENTE',usuarioId,usuario?.nombre||'ADMIN',`Cobro confirmado: ${cobro.medio} $ ${Number(cobro.importe).toLocaleString('es-AR')} · Recibo ${String(recibo.punto_venta||1).padStart(4,'0')}-${String(recibo.numero||0).padStart(8,'0')} (enviado a cuenta corriente)`,nowLocal());
+  res.json({ok:true,recibo});
+}
+
+/*
+ * PDF de la bandeja: todos los pedidos pendientes, uno por hoja A4.
+ */
+async function pdfPedidosPendientes(req,res){
+  const e=empresaId(req);
+  const estado=String(req.query.estado||'PENDIENTE').trim().toUpperCase();
+  const vendedorId=Number(req.query.vendedor_id||0);
+  const desde=String(req.query.desde||''),hasta=String(req.query.hasta||'');
+  const estadoSql=estado==='TODOS'?"v.estado_pedido NOT IN ('ENTREGADO','RECHAZADO')":"COALESCE(v.estado_pedido,'PENDIENTE')=?";
+  const params=[e];
+  if(estado!=='TODOS')params.push(estado);
+  let where="v.empresa_id=? AND v.estado<>'ANULADO' AND (v.tipo='NOTA_PEDIDO' OR (v.tipo='FACTURA' AND d.documento_origen_id IS NOT NULL)) AND "+estadoSql;
+  if(vendedorId){where+=' AND v.vendedor_id=?';params.push(vendedorId)}
+  if(desde){where+=' AND v.fecha>=?';params.push(desde)}
+  if(hasta){where+=' AND v.fecha<=?';params.push(hasta)}
+  const pedidos=db.prepare(`SELECT v.id,v.numero,v.punto_venta,v.total,v.fecha,v.hora_visita,v.observaciones,v.estado_pedido,
+      c.razon_social cliente,c.domicilio,c.localidad,c.telefono,vd.nombre vendedor,d.canal
+    FROM ventas_pos v LEFT JOIN clientes c ON c.id=v.cliente_id LEFT JOIN vendedores vd ON vd.id=v.vendedor_id LEFT JOIN documentos_comerciales d ON d.id=v.documento_id
+    WHERE ${where} ORDER BY v.id ASC LIMIT 500`).all(...params);
+  if(!pedidos.length)return res.status(404).json({ok:false,error:'No hay pedidos pendientes para imprimir.'});
+  const itemsStmt=db.prepare('SELECT codigo,descripcion,cantidad,precio_unitario FROM venta_pos_items WHERE venta_id=? ORDER BY id');
+  const data=pedidos.map(p=>({...p,items:itemsStmt.all(p.id)}));
+  const empresa=getEmpresaById(e);
+  try{
+    const pdf=await generarPdfPedidosPendientes({empresa,pedidos:data,titulo:`PEDIDOS-${estado}`});
+    res.json({ok:true,pdf_url:pdf.publicUrl,url:pdf.url,total:data.length});
+  }catch(error){
+    res.status(500).json({ok:false,error:error.message||'No se pudo generar el PDF.'});
+  }
+}
+module.exports.pdfPedidosPendientes=pdfPedidosPendientes;
+
+/*
+ * Rentabilidad por rubro de los pedidos ENTREGADOS en el período:
+ * cuántos pedidos, unidades, venta, costo y ganancia por rubro.
+ */
+function rentabilidadRubros(req,res){
+  const e=empresaId(req);
+  const desde=String(req.query.desde||''),hasta=String(req.query.hasta||'');
+  let filtro='';
+  const params=[e];
+  if(desde){filtro+=' AND v.fecha>=?';params.push(desde)}
+  if(hasta){filtro+=' AND v.fecha<=?';params.push(hasta)}
+  const rows=db.prepare(`SELECT COALESCE(r.nombre,'Sin rubro') rubro,
+      COUNT(DISTINCT v.id) pedidos,
+      COALESCE(SUM(i.cantidad),0) unidades,
+      COALESCE(SUM(i.subtotal),0) venta,
+      COALESCE(SUM(i.cantidad*COALESCE(i.costo_unitario,0)),0) costo
+    FROM ventas_pos v
+    JOIN venta_pos_items i ON i.venta_id=v.id
+    LEFT JOIN rubros_productos r ON r.id=i.rubro_id AND r.empresa_id=v.empresa_id
+    WHERE v.empresa_id=? AND v.estado<>'ANULADO' AND COALESCE(v.estado_pedido,'')='ENTREGADO'${filtro}
+    GROUP BY COALESCE(r.nombre,'Sin rubro')
+    ORDER BY (COALESCE(SUM(i.subtotal),0)-COALESCE(SUM(i.cantidad*COALESCE(i.costo_unitario,0)),0)) DESC`).all(...params);
+  const resultado=rows.map(r=>({...r,rentabilidad:Math.round((Number(r.venta)-Number(r.costo))*100)/100,margen:Number(r.venta)>0?Math.round((Number(r.venta)-Number(r.costo))/Number(r.venta)*10000)/100:0}));
+  const totales=resultado.reduce((acc,r)=>({pedidos:acc.pedidos+Number(r.pedidos),unidades:acc.unidades+Number(r.unidades),venta:Math.round((acc.venta+Number(r.venta))*100)/100,costo:Math.round((acc.costo+Number(r.costo))*100)/100}),{pedidos:0,unidades:0,venta:0,costo:0});
+  totales.rentabilidad=Math.round((totales.venta-totales.costo)*100)/100;
+  totales.margen=totales.venta>0?Math.round((totales.venta-totales.costo)/totales.venta*10000)/100:0;
+  /* Pedidos entregados en el período (cuenta total, sin agrupar). */
+  const entregados=db.prepare(`SELECT COUNT(1) n FROM ventas_pos v WHERE v.empresa_id=? AND v.estado<>'ANULADO' AND COALESCE(v.estado_pedido,'')='ENTREGADO'${filtro}`).get(...params)?.n||0;
+  res.json({ok:true,rubros:resultado,totales,entregados});
+}
+module.exports.rentabilidadRubros=rentabilidadRubros;
 
 /*
  * Reparto (Etapa 4): pedidos listos para armar la ruta, rutas manuales o
@@ -858,7 +972,8 @@ function datosRutaReparto(e,id){
   if(!ruta)return null;
   const pedidos=db.prepare(`SELECT rp.id ruta_pedido_id,rp.orden,rp.estado_entrega,rp.fecha_entrega,rp.hora_entrega,rp.observaciones,
       v.id,v.numero,v.punto_venta,v.total,v.fecha,v.latitud,v.longitud,
-      c.razon_social cliente,c.domicilio,c.localidad,c.telefono,c.latitud clat,c.longitud clng
+      c.razon_social cliente,c.domicilio,c.localidad,c.telefono,c.latitud clat,c.longitud clng,
+      COALESCE((SELECT SUM(cc.debe)-SUM(cc.haber) FROM cliente_cc_movimientos cc WHERE cc.empresa_id=v.empresa_id AND cc.cliente_doc=COALESCE(NULLIF(c.cuit,''),c.dni,'')),0) saldo
     FROM ruta_pedidos rp JOIN ventas_pos v ON v.id=rp.venta_id LEFT JOIN clientes c ON c.id=v.cliente_id
     WHERE rp.ruta_id=? ORDER BY rp.orden,rp.id`).all(id);
   const items=db.prepare(`SELECT i.venta_id,i.producto_id,i.codigo,i.descripcion,SUM(i.cantidad) cantidad
@@ -929,6 +1044,8 @@ function marcarEntregaRuta(req,res){
     }
     const detalleDevolucion=devoluciones.length?` Devolvió: ${devoluciones.map((x)=>`${x.descripcion||x.codigo} x${x.cantidad}`).join(', ')}.`:'';
     db.prepare('INSERT INTO pedido_estado_historial(empresa_id,venta_id,documento_id,estado,estado_anterior,usuario_id,usuario_nombre,detalle,created_at) VALUES(?,?,?,?,?,?,?,?,?)').run(e,rp.venta_id,rp.documento_id||null,estado==='ENTREGADO'?'ENTREGADO':'DESPACHADO',null,usuarioId,usuario?.nombre||'REPARTIDOR',`Entrega ${estado}${d.observaciones?`: ${String(d.observaciones)}`:''}${detalleDevolucion}`,nowLocal());
+    const cobroId=registrarCobroPendiente({e,ventaId:rp.venta_id,clienteId:rp.cliente_id,vendedorId:null,usuarioId,origen:'REPARTIDOR',cobro:d.cobro});
+    if(cobroId)db.prepare('INSERT INTO pedido_estado_historial(empresa_id,venta_id,documento_id,estado,estado_anterior,usuario_id,usuario_nombre,detalle,created_at) VALUES(?,?,?,?,?,?,?,?,?)').run(e,rp.venta_id,rp.documento_id||null,estado==='ENTREGADO'?'ENTREGADO':'DESPACHADO',null,usuarioId,usuario?.nombre||'REPARTIDOR',`El repartidor registró un cobro a cuenta: ${String(d.cobro.medio||'').toUpperCase()} por $ ${Number(d.cobro.importe||0).toLocaleString('es-AR')} (pendiente de confirmar)`,nowLocal());
   });
   tx();
   res.json({ok:true});
@@ -1266,7 +1383,7 @@ function updatePrices(req,res){
 function createReserveFund(req,res){const e=empresaId(req),d=req.body,amount=Number(d.importe_original||d.importe||0);if(!d.cliente_id||amount<=0)return res.status(400).json({ok:false,error:'Cliente e importe son obligatorios.'});const count=db.prepare('SELECT COUNT(*) n FROM reservas_monto WHERE empresa_id=?').get(e).n;const number=`RM-${String(count+1).padStart(8,'0')}`;const products=db.prepare('SELECT id,codigo,precio FROM productos WHERE empresa_id=? AND activo=1').all(e);const snapshot=Object.fromEntries(products.map(p=>[String(p.id),{codigo:p.codigo,precio:Number(p.precio)}]));const info=db.prepare(`INSERT INTO reservas_monto(empresa_id,cliente_id,numero,fecha,importe_original,saldo,lista_precio_id,lista_precio_nombre,precios_snapshot,observaciones) VALUES(?,?,?,?,?,?,?,?,?,?)`).run(e,Number(d.cliente_id),number,d.fecha||nowLocal().slice(0,10),amount,amount,d.lista_precio_id||null,d.lista_precio_nombre||'GENERAL',JSON.stringify(snapshot),d.observaciones||'');res.status(201).json({ok:true,reservation:db.prepare('SELECT * FROM reservas_monto WHERE id=?').get(info.lastInsertRowid)})}
 function consumeReserveFund(req,res){const e=empresaId(req),id=Number(req.params.id),amount=Number(req.body.importe||0);const tx=db.transaction(()=>{const r=db.prepare('SELECT * FROM reservas_monto WHERE id=? AND empresa_id=?').get(id,e);if(!r)throw Object.assign(new Error('Reserva inexistente.'),{status:404});if(amount<=0||amount>Number(r.saldo))throw Object.assign(new Error('El importe supera el saldo reservado.'),{status:409});db.prepare('UPDATE reservas_monto SET saldo=saldo-?,estado=CASE WHEN saldo-?<=0 THEN \'AGOTADA\' ELSE \'VIGENTE\' END,updated_at=CURRENT_TIMESTAMP WHERE id=?').run(amount,amount,id);db.prepare('INSERT INTO reserva_monto_consumos(reserva_id,documento_tipo,documento_id,importe,detalle) VALUES(?,?,?,?,?)').run(id,req.body.documento_tipo||'POS',req.body.documento_id||null,amount,req.body.detalle||'Consumo desde punto de venta');return db.prepare('SELECT * FROM reservas_monto WHERE id=?').get(id)});res.json({ok:true,reservation:tx()})}
 
-module.exports={listBanks,saveBank,listPos,savePos,listChecks,createCheck,deleteCajero,depositChecks,listWhatsapp,saveWhatsapp,uploadFiscal,fiscalFiles,listPurchases,savePurchase,deletePurchase,importarComprasExcel,ocrCompraFoto,listComprasPendientes,confirmarCompraPendiente,descartarCompraPendiente,listPedidosClientes,listPedidosActivos,listDevoluciones,devolverItemsPedido,listVendedorClientes,guardarVendedorClientes,crearVisita,listVisitas,movilBootstrap,crearPedidoMovil,listPedidosMovil,listBandejaPedidos,detallePedidoMovil,revisarPedidoMovil,cambiarEstadoPedidoMovil,listPedidosParaRuta,crearRutaReparto,listRutasReparto,detalleRutaReparto,reordenarRutaReparto,marcarEntregaRuta,cerrarRutaReparto,reabrirRutaReparto,miRutaReparto,listRepartoDevoluciones,confirmarDevolucion,reporteVendedoresDetalle,crearReporteUsuario,listFiscalIntentos,vatBook,borradorIva,saveBorradorIvaAjuste,renameBorradorIvaRubro,updatePrices,listReserveFunds,createReserveFund,consumeReserveFund};
+module.exports={listBanks,saveBank,listPos,savePos,listChecks,createCheck,deleteCajero,depositChecks,listWhatsapp,saveWhatsapp,uploadFiscal,fiscalFiles,listPurchases,savePurchase,deletePurchase,importarComprasExcel,ocrCompraFoto,listComprasPendientes,confirmarCompraPendiente,descartarCompraPendiente,listPedidosClientes,listPedidosActivos,listDevoluciones,devolverItemsPedido,listVendedorClientes,guardarVendedorClientes,crearVisita,listVisitas,movilBootstrap,crearPedidoMovil,listPedidosMovil,listBandejaPedidos,detallePedidoMovil,revisarPedidoMovil,cambiarEstadoPedidoMovil,confirmarCobroPedido,pdfPedidosPendientes,rentabilidadRubros,listPedidosParaRuta,crearRutaReparto,listRutasReparto,detalleRutaReparto,reordenarRutaReparto,marcarEntregaRuta,cerrarRutaReparto,reabrirRutaReparto,miRutaReparto,listRepartoDevoluciones,confirmarDevolucion,reporteVendedoresDetalle,crearReporteUsuario,listFiscalIntentos,vatBook,borradorIva,saveBorradorIvaAjuste,renameBorradorIvaRubro,updatePrices,listReserveFunds,createReserveFund,consumeReserveFund};
 
 function userId(req){ return Number(req.usuario?.id || req.user?.id || req.user?.userId || 1); }
 function listPosCatalogs(req,res){
@@ -1327,6 +1444,40 @@ function nextNumberLibre(e,pv,type){
     if(!usado)return n;
   }
   return nextNumber(e,pv,type);
+}
+/*
+ * Cobros declarados en el pedido (vendedor o repartidor). Quedan PENDIENTES
+ * hasta que el administrador los confirme desde la bandeja: recién ahí se
+ * genera el recibo y el movimiento de cuenta corriente.
+ */
+function guardarFotoCobro(dataUrl,e){
+  const texto=String(dataUrl||'');
+  const m=texto.match(/^data:image\/(png|jpe?g|webp);base64,(.+)$/i);
+  if(!m)return null;
+  let buffer;
+  try{buffer=Buffer.from(m[2],'base64')}catch{return null}
+  if(!buffer.length||buffer.length>4*1024*1024)return null;
+  const dir=path.join(process.cwd(),'storage','pedido-cobros');
+  fs.mkdirSync(dir,{recursive:true});
+  const ext=m[1].toLowerCase()==='png'?'png':m[1].toLowerCase()==='webp'?'webp':'jpg';
+  const nombre=`cobro-${e}-${Date.now()}-${Math.round(Math.random()*1e6)}.${ext}`;
+  fs.writeFileSync(path.join(dir,nombre),buffer);
+  return `/storage/pedido-cobros/${nombre}`;
+}
+function registrarCobroPendiente({e,ventaId,clienteId,vendedorId,usuarioId,origen,cobro}){
+  if(!cobro)return null;
+  const medio=String(cobro.medio||'').toUpperCase();
+  if(!['EFECTIVO','TRANSFERENCIA','CHEQUE'].includes(medio))return null;
+  const importe=Math.round(Math.abs(Number(cobro.importe||0))*100)/100;
+  if(importe<=0)return null;
+  const foto=cobro.foto?guardarFotoCobro(cobro.foto,e):null;
+  const info=db.prepare(`INSERT INTO pedido_cobros(empresa_id,venta_id,cliente_id,vendedor_id,usuario_id,origen,medio,importe,banco,cheque_numero,cheque_librador,cheque_vencimiento,foto_path,observaciones) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(e,ventaId,clienteId||null,vendedorId||null,usuarioId||null,origen==='REPARTIDOR'?'REPARTIDOR':'VENDEDOR',medio,importe,String(cobro.banco||''),String(cobro.cheque_numero||''),String(cobro.cheque_librador||''),cobro.cheque_vencimiento||null,foto,String(cobro.observaciones||''));
+  return Number(info.lastInsertRowid);
+}
+function pvDelUsuario(e,usuarioId){
+  const pv=db.prepare('SELECT p.numero FROM usuario_puntos_venta up JOIN puntos_venta p ON p.id=up.punto_venta_id AND p.empresa_id=up.empresa_id WHERE up.empresa_id=? AND up.usuario_id=? AND p.activo=1 ORDER BY up.predeterminado DESC,p.numero LIMIT 1').get(e,usuarioId);
+  return Number(pv?.numero)||Number(db.prepare('SELECT numero FROM puntos_venta WHERE empresa_id=? AND activo=1 ORDER BY numero LIMIT 1').get(e)?.numero)||1;
 }
 function openOrGetCashSession(e,d,uid){
   const pv=Number(d.punto_venta)||null;

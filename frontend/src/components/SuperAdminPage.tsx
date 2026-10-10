@@ -104,6 +104,7 @@ export function SuperAdminPage() {
   const [avisos, setAvisos] = useState<any>({ telefono: "", whatsapp_activo: 0 });
   const [modulosModal, setModulosModal] = useState<any>(null);
   const [catalogoModulos, setCatalogoModulos] = useState<any[]>([]);
+  const [borrarModal, setBorrarModal] = useState<any>(null);
 
   const nombreSa = sessionStorage.getItem("afip_superadmin_nombre") || "Administrador";
 
@@ -299,15 +300,29 @@ export function SuperAdminPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      await call("POST", "/licencias", {
-        empresaId: Number(licenciaModal.empresaId),
-        plan: licenciaModal.plan,
-        precio: Number(licenciaModal.precio) || 0,
-        descuentoPorc: Number(licenciaModal.descuento) || 0,
-        fechaInicio: licenciaModal.fechaInicio || new Date().toISOString().slice(0, 10),
-        notas: licenciaModal.notas || "",
-      });
-      setOk("Licencia registrada.");
+      if (licenciaModal.id) {
+        await call("PATCH", `/licencias/${licenciaModal.id}`, {
+          plan: licenciaModal.plan,
+          precio: Number(licenciaModal.precio) || 0,
+          descuentoPorc: Number(licenciaModal.descuento) || 0,
+          fechaInicio: licenciaModal.fechaInicio || undefined,
+          fechaVencimiento: licenciaModal.plan === "DEFINITIVO" ? null : licenciaModal.fechaVencimiento || undefined,
+          estado: licenciaModal.estado,
+          renovacionAutomatica: Boolean(licenciaModal.renovacionAutomatica),
+          notas: licenciaModal.notas || "",
+        });
+        setOk("Licencia actualizada.");
+      } else {
+        await call("POST", "/licencias", {
+          empresaId: Number(licenciaModal.empresaId),
+          plan: licenciaModal.plan,
+          precio: Number(licenciaModal.precio) || 0,
+          descuentoPorc: Number(licenciaModal.descuento) || 0,
+          fechaInicio: licenciaModal.fechaInicio || new Date().toISOString().slice(0, 10),
+          notas: licenciaModal.notas || "",
+        });
+        setOk("Licencia registrada.");
+      }
       setLicenciaModal(null);
       await load();
     } catch (err: any) {
@@ -399,6 +414,33 @@ export function SuperAdminPage() {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function borrarDatosEmpresaConfirmar() {
+    if (!borrarModal) return;
+    const categorias = Object.entries(borrarModal.categorias || {})
+      .filter(([, valor]) => Boolean(valor))
+      .map(([clave]) => clave);
+    if (!categorias.length) {
+      setError("Elegí al menos una categoría de datos para borrar.");
+      return;
+    }
+    setBorrarModal({ ...borrarModal, borrando: true });
+    try {
+      const r = await call<any>("POST", `/empresas/${borrarModal.empresaId}/borrar-datos`, {
+        categorias,
+        confirmar: borrarModal.confirmar,
+      });
+      const detalle = Object.entries(r.resultados || {})
+        .map(([k, v]) => `${k}: ${v}`)
+        .join(" · ");
+      setOk(`Datos borrados de ${r.empresa}. Registros eliminados → ${detalle || "sin cambios"}.`);
+      setBorrarModal(null);
+      await load();
+    } catch (err: any) {
+      setError(err.message);
+      setBorrarModal({ ...borrarModal, borrando: false });
     }
   }
 
@@ -590,6 +632,7 @@ export function SuperAdminPage() {
             <td><div className="sa-row-actions">
               <button className="sa-icon-btn" title="Importar rubros y marcas (CSV)" onClick={() => setRubrosModal({ empresaId: e.id, nombre: e.nombre, rubros: null, marcas: null, asociaciones: null })}><Tags size={15}/></button>
               <button className="sa-icon-btn" title="Editar" onClick={() => setEmpresaModal({ id: e.id, nombre: e.nombre, cuit: e.cuit, condicionIva: e.condicion_iva, razonSocial: e.razon_social, direccion: e.direccion || "", localidad: e.localidad || "", provincia: e.provincia || "", telefono: e.telefono || "", email: e.email || "", activa: !!e.activa, versionInstalada: e.version_instalada || "" })}><Pencil size={15}/></button>
+              <button className="sa-icon-btn" title="Borrar datos de esta empresa" onClick={() => setBorrarModal({ empresaId: e.id, nombre: e.nombre, confirmar: "", borrando: false, categorias: { VENTAS: true, CUENTA_CORRIENTE: true, VISITAS_RUTAS: false, STOCK: false, PRODUCTOS: false, RUBROS_MARCAS: false, COMPRAS: false, CLIENTES: false, WHATSAPP: false } })}><Trash2 size={15}/></button>
             </div></td>
           </tr>)}</tbody></table>
           {!empresasVisibles.length && <div className="empty-table">No hay empresas.</div>}
@@ -626,10 +669,10 @@ export function SuperAdminPage() {
       {tab === "LICENCIAS" && <div className="products-page">
         <div className="products-toolbar">
           <div><h3>Licencias</h3><p>Vendé o alquilá el ERP por empresa: mensual, trimestral, anual o definitivo.</p></div>
-          <button className="primary-action" onClick={() => setLicenciaModal({ empresaId: empresas[0]?.id || "", plan: "MENSUAL", precio: "", descuento: "", fechaInicio: new Date().toISOString().slice(0, 10), notas: "" })}><Plus/> Nueva licencia</button>
+          <button className="primary-action" onClick={() => setLicenciaModal({ empresaId: empresas[0]?.id || "", plan: "MENSUAL", precio: "", descuento: "", fechaInicio: new Date().toISOString().slice(0, 10), fechaVencimiento: "", renovacionAutomatica: false, notas: "" })}><Plus/> Nueva licencia</button>
         </div>
         <div className="products-card"><table>
-          <thead><tr><th>ID</th><th>Empresa</th><th>Plan</th><th>Precio</th><th>Desc. %</th><th>Total</th><th>Inicio</th><th>Vence</th><th>Estado</th><th></th></tr></thead>
+          <thead><tr><th>ID</th><th>Empresa</th><th>Plan</th><th>Precio</th><th>Desc. %</th><th>Total</th><th>Inicio</th><th>Vence</th><th>Renov. auto</th><th>Estado</th><th></th></tr></thead>
           <tbody>{licencias.map((l) => <tr key={l.id}>
             <td>{l.id}</td>
             <td><strong>{l.empresa_nombre}</strong></td>
@@ -639,8 +682,10 @@ export function SuperAdminPage() {
             <td><b>$ {fmt(l.total)}</b></td>
             <td>{fmtFecha(l.fecha_inicio)}</td>
             <td>{l.plan === "DEFINITIVO" ? "Definitivo" : fmtFecha(l.fecha_vencimiento)}</td>
+            <td>{Number(l.renovacion_automatica || 0) === 1 ? <span className="sa-badge ok">SÍ</span> : <span className="sa-badge off">NO</span>}</td>
             <td>{l.estado === "ACTIVA" ? <span className="sa-badge ok">ACTIVA</span> : l.estado === "VENCIDA" ? <span className="sa-badge off">VENCIDA</span> : <span className="sa-badge off">CANCELADA</span>}</td>
             <td><div className="sa-row-actions">
+              <button className="sa-icon-btn" title="Editar fechas y renovación" onClick={() => setLicenciaModal({ id: l.id, empresaId: l.empresa_id, empresaNombre: l.empresa_nombre, plan: l.plan, precio: l.precio, descuento: l.descuento_porc, fechaInicio: String(l.fecha_inicio || "").slice(0, 10), fechaVencimiento: String(l.fecha_vencimiento || "").slice(0, 10), renovacionAutomatica: Number(l.renovacion_automatica || 0) === 1, estado: l.estado, notas: l.notas || "" })}><Pencil size={15}/></button>
               {l.estado !== "ACTIVA" && <button className="sa-icon-btn" title="Activar" onClick={() => cambiarEstadoLicencia(l.id, "ACTIVA")}>Activar</button>}
               {l.estado === "ACTIVA" && <button className="sa-icon-btn" title="Vencida" onClick={() => cambiarEstadoLicencia(l.id, "VENCIDA")}>Vencer</button>}
               {l.estado !== "CANCELADA" && <button className="sa-icon-btn" title="Cancelar" onClick={() => cambiarEstadoLicencia(l.id, "CANCELADA")}><Trash2 size={15}/></button>}
@@ -866,6 +911,26 @@ export function SuperAdminPage() {
       </div>}
     </main>
 
+    {borrarModal && <div className="modal-backdrop"><form className="product-modal polished-modal module-modal" onSubmit={(ev) => { ev.preventDefault(); borrarDatosEmpresaConfirmar(); }}>
+      <div className="modal-head"><div><h3>Borrar datos de {borrarModal.nombre}</h3><p>Se eliminan los datos elegidos de esta empresa. No se borra la empresa, sus usuarios, licencia ni configuración. <strong>No se puede deshacer.</strong></p></div><button type="button" onClick={() => setBorrarModal(null)}><X /></button></div>
+      <div className="module-modal-body">
+        <h4>Qué querés borrar</h4>
+        {[
+          ["VENTAS", "Pedidos, ventas, facturas, presupuestos, remitos, reservas y devoluciones"],
+          ["CUENTA_CORRIENTE", "Cuenta corriente, recibos y cheques"],
+          ["VISITAS_RUTAS", "Visitas de vendedores y rutas de reparto"],
+          ["STOCK", "Stock por depósito, reservas y movimientos"],
+          ["PRODUCTOS", "Productos, códigos de barras, combos y promociones"],
+          ["RUBROS_MARCAS", "Rubros y marcas"],
+          ["COMPRAS", "Compras y facturas pendientes por WhatsApp"],
+          ["CLIENTES", "Clientes y carteras de vendedores"],
+          ["WHATSAPP", "Conversaciones y avisos de WhatsApp"],
+        ].map(([clave, texto]) => <label key={clave} className="module-row"><div className="module-info"><strong>{texto}</strong><span>{clave}</span></div><input type="checkbox" checked={Boolean(borrarModal.categorias[clave])} onChange={(ev) => setBorrarModal((prev: any) => ({ ...prev, categorias: { ...prev.categorias, [clave]: ev.target.checked } }))} /></label>)}
+        <label style={{ display: "block", marginTop: 12 }}>Para confirmar, escribí el nombre exacto: <strong>{borrarModal.nombre}</strong><input required value={borrarModal.confirmar} onChange={(ev) => setBorrarModal({ ...borrarModal, confirmar: ev.target.value })} placeholder={borrarModal.nombre} style={{ marginTop: 6 }} /></label>
+      </div>
+      <div className="modal-actions"><button type="button" className="secondary" onClick={() => setBorrarModal(null)}>Cancelar</button><button className="primary-action" disabled={borrarModal.borrando || borrarModal.confirmar.trim() !== borrarModal.nombre}>{borrarModal.borrando ? "Borrando..." : "Borrar datos seleccionados"}</button></div>
+    </form></div>}
+
     {empresaModal && <div className="modal-backdrop"><form className="product-modal polished-modal" onSubmit={guardarEmpresa}>
       <div className="modal-head"><h3>{empresaModal.id ? "Editar empresa" : "Nueva empresa"}</h3><button type="button" onClick={() => setEmpresaModal(null)}><X/></button></div>
       <div className="form-grid">
@@ -904,16 +969,19 @@ export function SuperAdminPage() {
     </form></div>}
 
     {licenciaModal && <div className="modal-backdrop"><form className="product-modal polished-modal" onSubmit={guardarLicencia}>
-      <div className="modal-head"><h3>Nueva licencia</h3><button type="button" onClick={() => setLicenciaModal(null)}><X/></button></div>
+      <div className="modal-head"><h3>{licenciaModal.id ? `Editar licencia de ${licenciaModal.empresaNombre || "la empresa"}` : "Nueva licencia"}</h3><button type="button" onClick={() => setLicenciaModal(null)}><X/></button></div>
       <div className="form-grid">
-        <label>Empresa<select required value={licenciaModal.empresaId} onChange={(e) => setLicenciaModal({ ...licenciaModal, empresaId: e.target.value })}>{empresas.map((en) => <option key={en.id} value={en.id}>{en.nombre}</option>)}</select></label>
+        <label>Empresa<select required disabled={Boolean(licenciaModal.id)} value={licenciaModal.empresaId} onChange={(e) => setLicenciaModal({ ...licenciaModal, empresaId: e.target.value })}>{empresas.map((en) => <option key={en.id} value={en.id}>{en.nombre}</option>)}</select></label>
         <label>Plan<select value={licenciaModal.plan} onChange={(e) => setLicenciaModal({ ...licenciaModal, plan: e.target.value })}><option value="MENSUAL">Mensual (1 mes)</option><option value="TRIMESTRAL">Trimestral (3 meses)</option><option value="ANUAL">Anual (12 meses)</option><option value="DEFINITIVO">Definitivo</option></select></label>
         <label>Precio ($)<input type="number" min="0" step="0.01" value={licenciaModal.precio} onChange={(e) => setLicenciaModal({ ...licenciaModal, precio: e.target.value })} /></label>
         <label>Descuento (%)<em>Ej.: 10 = 10% de descuento</em><input type="number" min="0" max="100" step="0.01" value={licenciaModal.descuento} onChange={(e) => setLicenciaModal({ ...licenciaModal, descuento: e.target.value })} /></label>
         <label>Fecha de inicio<input type="date" value={licenciaModal.fechaInicio} onChange={(e) => setLicenciaModal({ ...licenciaModal, fechaInicio: e.target.value })} /></label>
+        {licenciaModal.plan !== "DEFINITIVO" && <label>Fecha de vencimiento<input type="date" value={licenciaModal.fechaVencimiento || ""} onChange={(e) => setLicenciaModal({ ...licenciaModal, fechaVencimiento: e.target.value })} /></label>}
+        {licenciaModal.id && <label>Estado<select value={licenciaModal.estado} onChange={(e) => setLicenciaModal({ ...licenciaModal, estado: e.target.value })}><option value="ACTIVA">ACTIVA</option><option value="VENCIDA">VENCIDA</option><option value="CANCELADA">CANCELADA</option></select></label>}
+        <label className="sa-check"><input type="checkbox" checked={Boolean(licenciaModal.renovacionAutomatica)} onChange={(e) => setLicenciaModal({ ...licenciaModal, renovacionAutomatica: e.target.checked })} /> Renovación automática <em>Al vencer se renueva sola y se avisa igual por Telegram/WhatsApp unos días antes.</em></label>
         <label>Notas<input value={licenciaModal.notas || ""} onChange={(e) => setLicenciaModal({ ...licenciaModal, notas: e.target.value })} /></label>
       </div>
-      <div className="modal-actions"><button type="button" className="secondary" onClick={() => setLicenciaModal(null)}>Cancelar</button><button className="primary-action">Registrar licencia</button></div>
+      <div className="modal-actions"><button type="button" className="secondary" onClick={() => setLicenciaModal(null)}>Cancelar</button><button className="primary-action">{licenciaModal.id ? "Guardar cambios" : "Registrar licencia"}</button></div>
     </form></div>}
 
     {claveModal && <div className="modal-backdrop"><form className="product-modal polished-modal" onSubmit={resetClave}>

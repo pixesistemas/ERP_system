@@ -220,6 +220,16 @@ export const erpApi = {
     return request<any>(`/erp/movil/admin/pedidos?${qs.toString()}`);
   },
   getPedidoMovil: (id:number) => request<any>(`/erp/movil/admin/pedidos/${id}`),
+  pdfPedidosPendientes: (params?:{estado?:string;vendedor_id?:number;desde?:string;hasta?:string}) => {
+    const qs=new URLSearchParams();
+    if(params?.estado)qs.set('estado',params.estado);
+    if(params?.vendedor_id)qs.set('vendedor_id',String(params.vendedor_id));
+    if(params?.desde)qs.set('desde',params.desde);
+    if(params?.hasta)qs.set('hasta',params.hasta);
+    return request<any>(`/erp/movil/admin/pedidos/pdf?${qs.toString()}`);
+  },
+  confirmarCobroPedido: (cobroId:number) => request<any>(`/erp/movil/admin/pedidos/cobros/${cobroId}/confirmar`,{method:'POST',body:JSON.stringify({})}),
+  rentabilidadRubros: (desde:string,hasta:string) => request<any>(`/erp/rentabilidad/rubros?desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}`),
   revisarPedidoMovil: (id:number,data:any) => request<any>(`/erp/movil/admin/pedidos/${id}/revisar`,{method:'POST',body:JSON.stringify(data)}),
   cambiarEstadoPedidoMovil: (id:number,estado:string,detalle?:string) => request<any>(`/erp/movil/admin/pedidos/${id}/estado`,{method:'POST',body:JSON.stringify({estado,detalle})}),
   reporteVendedores: (params:{desde:string;hasta:string;vendedor_id?:number|null}) => {

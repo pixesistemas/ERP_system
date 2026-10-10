@@ -96,4 +96,35 @@ async function enviarEmail(opts) {
   return mailer.enviarMail(opts);
 }
 
-module.exports = { enviarWhatsappEmpresa, enviarWhatsappSuperadmin, enviarEmail, enviarMeta };
+/*
+ * Avisos por Telegram para el superadmin (gratis). Usa el mismo bot del
+ * canal de pruebas: hay que definir TELEGRAM_SUPERADMIN_CHAT_ID con el chat
+ * del superadmin (se obtiene escribiéndole al bot y mirando el update).
+ */
+async function enviarTelegramSuperadmin({ mensaje }) {
+  const token = String(process.env.TELEGRAM_BOT_TOKEN || "").trim();
+  const chatId = String(process.env.TELEGRAM_SUPERADMIN_CHAT_ID || "").trim();
+  if (!token || !chatId) return { ok: false, motivo: "Telegram superadmin no configurado" };
+  try {
+    const resp = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text: String(mensaje || "").slice(0, 4000) }),
+    });
+    const j = await resp.json().catch(() => ({}));
+    if (!resp.ok || j?.ok === false) {
+      return { ok: false, motivo: j?.description || `HTTP ${resp.status}` };
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, motivo: e.message };
+  }
+}
+
+module.exports = {
+  enviarWhatsappEmpresa,
+  enviarWhatsappSuperadmin,
+  enviarTelegramSuperadmin,
+  enviarEmail,
+  enviarMeta,
+};

@@ -5650,3 +5650,14 @@ table.reporte-fijo td.neg{color:#B23B58;font-weight:700}
   .sale-summary-panel{display:block}
   .report-filters label{flex:1 1 100%;min-width:100%}
 }
+
+/* Saldo de cuenta corriente y cobros del pedido (apps moviles y bandeja) */
+.mobile-saldo{font-size:13px;color:var(--muted);margin:4px 0}
+.mobile-saldo.debe strong{color:#c0392b}
+.mobile-saldo.favor strong{color:#2f7a52}
+.mobile-cheque-foto{width:100%;max-height:220px;object-fit:contain;border:1px solid var(--line);border-radius:10px;margin-top:6px;background:#fff}
+.mobile-pedido-acciones{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.order-cobros{margin-top:12px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#FBFAFE}
+.order-cobros h4{margin:0 0 6px;font-size:13px;color:var(--ink)}
+.order-cobros-linea{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--bg)}
+.order-cobros-linea small{color:var(--muted)}

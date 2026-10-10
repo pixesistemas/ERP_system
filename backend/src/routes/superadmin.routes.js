@@ -33,6 +33,7 @@ const upload = multer({
 router.get("/empresas", controller.listarEmpresas);
 router.post("/empresas", controller.crearEmpresa);
 router.patch("/empresas/:id", controller.actualizarEmpresa);
+router.post("/empresas/:id/borrar-datos", controller.borrarDatosEmpresa);
 router.get("/catalogo-modulos", controller.catalogoModulos);
 router.get("/empresas/:id/modulos", controller.listarModulosEmpresa);
 router.put("/empresas/:id/modulos", controller.setModuloEmpresa);
@@ -68,6 +69,7 @@ router.patch("/usuarios/:id", controller.actualizarUsuario);
 router.get("/licencias", controller.listarLicencias);
 router.post("/licencias", controller.crearLicencia);
 router.patch("/licencias/:id/estado", controller.cambiarEstadoLicencia);
+router.patch("/licencias/:id", controller.actualizarLicencia);
 
 router.get("/changelog", controller.listarChangelog);
 router.post("/changelog", controller.crearChangelog);

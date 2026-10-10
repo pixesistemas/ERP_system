@@ -113,6 +113,15 @@ function cambiarEstadoLicencia(req, res, next) {
   }
 }
 
+function actualizarLicencia(req, res, next) {
+  try {
+    const licencia = repo.actualizarLicencia(Number(req.params.id), req.body || {});
+    return res.json({ ok: true, licencia });
+  } catch (e) {
+    next(e);
+  }
+}
+
 function listarModulosEmpresa(req, res, next) {
   try {
     const db = require("../db/database");
@@ -134,6 +143,137 @@ function catalogoModulos(req, res, next) {
   }
 }
 
+/*
+ * Borrado de datos de una empresa por categorías. Pensado para dejar una
+ * empresa "limpia" (por ejemplo después de un año de prueba o de una
+ * migración) sin borrar la empresa, sus usuarios ni su configuración.
+ * Requiere escribir el nombre exacto de la empresa para confirmar.
+ */
+const CATEGORIAS_BORRADO = [
+  "VENTAS",
+  "CUENTA_CORRIENTE",
+  "VISITAS_RUTAS",
+  "STOCK",
+  "PRODUCTOS",
+  "RUBROS_MARCAS",
+  "COMPRAS",
+  "CLIENTES",
+  "WHATSAPP",
+];
+
+function borrarDatosEmpresa(req, res, next) {
+  try {
+    const db = require("../db/database");
+    const empresaId = Number(req.params.id);
+    const empresa = db.prepare("SELECT id,nombre FROM empresas WHERE id=?").get(empresaId);
+    if (!empresa) return res.status(404).json({ ok: false, error: "Empresa no encontrada" });
+
+    const confirmar = String(req.body?.confirmar || "").trim();
+    if (confirmar !== empresa.nombre) {
+      return res.status(400).json({
+        ok: false,
+        error: `Para confirmar, escribí el nombre exacto de la empresa: ${empresa.nombre}`,
+      });
+    }
+
+    const pedidas = Array.isArray(req.body?.categorias)
+      ? req.body.categorias.map((x) => String(x).toUpperCase())
+      : [];
+    const seleccion = CATEGORIAS_BORRADO.filter((c) => pedidas.includes(c));
+    if (!seleccion.length) {
+      return res.status(400).json({ ok: false, error: "Elegí al menos una categoría de datos para borrar." });
+    }
+
+    const resultados = {};
+    const borrar = (categoria, sql, ...args) => {
+      try {
+        const r = db.prepare(sql).run(...args);
+        resultados[categoria] = (resultados[categoria] || 0) + Number(r.changes || 0);
+      } catch (e) {
+        /* Tabla o columna inexistente en esta versión: se ignora. */
+      }
+    };
+
+    const tx = db.transaction(() => {
+      if (seleccion.includes("VENTAS")) {
+        borrar("VENTAS", "DELETE FROM venta_pos_pagos WHERE venta_id IN (SELECT id FROM ventas_pos WHERE empresa_id=?)", empresaId);
+        borrar("VENTAS", "DELETE FROM venta_pos_items WHERE venta_id IN (SELECT id FROM ventas_pos WHERE empresa_id=?)", empresaId);
+        borrar("VENTAS", "DELETE FROM pedido_cobros WHERE empresa_id=?", empresaId);
+        borrar("VENTAS", "DELETE FROM pedido_estado_historial WHERE empresa_id=?", empresaId);
+        borrar("VENTAS", "DELETE FROM devolucion_pedido_items WHERE devolucion_id IN (SELECT id FROM devoluciones_pedido WHERE empresa_id=?)", empresaId);
+        borrar("VENTAS", "DELETE FROM devoluciones_pedido WHERE empresa_id=?", empresaId);
+        borrar("VENTAS", "DELETE FROM reparto_devoluciones WHERE empresa_id=?", empresaId);
+        borrar("VENTAS", "DELETE FROM ruta_pedidos WHERE empresa_id=?", empresaId);
+        borrar("VENTAS", "DELETE FROM documento_relaciones WHERE empresa_id=?", empresaId);
+        borrar("VENTAS", "DELETE FROM documento_items WHERE documento_id IN (SELECT id FROM documentos_comerciales WHERE empresa_id=?)", empresaId);
+        borrar("VENTAS", "DELETE FROM factura_items WHERE factura_id IN (SELECT id FROM facturas WHERE empresa_id=?)", empresaId);
+        borrar("VENTAS", "DELETE FROM fiscal_intentos WHERE empresa_id=?", empresaId);
+        borrar("VENTAS", "DELETE FROM facturas WHERE empresa_id=?", empresaId);
+        borrar("VENTAS", "DELETE FROM documentos_comerciales WHERE empresa_id=?", empresaId);
+        borrar("VENTAS", "DELETE FROM reserva_monto_consumos WHERE reserva_monto_id IN (SELECT id FROM reservas_monto WHERE empresa_id=?)", empresaId);
+        borrar("VENTAS", "DELETE FROM reservas_monto WHERE empresa_id=?", empresaId);
+        borrar("VENTAS", "DELETE FROM ventas_pos WHERE empresa_id=?", empresaId);
+      }
+      if (seleccion.includes("CUENTA_CORRIENTE")) {
+        borrar("CUENTA_CORRIENTE", "DELETE FROM cliente_cc_aplicaciones WHERE empresa_id=?", empresaId);
+        borrar("CUENTA_CORRIENTE", "DELETE FROM cliente_cc_movimientos WHERE empresa_id=?", empresaId);
+        borrar("CUENTA_CORRIENTE", "DELETE FROM recibo_detalles WHERE recibo_id IN (SELECT id FROM recibos WHERE empresa_id=?)", empresaId);
+        borrar("CUENTA_CORRIENTE", "DELETE FROM recibos WHERE empresa_id=?", empresaId);
+        borrar("CUENTA_CORRIENTE", "DELETE FROM cheque_deposito_items WHERE cheque_id IN (SELECT id FROM cheques WHERE empresa_id=?)", empresaId);
+        borrar("CUENTA_CORRIENTE", "DELETE FROM orden_pago_cheques WHERE cheque_id IN (SELECT id FROM cheques WHERE empresa_id=?)", empresaId);
+        borrar("CUENTA_CORRIENTE", "DELETE FROM cheques WHERE empresa_id=?", empresaId);
+      }
+      if (seleccion.includes("VISITAS_RUTAS")) {
+        borrar("VISITAS_RUTAS", "DELETE FROM visitas WHERE empresa_id=?", empresaId);
+        borrar("VISITAS_RUTAS", "DELETE FROM ruta_pedidos WHERE empresa_id=?", empresaId);
+        borrar("VISITAS_RUTAS", "DELETE FROM rutas_reparto WHERE empresa_id=?", empresaId);
+      }
+      if (seleccion.includes("STOCK")) {
+        borrar("STOCK", "DELETE FROM stock_movimientos WHERE empresa_id=?", empresaId);
+        borrar("STOCK", "DELETE FROM stock_reservas WHERE empresa_id=?", empresaId);
+        borrar("STOCK", "DELETE FROM stock_productos WHERE empresa_id=?", empresaId);
+        borrar("STOCK", "DELETE FROM transferencia_stock_items WHERE transferencia_id IN (SELECT id FROM transferencias_stock WHERE empresa_id=?)", empresaId);
+        borrar("STOCK", "DELETE FROM transferencias_stock WHERE empresa_id=?", empresaId);
+      }
+      if (seleccion.includes("PRODUCTOS")) {
+        borrar("PRODUCTOS", "DELETE FROM producto_codigos_barras WHERE producto_id IN (SELECT id FROM productos WHERE empresa_id=?)", empresaId);
+        borrar("PRODUCTOS", "DELETE FROM producto_proveedores WHERE producto_id IN (SELECT id FROM productos WHERE empresa_id=?)", empresaId);
+        borrar("PRODUCTOS", "DELETE FROM descuentos_cantidad WHERE empresa_id=?", empresaId);
+        borrar("PRODUCTOS", "DELETE FROM lista_precio_items WHERE producto_id IN (SELECT id FROM productos WHERE empresa_id=?)", empresaId);
+        borrar("PRODUCTOS", "DELETE FROM combo_items WHERE combo_id IN (SELECT id FROM combos WHERE empresa_id=?)", empresaId);
+        borrar("PRODUCTOS", "DELETE FROM combos WHERE empresa_id=?", empresaId);
+        borrar("PRODUCTOS", "DELETE FROM promociones_regalo WHERE empresa_id=?", empresaId);
+        borrar("PRODUCTOS", "DELETE FROM productos WHERE empresa_id=?", empresaId);
+      }
+      if (seleccion.includes("RUBROS_MARCAS")) {
+        borrar("RUBROS_MARCAS", "DELETE FROM rubros_productos WHERE empresa_id=?", empresaId);
+        borrar("RUBROS_MARCAS", "DELETE FROM app_state WHERE empresa_id=? AND clave='afip_catalogs_v34'", empresaId);
+      }
+      if (seleccion.includes("COMPRAS")) {
+        borrar("COMPRAS", "DELETE FROM compra_iva_detalles WHERE compra_id IN (SELECT id FROM compras WHERE empresa_id=?)", empresaId);
+        borrar("COMPRAS", "DELETE FROM compra_retenciones WHERE compra_id IN (SELECT id FROM compras WHERE empresa_id=?)", empresaId);
+        borrar("COMPRAS", "DELETE FROM compras_pendientes WHERE empresa_id=?", empresaId);
+        borrar("COMPRAS", "DELETE FROM compras WHERE empresa_id=?", empresaId);
+      }
+      if (seleccion.includes("CLIENTES")) {
+        borrar("CLIENTES", "DELETE FROM vendedor_clientes WHERE empresa_id=?", empresaId);
+        borrar("CLIENTES", "DELETE FROM descuentos_cliente WHERE empresa_id=?", empresaId);
+        borrar("CLIENTES", "DELETE FROM whatsapp_clientes WHERE empresa_id=?", empresaId);
+        borrar("CLIENTES", "DELETE FROM clientes WHERE empresa_id=?", empresaId);
+      }
+      if (seleccion.includes("WHATSAPP")) {
+        borrar("WHATSAPP", "DELETE FROM whatsapp_notificaciones WHERE empresa_id=?", empresaId);
+        borrar("WHATSAPP", "DELETE FROM whatsapp_clientes WHERE empresa_id=?", empresaId);
+        borrar("WHATSAPP", "DELETE FROM conversations WHERE empresa_id=?", empresaId);
+      }
+    });
+    tx();
+
+    return res.json({ ok: true, empresa: empresa.nombre, resultados });
+  } catch (e) {
+    next(e);
+  }
+}
 function setModuloEmpresa(req, res, next) {
   try {
     const db = require("../db/database");
@@ -919,12 +1059,14 @@ module.exports = {
   listarEmpresas,
   crearEmpresa,
   actualizarEmpresa,
+  borrarDatosEmpresa,
   listarUsuarios,
   crearUsuario,
   actualizarUsuario,
   listarLicencias,
   crearLicencia,
   cambiarEstadoLicencia,
+  actualizarLicencia,
   listarModulosEmpresa,
   catalogoModulos,
   setModuloEmpresa,

@@ -360,6 +360,71 @@ function cambiarEstadoLicencia(id, estado) {
   return db.prepare("SELECT * FROM licencias WHERE id = ?").get(id);
 }
 
+function actualizarLicencia(id, { plan, precio, descuentoPorc, fechaInicio, fechaVencimiento, estado, notas, renovacionAutomatica }) {
+  const actual = db.prepare("SELECT * FROM licencias WHERE id = ?").get(id);
+  if (!actual) {
+    const error = new Error("Licencia no encontrada");
+    error.statusCode = 404;
+    throw error;
+  }
+  const planNuevo = plan ? String(plan).toUpperCase() : actual.plan;
+  if (!["MENSUAL", "TRIMESTRAL", "ANUAL", "DEFINITIVO"].includes(planNuevo)) {
+    const error = new Error("El plan debe ser MENSUAL, TRIMESTRAL, ANUAL o DEFINITIVO");
+    error.statusCode = 400;
+    throw error;
+  }
+  const estadoNuevo = estado ? String(estado).toUpperCase() : actual.estado;
+  if (!["ACTIVA", "VENCIDA", "CANCELADA"].includes(estadoNuevo)) {
+    const error = new Error("Estado inválido");
+    error.statusCode = 400;
+    throw error;
+  }
+  const precioNum = precio === undefined || precio === null || precio === "" ? Number(actual.precio) : Number(precio) || 0;
+  const descuentoNum = descuentoPorc === undefined || descuentoPorc === null || descuentoPorc === ""
+    ? Number(actual.descuento_porc)
+    : Math.min(100, Math.max(0, Number(descuentoPorc) || 0));
+  const total = Math.round(precioNum * (1 - descuentoNum / 100) * 100) / 100;
+  const inicio = fechaInicio !== undefined && fechaInicio !== null && fechaInicio !== "" ? String(fechaInicio).slice(0, 10) : actual.fecha_inicio;
+  const vencimiento = fechaVencimiento === null || fechaVencimiento === "" ? null : String(fechaVencimiento || actual.fecha_vencimiento || "").slice(0, 10) || null;
+  const renovacion = renovacionAutomatica === undefined || renovacionAutomatica === null ? Number(actual.renovacion_automatica || 0) : (renovacionAutomatica ? 1 : 0);
+  db.prepare(
+    `UPDATE licencias
+     SET plan=?, precio=?, descuento_porc=?, total=?, fecha_inicio=?, fecha_vencimiento=?, estado=?, notas=?, renovacion_automatica=?
+     WHERE id=?`,
+  ).run(planNuevo, precioNum, descuentoNum, total, inicio, vencimiento, estadoNuevo, notas === undefined ? actual.notas : notas || null, renovacion, id);
+  return db
+    .prepare(
+      `SELECT l.*, e.nombre AS empresa_nombre
+       FROM licencias l INNER JOIN empresas e ON e.id = l.empresa_id
+       WHERE l.id = ?`,
+    )
+    .get(id);
+}
+
+function licenciasPorVencer(dias = 7) {
+  const hoy = new Date().toISOString().slice(0, 10);
+  const limite = new Date();
+  limite.setDate(limite.getDate() + Math.max(1, Number(dias) || 7));
+  return db
+    .prepare(
+      `SELECT l.*, e.nombre AS empresa_nombre
+       FROM licencias l INNER JOIN empresas e ON e.id = l.empresa_id
+       WHERE l.estado = 'ACTIVA'
+         AND l.fecha_vencimiento IS NOT NULL
+         AND l.fecha_vencimiento >= ?
+         AND l.fecha_vencimiento <= ?
+       ORDER BY l.fecha_vencimiento ASC`,
+    )
+    .all(hoy, limite.toISOString().slice(0, 10));
+}
+
+function marcarAvisoLicencia(id) {
+  db.prepare("UPDATE licencias SET aviso_vencimiento_en = ? WHERE id = ?").run(
+    new Date().toISOString(),
+    Number(id),
+  );
+}
+
 function getSuperadminAvisos() {
   return db
     .prepare("SELECT id,usuario,nombre,email,telefono,whatsapp_activo FROM super_admins WHERE usuario='superadmin'")
@@ -384,7 +449,10 @@ module.exports = {
   actualizarUsuario,
   listarLicencias,
   crearLicencia,
+  actualizarLicencia,
   cambiarEstadoLicencia,
+  licenciasPorVencer,
+  marcarAvisoLicencia,
   getSuperadminAvisos,
   setSuperadminAvisos,
 };
