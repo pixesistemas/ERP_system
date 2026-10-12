@@ -19,7 +19,7 @@ CÓMO LEERLO
 
 # ---------- NÚCLEO ----------
 JWT_SECRET=<cadena larga y secreta, 40+ caracteres al azar>          # [OBLIGATORIA]
-JWT_EXPIRES_IN=8h
+JWT_EXPIRES_IN=23h
 DB_PATH=/app/data/afip_api.db
 DEMO_MODE=false
 AFIP_PRODUCTION=true
@@ -83,7 +83,7 @@ SUPERADMIN_PASSWORD=
 JWT_SECRET            Firma de las sesiones. Generá una cadena larga al azar
                       (en PowerShell: -join ((65..90)+(97..122)+(48..57) |
                       Get-Random -Count 48 | % {[char]$_})).
-JWT_EXPIRES_IN        Cuánto dura la sesión (8h está bien).
+JWT_EXPIRES_IN        Cuánto dura la sesión (23h = casi un día completo).
 DB_PATH               Ruta de la base dentro del contenedor. No cambiar.
 DEMO_MODE             false en producción (si es true crea datos de demo).
 AFIP_PRODUCTION       true = ARCA producción; false = homologación.

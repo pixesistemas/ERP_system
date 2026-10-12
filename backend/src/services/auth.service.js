@@ -102,7 +102,7 @@ function login({ email, password, empresaNombre, empresaId }) {
     },
     process.env.JWT_SECRET,
     {
-      expiresIn: process.env.JWT_EXPIRES_IN || "8h",
+      expiresIn: process.env.JWT_EXPIRES_IN || "23h",
     },
   );
   const refreshToken = createRefreshToken({
@@ -180,7 +180,7 @@ function refresh({ refreshToken }) {
     },
     process.env.JWT_SECRET,
     {
-      expiresIn: process.env.JWT_EXPIRES_IN || "8h",
+      expiresIn: process.env.JWT_EXPIRES_IN || "23h",
     },
   );
 

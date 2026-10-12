@@ -17,7 +17,7 @@ services:
       - DB_PATH=/app/data/afip_api.db
       # Obligatoria: sin esto la app no firma tokens.
       - JWT_SECRET=${JWT_SECRET:?Definí JWT_SECRET en las variables del stack}
-      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-8h}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-23h}
       - DEMO_MODE=${DEMO_MODE:-false}
       - AFIP_PRODUCTION=${AFIP_PRODUCTION:-true}
       # Ruta COMPLETA al ejecutable (el SDK de AFIP no acepta "openssl" a secas).

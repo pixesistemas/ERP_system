@@ -52,11 +52,12 @@ const RESULTADOS_VISITA = [
 ];
 
 function precioNeto(item: any) {
+  /* El precio del producto ya es el final (IVA incluido). */
   return Number(item.precio || 0) * Number(item.cantidad || 0) * (1 - Number(item.descuento || 0) / 100);
 }
 
 function totalCarrito(carrito: any[]) {
-  return carrito.reduce((n, i) => n + precioNeto(i) * (1 + Number(i.iva || 0) / 100), 0);
+  return carrito.reduce((n, i) => n + precioNeto(i), 0);
 }
 
 export function MobileVendorPage() {

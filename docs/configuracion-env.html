@@ -43,7 +43,7 @@
   <tr><th>Variable</th><th>Para qué sirve</th><th>Valor / dónde se obtiene</th></tr>
   <tr><td><code>JWT_SECRET</code><br/><span class="prioridad">OBLIGATORIA</span></td><td>Firma las sesiones de los usuarios.</td><td>Cadena larga al azar (40+ caracteres). Si queda vacía, la app no arranca.</td></tr>
   <tr><td><code>PUBLIC_BASE_URL</code><br/><span class="prioridad">OBLIGATORIA</span></td><td>URL pública para QR, PDFs y webhooks.</td><td><code>https://erp.pixesistemas.com.ar</code> (sin barra final).</td></tr>
-  <tr><td><code>JWT_EXPIRES_IN</code></td><td>Duración de la sesión.</td><td><code>8h</code></td></tr>
+  <tr><td><code>JWT_EXPIRES_IN</code></td><td>Duración de la sesión (casi un día completo).</td><td><code>23h</code></td></tr>
   <tr><td><code>DB_PATH</code></td><td>Ruta de la base dentro del contenedor.</td><td><code>/app/data/afip_api.db</code> (no cambiar).</td></tr>
   <tr><td><code>DEMO_MODE</code></td><td>Si crea datos de demo al iniciar.</td><td><code>false</code> en producción.</td></tr>
   <tr><td><code>AFIP_PRODUCTION</code></td><td>ARCA producción u homologación.</td><td><code>true</code> = producción.</td></tr>

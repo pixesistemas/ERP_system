@@ -28,6 +28,15 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const payload = await response.json().catch(() => ({}));
 
   if (!response.ok) {
+    /*
+     * Sesión vencida o usuario desactivado: se limpia el token y la app
+     * vuelve sola al login (las apps móviles intentan renovar con el
+     * dispositivo recordado). No aplica al propio login/refresh.
+     */
+    if (response.status === 401 && token && !path.startsWith("/auth/")) {
+      sessionStorage.removeItem("afip_demo_token");
+      if (typeof window !== "undefined") window.dispatchEvent(new Event("afip:sesion-vencida"));
+    }
     const baseMessage = payload.error || payload.message || "No se pudo completar la operación";
     const details = Array.isArray(payload.details) ? payload.details : [];
     const detailText = details.length

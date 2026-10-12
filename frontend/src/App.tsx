@@ -178,6 +178,32 @@ export function App() {
     })();
   }, []);
 
+  /*
+   * Cuando el token vence o el usuario fue desactivado, la API avisa con
+   * "afip:sesion-vencida": se va directo al login. En las apps móviles
+   * primero se intenta renovar la sesión con el dispositivo recordado.
+   */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const alVencer = async () => {
+      setSession(null);
+      const hostname = window.location.hostname;
+      const esAppMovil = hostname.startsWith("vendedor.") || hostname.startsWith("repartidor.") || hostname.startsWith("compras.");
+      if (!esAppMovil) return;
+      try {
+        const refreshToken = await leerDispositivo();
+        if (!refreshToken) return;
+        const r = await api.refreshSession(refreshToken);
+        sessionStorage.setItem("afip_demo_token", r.token);
+        setSession(r);
+      } catch {
+        borrarDispositivo().catch(() => {});
+      }
+    };
+    window.addEventListener("afip:sesion-vencida", alVencer);
+    return () => window.removeEventListener("afip:sesion-vencida", alVencer);
+  }, []);
+
   useEffect(() => {
     if (!session) return;
     api.getAppEstado().then(setAppInfo).catch(() => {});
