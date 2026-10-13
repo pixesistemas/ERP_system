@@ -632,7 +632,7 @@ export function SuperAdminPage() {
             <td><div className="sa-row-actions">
               <button className="sa-icon-btn" title="Importar rubros y marcas (CSV)" onClick={() => setRubrosModal({ empresaId: e.id, nombre: e.nombre, rubros: null, marcas: null, asociaciones: null })}><Tags size={15}/></button>
               <button className="sa-icon-btn" title="Editar" onClick={() => setEmpresaModal({ id: e.id, nombre: e.nombre, cuit: e.cuit, condicionIva: e.condicion_iva, razonSocial: e.razon_social, direccion: e.direccion || "", localidad: e.localidad || "", provincia: e.provincia || "", telefono: e.telefono || "", email: e.email || "", activa: !!e.activa, versionInstalada: e.version_instalada || "" })}><Pencil size={15}/></button>
-              <button className="sa-icon-btn" title="Borrar datos de esta empresa" onClick={() => setBorrarModal({ empresaId: e.id, nombre: e.nombre, confirmar: "", borrando: false, categorias: { VENTAS: true, CUENTA_CORRIENTE: true, VISITAS_RUTAS: false, STOCK: false, PRODUCTOS: false, RUBROS_MARCAS: false, COMPRAS: false, CLIENTES: false, WHATSAPP: false } })}><Trash2 size={15}/></button>
+              <button className="sa-icon-btn" title="Resetear datos de esta empresa (empezar de 0)" onClick={() => setBorrarModal({ empresaId: e.id, nombre: e.nombre, confirmar: "", borrando: false, categorias: { VENTAS: true, CUENTA_CORRIENTE: true, VISITAS_RUTAS: false, STOCK: false, PRODUCTOS: false, RUBROS_MARCAS: false, COMPRAS: false, CLIENTES: false, WHATSAPP: false } })}><Trash2 size={15}/></button>
             </div></td>
           </tr>)}</tbody></table>
           {!empresasVisibles.length && <div className="empty-table">No hay empresas.</div>}
@@ -912,8 +912,12 @@ export function SuperAdminPage() {
     </main>
 
     {borrarModal && <div className="modal-backdrop"><form className="product-modal polished-modal module-modal" onSubmit={(ev) => { ev.preventDefault(); borrarDatosEmpresaConfirmar(); }}>
-      <div className="modal-head"><div><h3>Borrar datos de {borrarModal.nombre}</h3><p>Se eliminan los datos elegidos de esta empresa. No se borra la empresa, sus usuarios, licencia ni configuración. <strong>No se puede deshacer.</strong></p></div><button type="button" onClick={() => setBorrarModal(null)}><X /></button></div>
+      <div className="modal-head"><div><h3>Resetear datos de {borrarModal.nombre} (empezar de 0)</h3><p>Se eliminan los datos elegidos de esta empresa. No se borra la empresa, sus usuarios, licencia ni configuración. <strong>No se puede deshacer.</strong></p></div><button type="button" onClick={() => setBorrarModal(null)}><X /></button></div>
       <div className="module-modal-body">
+        <div className="inline-actions" style={{ marginBottom: 8 }}>
+          <button type="button" className="secondary-action" onClick={() => setBorrarModal((prev: any) => ({ ...prev, categorias: { VENTAS: true, CUENTA_CORRIENTE: true, VISITAS_RUTAS: true, STOCK: true, PRODUCTOS: true, RUBROS_MARCAS: true, COMPRAS: true, CLIENTES: true, WHATSAPP: true } }))}>Marcar todo (vaciar la empresa)</button>
+          <button type="button" className="secondary-action" onClick={() => setBorrarModal((prev: any) => ({ ...prev, categorias: { VENTAS: false, CUENTA_CORRIENTE: false, VISITAS_RUTAS: false, STOCK: false, PRODUCTOS: false, RUBROS_MARCAS: false, COMPRAS: false, CLIENTES: false, WHATSAPP: false } }))}>Desmarcar todo</button>
+        </div>
         <h4>Qué querés borrar</h4>
         {[
           ["VENTAS", "Pedidos, ventas, facturas, presupuestos, remitos, reservas y devoluciones"],

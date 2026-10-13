@@ -109,6 +109,13 @@ const MODULOS_SISTEMA = [
       "Permite que otro sistema (por ejemplo un programa en FoxPro) emita facturas, notas de crédito y débito usando los certificados de esta empresa.",
   },
   {
+    clave: "TIENDANUBE",
+    nombre: "Conexión con Tiendanube",
+    tipo: "opcional",
+    descripcion:
+      "Sincronizá a demanda productos y stock con tu tienda de Tiendanube e importá los pedidos de la tienda como notas de pedido, sin procesos en segundo plano.",
+  },
+  {
     clave: "COBRO_TEMPORAL",
     nombre: "Cobro temporal",
     tipo: "opcional",

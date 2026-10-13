@@ -241,6 +241,12 @@ export const erpApi = {
   confirmarCobrosPedido: (pedidoId:number) => request<any>(`/erp/movil/admin/pedidos/${pedidoId}/cobros/confirmar`,{method:'POST',body:JSON.stringify({})}),
   reciboProvisorio: (pedidoId:number) => request<any>(`/erp/movil/pedidos/${pedidoId}/recibo-provisorio`,{method:'POST',body:JSON.stringify({})}),
   rentabilidadRubros: (desde:string,hasta:string) => request<any>(`/erp/rentabilidad/rubros?desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}`),
+  getTiendanube: () => request<any>('/erp/tiendanube'),
+  saveTiendanube: (data:any) => request<any>('/erp/tiendanube',{method:'PUT',body:JSON.stringify(data)}),
+  probarTiendanube: () => request<any>('/erp/tiendanube/probar',{method:'POST',body:JSON.stringify({})}),
+  exportarProductosTiendanube: (limite?:number) => request<any>('/erp/tiendanube/productos',{method:'POST',body:JSON.stringify({limite})}),
+  exportarStockTiendanube: (limite?:number) => request<any>('/erp/tiendanube/stock',{method:'POST',body:JSON.stringify({limite})}),
+  importarPedidosTiendanube: (limite?:number) => request<any>('/erp/tiendanube/pedidos',{method:'POST',body:JSON.stringify({limite})}),
   revisarPedidoMovil: (id:number,data:any) => request<any>(`/erp/movil/admin/pedidos/${id}/revisar`,{method:'POST',body:JSON.stringify(data)}),
   cambiarEstadoPedidoMovil: (id:number,estado:string,detalle?:string) => request<any>(`/erp/movil/admin/pedidos/${id}/estado`,{method:'POST',body:JSON.stringify({estado,detalle})}),
   reporteVendedores: (params:{desde:string;hasta:string;vendedor_id?:number|null}) => {

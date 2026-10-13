@@ -5683,6 +5683,21 @@ table.reporte-fijo td.neg{color:#B23B58;font-weight:700}
 .order-cuenta-check div{display:flex;flex-direction:column}
 .order-cuenta-check span{font-size:11.5px;color:var(--muted);margin-top:2px}
 
+/* Primeros pasos del resumen (estilo guía tipo Tiendanube) */
+.onboard-card{padding:14px 16px 6px;margin-bottom:14px}
+.onboard-head{display:flex;gap:10px;align-items:center;margin-bottom:8px}
+.onboard-head h3{margin:0;font-size:15px}
+.onboard-head p{margin:2px 0 0;font-size:12px;color:var(--muted)}
+.onboard-step{border-top:1px solid var(--bg)}
+.onboard-step-head{width:100%;display:flex;align-items:center;gap:10px;padding:10px 2px;background:none;border:0;cursor:pointer;text-align:left}
+.onboard-check{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--line-2);display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:#2f7a52}
+.onboard-step.hecho .onboard-check{background:#EAF7EF;border-color:#8FD3A8}
+.onboard-text{flex:1;display:flex;flex-direction:column}
+.onboard-text strong{font-size:13px;color:var(--ink)}
+.onboard-text small{font-size:11.5px;color:var(--muted);margin-top:2px}
+.onboard-step-body{padding:2px 2px 12px 32px}
+.onboard-step-body p{margin:0 0 8px;font-size:12px;color:var(--muted)}
+
 /* Saldo de cuenta corriente y cobros del pedido (apps moviles y bandeja) */
 .mobile-saldo{font-size:13px;color:var(--muted);margin:4px 0}
 .mobile-saldo.debe strong{color:#c0392b}

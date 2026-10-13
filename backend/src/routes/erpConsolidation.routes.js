@@ -3,6 +3,7 @@ const path=require('path');
 const fs=require('fs');
 const multer=require('multer');
 const c=require('../controllers/erpConsolidation.controller');
+const tiendanube=require('../controllers/tiendanube.controller');
 const beta2=require('../controllers/beta2.controller');
 const { requireModulo }=require('../utils/modulos');
 const uploadDir=path.join(process.cwd(),'storage','private','fiscal');
@@ -44,5 +45,6 @@ router.get('/pos/borradores',beta2.getDrafts);router.put('/pos/borradores',beta2
 router.get('/pos/operaciones/:id/imprimir',beta2.printPosOperation);router.get('/pos/operaciones/:id/imprimir-regalos',beta2.printPosVouchers);
 router.get('/empresa/archivos-fiscales',c.fiscalFiles);router.post('/empresa/archivos-fiscales/:type',upload.single('file'),c.uploadFiscal);
 router.get('/modulos',c.getModulosEmpresa);
+router.get('/tiendanube',requireModulo('TIENDANUBE'),tiendanube.getConfig);router.put('/tiendanube',requireModulo('TIENDANUBE'),tiendanube.saveConfig);router.post('/tiendanube/probar',requireModulo('TIENDANUBE'),tiendanube.probar);router.post('/tiendanube/productos',requireModulo('TIENDANUBE'),tiendanube.exportarProductos);router.post('/tiendanube/stock',requireModulo('TIENDANUBE'),tiendanube.exportarStock);router.post('/tiendanube/pedidos',requireModulo('TIENDANUBE'),tiendanube.importarPedidos);
 router.get('/cobros-temporales',c.listCobrosTemporales);router.post('/cobros-temporales',c.createCobroTemporal);router.delete('/cobros-temporales/:id',c.deleteCobroTemporal);router.post('/cobros-temporales/enviar-cuenta-corriente',c.enviarCobrosCuentaCorriente);
 module.exports=router;

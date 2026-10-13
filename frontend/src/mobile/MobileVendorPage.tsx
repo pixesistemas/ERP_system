@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { PagosEditor, fmtMoneda } from "./MovilPagos";
 import {
   Cloud,
@@ -21,9 +21,9 @@ import { fmtFecha } from "../utils/fecha";
 import { guardar, guardarMuchos, listar, obtener, uuidMovil } from "./offlineDb";
 
 /*
- * App móvil del vendedor (PWA).
+ * App mÃ³vil del vendedor (PWA).
  *
- * Funciona sin conexión: la cartera, los productos y los pedidos se
+ * Funciona sin conexiÃ³n: la cartera, los productos y los pedidos se
  * guardan en IndexedDB. Los pedidos y visitas creados offline quedan en
  * una cola con UUID y se sincronizan cuando vuelve Internet (el servidor
  * no los duplica).
@@ -34,18 +34,18 @@ type Vista = "home" | "clientes" | "cliente" | "pedido" | "pedidos" | "ruta";
 /* Estados del pedido explicados para el vendedor. */
 const ETIQUETA_ESTADO: Record<string, string> = {
   PENDIENTE: "Enviado",
-  REVISANDO: "En revisión",
+  REVISANDO: "En revisiÃ³n",
   CONFIRMADO: "Confirmado",
   PARCIAL: "Parcial",
   RECHAZADO: "Rechazado",
-  PREPARANDO: "En preparación",
+  PREPARANDO: "En preparaciÃ³n",
   DESPACHADO: "En reparto",
   ENTREGADO: "Entregado",
 };
 
 const RESULTADOS_VISITA = [
   { valor: "PEDIDO", label: "Pedido realizado" },
-  { valor: "NO_COMPRO", label: "No compró" },
+  { valor: "NO_COMPRO", label: "No comprÃ³" },
   { valor: "CERRADO", label: "Local cerrado" },
   { valor: "NO_ESTABA", label: "No estaba" },
   { valor: "REPROGRAMAR", label: "Reprogramar" },
@@ -138,7 +138,7 @@ export function MobileVendorPage() {
   }, [online, cargando]);
 
   /*
-   * Actualización automática: cada 30 segundos y al volver a la app, se
+   * ActualizaciÃ³n automÃ¡tica: cada 30 segundos y al volver a la app, se
    * refrescan los pedidos para ver los estados sin cerrar y abrir.
    */
   useEffect(() => {
@@ -148,12 +148,12 @@ export function MobileVendorPage() {
         const r = await erpApi.listMobileOrders();
         setPedidosServer(r.pedidos || []);
       } catch {
-        /* sin conexión: se reintenta solo */
+        /* sin conexiÃ³n: se reintenta solo */
       }
     };
     const intervalo = setInterval(() => {
       if (document.visibilityState === "visible") refrescar();
-    }, 30000);
+    }, 60000);
     const alVolver = () => {
       if (document.visibilityState === "visible") refrescar();
     };
@@ -187,7 +187,7 @@ export function MobileVendorPage() {
     await refrescarCola();
     setSincronizando(false);
     const restantes = (await listar("pedidos")).filter((x: any) => x.pendiente).length + (await listar("visitas")).filter((x: any) => x.pendiente).length;
-    setNotice(restantes ? `Quedaron ${restantes} pendientes de sincronizar.` : "✓ Todo sincronizado.");
+    setNotice(restantes ? `Quedaron ${restantes} pendientes de sincronizar.` : "âœ“ Todo sincronizado.");
     if (online) {
       try {
         const r = await erpApi.listMobileOrders();
@@ -276,8 +276,8 @@ export function MobileVendorPage() {
       const r = await erpApi.reciboProvisorio(Number(p.id));
       const url = String(r.pdf_url || r.url || "");
       const cliente = clientes.find((c: any) => Number(c.id) === Number(p.cliente_id));
-      const mensaje = `Recibo provisorio del pedido #${String(p.numero || 0).padStart(6, "0")}\nTotal entregado a cuenta: $ ${Number(r.total || 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}\nComprobante: ${url}\n(Pendiente de confirmación por la oficina)`;
-      if (cliente?.telefono && confirm("Recibo provisorio generado. ¿Compartirlo por WhatsApp con el cliente?")) {
+      const mensaje = `Recibo provisorio del pedido #${String(p.numero || 0).padStart(6, "0")}\nTotal entregado a cuenta: $ ${Number(r.total || 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}\nComprobante: ${url}\n(Pendiente de confirmaciÃ³n por la oficina)`;
+      if (cliente?.telefono && confirm("Recibo provisorio generado. Â¿Compartirlo por WhatsApp con el cliente?")) {
         compartirWhatsapp(cliente.telefono, mensaje);
       } else {
         window.open(url, "_blank");
@@ -294,13 +294,13 @@ export function MobileVendorPage() {
   }
 
   function resumenPedidoTexto(items: any[], total: number, numero?: any) {
-    const lineas = items.map((i: any) => `• ${Number(i.cantidad).toLocaleString("es-AR")} x ${i.descripcion}`).join("\n");
+    const lineas = items.map((i: any) => `â€¢ ${Number(i.cantidad).toLocaleString("es-AR")} x ${i.descripcion}`).join("\n");
     return `Pedido${numero ? ` #${String(numero).padStart(6, "0")}` : ""} - ${clienteSel?.razon_social || ""}\n${lineas}\nTotal: $ ${Number(total).toLocaleString("es-AR", { minimumFractionDigits: 2 })}`;
   }
 
   function compartirUltimoPedido(p: any) {
     const cliente = clientes.find((c: any) => Number(c.id) === Number(p.cliente_id));
-    compartirWhatsapp(cliente?.telefono || clienteSel?.telefono, `Pedido #${String(p.numero || 0).padStart(6, "0")} - ${p.cliente || ""}\nTotal: $ ${Number(p.total || 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}\n¡Gracias!`);
+    compartirWhatsapp(cliente?.telefono || clienteSel?.telefono, `Pedido #${String(p.numero || 0).padStart(6, "0")} - ${p.cliente || ""}\nTotal: $ ${Number(p.total || 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}\nÂ¡Gracias!`);
   }
 
   async function enviarPedido() {
@@ -348,9 +348,9 @@ export function MobileVendorPage() {
       await sincronizar();
       setNotice(cobrosFinales.length ? "Pedido enviado. El dinero declarado queda pendiente hasta que la oficina lo confirme." : "Pedido enviado al sistema.");
     } else {
-      setNotice("📴 Pedido guardado. Se enviará cuando vuelva Internet.");
+      setNotice("ðŸ“´ Pedido guardado. Se enviarÃ¡ cuando vuelva Internet.");
     }
-    if (telefono && confirm("¿Querés compartir el pedido por WhatsApp con el cliente?")) {
+    if (telefono && confirm("Â¿QuerÃ©s compartir el pedido por WhatsApp con el cliente?")) {
       compartirWhatsapp(telefono, resumen);
     }
     setClienteSel(null);
@@ -385,7 +385,7 @@ export function MobileVendorPage() {
       await sincronizar();
       setNotice("Visita registrada.");
     } else {
-      setNotice("📴 Visita guardada. Se enviará cuando vuelva Internet.");
+      setNotice("ðŸ“´ Visita guardada. Se enviarÃ¡ cuando vuelva Internet.");
     }
   }
 
@@ -404,7 +404,7 @@ export function MobileVendorPage() {
     return <div className="mobile-app">
       <div className="mobile-card">
         <h3>App del vendedor</h3>
-        <p>Tu usuario todavía no está vinculado a un vendedor. Pedile al administrador que lo asocie desde <strong>Vendedores</strong>.</p>
+        <p>Tu usuario todavÃ­a no estÃ¡ vinculado a un vendedor. Pedile al administrador que lo asocie desde <strong>Vendedores</strong>.</p>
         {error && <div className="error-box">{error}</div>}
       </div>
     </div>;
@@ -414,14 +414,14 @@ export function MobileVendorPage() {
     <div className="mobile-topbar">
       <button className="mobile-back" onClick={() => { setVista("home"); setClienteSel(null); }}><Home size={18} /></button>
       <div className="mobile-estado">
-        {online ? <span className="mobile-online"><Cloud size={15} /> Online</span> : <span className="mobile-offline"><CloudOff size={15} /> Sin conexión</span>}
+        {online ? <span className="mobile-online"><Cloud size={15} /> Online</span> : <span className="mobile-offline"><CloudOff size={15} /> Sin conexiÃ³n</span>}
         {cola.length > 0 && <button className="mobile-pendientes" onClick={sincronizar} disabled={sincronizando}><RefreshCw size={14} /> {cola.length} pendiente(s)</button>}
       </div>
     </div>
 
     {error && <div className="error-box">{error}</div>}
     {notice && <div className="success-box">{notice}</div>}
-    {geoPendiente && <div className="mobile-aviso">📍 Ubicación pendiente: el pedido se guardó sin GPS y se reintentará al sincronizar.</div>}
+    {geoPendiente && <div className="mobile-aviso">ðŸ“ UbicaciÃ³n pendiente: el pedido se guardÃ³ sin GPS y se reintentarÃ¡ al sincronizar.</div>}
 
     {vista === "home" && <>
       <div className="mobile-hero">
@@ -429,21 +429,21 @@ export function MobileVendorPage() {
         <p>{clientes.length} clientes en tu cartera</p>
       </div>
       <div className="mobile-grid">
-        <button className="mobile-action" onClick={() => { setVista("pedidos"); }}><ClipboardList size={22} /><strong>Pedidos de hoy</strong><span>{pedidosServer.filter((p: any) => !["ENTREGADO", "RECHAZADO"].includes(String(p.estado_pedido || "").toUpperCase())).length} en curso · {pedidosServer.length} en total</span></button>
+        <button className="mobile-action" onClick={() => { setVista("pedidos"); }}><ClipboardList size={22} /><strong>Pedidos de hoy</strong><span>{pedidosServer.filter((p: any) => !["ENTREGADO", "RECHAZADO"].includes(String(p.estado_pedido || "").toUpperCase())).length} en curso Â· {pedidosServer.length} en total</span></button>
         <button className="mobile-action" onClick={() => { setVista("clientes"); setQ(""); }}><UserRound size={22} /><strong>Clientes</strong><span>Buscar y tomar pedido</span></button>
         <button className="mobile-action" onClick={() => { setVista("ruta"); }}><Route size={22} /><strong>Ruta</strong><span>Por localidad</span></button>
-        <button className="mobile-action" onClick={() => { setVista("clientes"); setQ(""); setNotice("Elegí el cliente para registrar la visita."); }}><MapPin size={22} /><strong>Visitas</strong><span>Registrar recorrido</span></button>
+        <button className="mobile-action" onClick={() => { setVista("clientes"); setQ(""); setNotice("ElegÃ­ el cliente para registrar la visita."); }}><MapPin size={22} /><strong>Visitas</strong><span>Registrar recorrido</span></button>
       </div>
     </>}
 
     {vista === "clientes" && <>
       <div className="mobile-search">
-        <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar nombre, CUIT, dirección..." />
+        <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar nombre, CUIT, direcciÃ³n..." />
       </div>
       <div className="mobile-list">
         {clientesFiltrados.slice(0, 80).map((c: any) => <button key={c.id} className="mobile-cliente" onClick={() => { setClienteSel(c); setVista("cliente"); }}>
           <div><strong>{c.razon_social}</strong><span>{c.domicilio || c.localidad || ""}</span></div>
-          <small>{ultimoPedido(c.id)?.fecha ? `Último pedido: ${fmtFecha(ultimoPedido(c.id).fecha)}` : "Sin pedidos"}</small>
+          <small>{ultimoPedido(c.id)?.fecha ? `Ãšltimo pedido: ${fmtFecha(ultimoPedido(c.id).fecha)}` : "Sin pedidos"}</small>
         </button>)}
         {!clientesFiltrados.length && <div className="empty-table">No hay clientes que coincidan.</div>}
       </div>
@@ -452,7 +452,7 @@ export function MobileVendorPage() {
     {vista === "cliente" && clienteSel && <>
       <div className="mobile-card">
         <h3>{clienteSel.razon_social}</h3>
-        <p>{clienteSel.domicilio || ""} {clienteSel.localidad ? `· ${clienteSel.localidad}` : ""}</p>
+        <p>{clienteSel.domicilio || ""} {clienteSel.localidad ? `Â· ${clienteSel.localidad}` : ""}</p>
         <p>{clienteSel.cuit ? `CUIT ${clienteSel.cuit}` : clienteSel.dni ? `DNI ${clienteSel.dni}` : ""}</p>
         <p className={"mobile-saldo " + (Number(clienteSel.saldo || 0) > 0 ? "debe" : Number(clienteSel.saldo || 0) < 0 ? "favor" : "")}>Saldo cuenta corriente: <strong>{Number(clienteSel.saldo || 0) < 0 ? "a favor $ " : "$ "}{Math.abs(Number(clienteSel.saldo || 0)).toLocaleString("es-AR", { minimumFractionDigits: 2 })}</strong>{Number(clienteSel.saldo || 0) > 0 ? " (debe)" : ""}</p>
         <div className="mobile-acciones-cliente">
@@ -466,11 +466,11 @@ export function MobileVendorPage() {
 
     {vista === "pedido" && clienteSel && <>
       <div className="mobile-search">
-        <input autoFocus value={qProd} onChange={(e) => setQProd(e.target.value)} placeholder="Buscar producto por código o descripción..." />
+        <input autoFocus value={qProd} onChange={(e) => setQProd(e.target.value)} placeholder="Buscar producto por cÃ³digo o descripciÃ³n..." />
       </div>
       {productosFiltrados.length > 0 && <div className="mobile-list">
         {productosFiltrados.map((p: any) => <button key={p.id} className="mobile-producto" onClick={() => agregarProducto(p)}>
-          <div><strong>{p.descripcion}</strong><span>{p.codigo} · $ {Number(p.precio).toLocaleString("es-AR", { minimumFractionDigits: 2 })} · <em className={Number(p.stock || 0) > 0 ? "mobile-stock" : "mobile-stock sin"}>{Number(p.stock || 0) > 0 ? `Stock: ${Number(p.stock).toLocaleString("es-AR", { maximumFractionDigits: 2 })}` : "Sin stock"}</em></span></div>
+          <div><strong>{p.descripcion}</strong><span>{p.codigo} Â· $ {Number(p.precio).toLocaleString("es-AR", { minimumFractionDigits: 2 })} Â· <em className={Number(p.stock || 0) > 0 ? "mobile-stock" : "mobile-stock sin"}>{Number(p.stock || 0) > 0 ? `Stock: ${Number(p.stock).toLocaleString("es-AR", { maximumFractionDigits: 2 })}` : "Sin stock"}</em></span></div>
           <Plus size={18} />
         </button>)}
       </div>}
@@ -479,7 +479,7 @@ export function MobileVendorPage() {
       <div className="mobile-carrito">
         <h4>Pedido para {clienteSel.razon_social}</h4>
         <p className={"mobile-saldo " + (Number(clienteSel.saldo || 0) > 0 ? "debe" : "favor")}>Saldo cuenta corriente: <strong>{Number(clienteSel.saldo || 0) < 0 ? "a favor $ " : "$ "}{Math.abs(Number(clienteSel.saldo || 0)).toLocaleString("es-AR", { minimumFractionDigits: 2 })}</strong>{Number(clienteSel.saldo || 0) > 0 ? " (debe)" : ""}</p>
-        {!carrito.length && <p className="mobile-vacio">Buscá productos y tocálos para agregarlos.</p>}
+        {!carrito.length && <p className="mobile-vacio">BuscÃ¡ productos y tocÃ¡los para agregarlos.</p>}
         {carrito.map((i: any) => <div className="mobile-linea" key={i.id}>
           <div><strong>{i.descripcion}</strong><span>$ {Number(i.precio).toLocaleString("es-AR", { minimumFractionDigits: 2 })}</span></div>
           <div className="mobile-cantidad">
@@ -505,11 +505,11 @@ export function MobileVendorPage() {
       </div>
       <div className="mobile-list">
         {cola.map((p: any) => <div key={p.id} className="mobile-cliente pendiente">
-          <div><strong>{p.cliente}</strong><span>{p.tipo === "PEDIDO" ? "Pedido" : "Visita"} · {new Date(p.creado).toLocaleString("es-AR")}</span></div>
+          <div><strong>{p.cliente}</strong><span>{p.tipo === "PEDIDO" ? "Pedido" : "Visita"} Â· {new Date(p.creado).toLocaleString("es-AR")}</span></div>
           <small className="badge warning">PENDIENTE</small>
         </div>)}
         {pedidosServer.map((p: any) => <div key={p.id} className="mobile-cliente">
-          <div><strong>{p.cliente || "CONSUMIDOR FINAL"}</strong><span>{p.tipo} {String(p.punto_venta || "").padStart(4, "0")}-{String(p.numero || "").padStart(8, "0")} · {fmtFecha(p.fecha)}</span></div>
+          <div><strong>{p.cliente || "CONSUMIDOR FINAL"}</strong><span>{p.tipo} {String(p.punto_venta || "").padStart(4, "0")}-{String(p.numero || "").padStart(8, "0")} Â· {fmtFecha(p.fecha)}</span></div>
           <div className="mobile-pedido-acciones">
             <small className="badge">{ETIQUETA_ESTADO[String(p.estado_pedido || p.estado || "PENDIENTE").toUpperCase()] || p.estado_pedido || "Enviado"}</small>
             {Number(p.cobro_pendiente || 0) > 0 && <small className="badge warning">$ {fmtMoneda(p.cobro_pendiente)} pend.</small>}
@@ -520,14 +520,14 @@ export function MobileVendorPage() {
             </div>
           </div>
         </div>)}
-        {!cola.length && !pedidosServer.length && <div className="empty-table">Todavía no enviaste pedidos.</div>}
+        {!cola.length && !pedidosServer.length && <div className="empty-table">TodavÃ­a no enviaste pedidos.</div>}
       </div>
     </>}
 
     {vista === "ruta" && <>
       <div className="mobile-card">
         <h3>Ruta por localidad</h3>
-        <p>Tu cartera ordenada por zona para recorrer el día.</p>
+        <p>Tu cartera ordenada por zona para recorrer el dÃ­a.</p>
       </div>
       {rutaPorLocalidad.map(([localidad, lista]) => <div className="mobile-card" key={localidad}>
         <h4>{localidad} ({lista.length})</h4>
@@ -536,15 +536,15 @@ export function MobileVendorPage() {
           <MapPin size={16} />
         </button>)}
       </div>)}
-      {!clientes.length && <div className="empty-table">No tenés clientes asignados todavía.</div>}
+      {!clientes.length && <div className="empty-table">No tenÃ©s clientes asignados todavÃ­a.</div>}
     </>}
 
     {detallePedido && <div className="modal-backdrop"><div className="modal mobile-visita">
-      <div className="modal-head"><div><h3>{detallePedido.pedido?.cliente || "Pedido"} #{String(detallePedido.pedido?.numero || 0).padStart(6, "0")}</h3><p>{fmtFecha(detallePedido.pedido?.fecha)} · {detallePedido.pedido?.estado_pedido || "PENDIENTE"}</p></div><button onClick={() => setDetallePedido(null)}><X /></button></div>
+      <div className="modal-head"><div><h3>{detallePedido.pedido?.cliente || "Pedido"} #{String(detallePedido.pedido?.numero || 0).padStart(6, "0")}</h3><p>{fmtFecha(detallePedido.pedido?.fecha)} Â· {detallePedido.pedido?.estado_pedido || "PENDIENTE"}</p></div><button onClick={() => setDetallePedido(null)}><X /></button></div>
       <div className="mobile-card" style={{ marginTop: 8 }}>
         <h4>Productos del pedido</h4>
         {(detallePedido.items || []).map((i: any) => <div className="mobile-linea" key={i.id}>
-          <div><strong>{i.descripcion}</strong><span>{i.codigo} · $ {Number(i.precio_unitario || 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}</span></div>
+          <div><strong>{i.descripcion}</strong><span>{i.codigo} Â· $ {Number(i.precio_unitario || 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}</span></div>
           <b>{Number(i.cantidad).toLocaleString("es-AR")}</b>
         </div>)}
         <div className="mobile-total"><span>TOTAL</span><strong>$ {Number(detallePedido.pedido?.total || 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}</strong></div>
@@ -552,7 +552,7 @@ export function MobileVendorPage() {
       {(detallePedido.cobros || []).filter((c: any) => c.estado === "PENDIENTE").length > 0 && <div className="mobile-card">
         <h4>Dinero pendiente de confirmar</h4>
         {detallePedido.cobros.filter((c: any) => c.estado === "PENDIENTE").map((c: any) => <div className="mobile-linea" key={c.id}>
-          <div><strong>{c.medio}</strong><span>{c.cheque_numero ? `N° ${c.cheque_numero} · ${c.banco || ""}` : c.banco || ""}</span></div>
+          <div><strong>{c.medio}</strong><span>{c.cheque_numero ? `NÂ° ${c.cheque_numero} Â· ${c.banco || ""}` : c.banco || ""}</span></div>
           <b>$ {fmtMoneda(c.importe)}</b>
         </div>)}
         <button className="mobile-btn-sec full" onClick={() => reciboProvisorio(detallePedido.pedido)}>Recibo provisorio</button>
@@ -578,3 +578,5 @@ export function MobileVendorPage() {
     </div></div>}
   </div>;
 }
+
+
