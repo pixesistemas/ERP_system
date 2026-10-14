@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Guía para cargar productos - Cómo empezar</title>
+<style>
+  @page { size: A4; margin: 12mm; }
+  * { box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; font-size: 13px; color: #222; line-height: 1.5; max-width: 900px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 24px; margin: 0 0 2px; color: #4a3d8f; }
+  .sub { color: #666; font-size: 13px; margin-bottom: 16px; }
+  h2 { font-size: 17px; color: #4a3d8f; border-bottom: 2px solid #ded8f2; padding-bottom: 3px; margin: 20px 0 10px; }
+  h3 { font-size: 14px; margin: 12px 0 4px; }
+  p, li { margin: 4px 0; }
+  ol, ul { padding-left: 22px; margin: 6px 0; }
+  .paso { background: #F7F9FD; border-left: 4px solid #6952C4; border-radius: 6px; padding: 8px 12px; margin: 8px 0; }
+  .nota { background: #FFF8E6; border: 1px solid #F0C36D; border-radius: 8px; padding: 8px 12px; margin: 8px 0; }
+  .clave { background: #EAF7EF; border: 1px solid #8FD3A8; border-radius: 8px; padding: 8px 12px; margin: 8px 0; }
+  .boton { display: inline-block; background: #6952C4; color: #fff; border-radius: 6px; padding: 1px 7px; font-weight: bold; font-size: 12px; }
+  .boton-borde { display: inline-block; border: 1px solid #bbb; border-radius: 6px; padding: 1px 7px; font-weight: bold; font-size: 12px; }
+  .ruta { font-family: Consolas, monospace; background: #F0F1F5; border-radius: 4px; padding: 1px 6px; font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 12px; }
+  th, td { border: 1px solid #bbb; padding: 5px 7px; text-align: left; }
+  th { background: #2E3A59; color: #fff; }
+  .dibujo { background: #FBFBFE; border: 1px solid #E3E0F2; border-radius: 10px; padding: 8px; margin: 10px 0; text-align: center; }
+  footer { margin-top: 20px; color: #777; font-size: 11px; text-align: center; }
+  @media print { body { padding: 0; } h2 { break-after: avoid; } .paso, .nota, .clave, .dibujo, tr { break-inside: avoid; } }
+</style>
+</head>
+<body>
+
+<h1>Guía para cargar tus productos</h1>
+<div class="sub">El orden recomendado para dejar el catálogo listo y vender · PixeSistemas</div>
+
+<p>Para que todo quede prolijo y después sea fácil buscar, filtrar y reportar, el catálogo se carga <strong>en este orden</strong>: primero las categorías (rubros, subrubros y marcas), después las unidades de medida, después los productos y al final el stock inicial. Cada paso lleva unos minutos y deja todo preparado para el POS, la app de los vendedores y WhatsApp.</p>
+
+<div class="dibujo">
+<svg width="820" height="110" viewBox="0 0 820 110" xmlns="http://www.w3.org/2000/svg">
+  <defs><marker id="f" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#6952C4"/></marker></defs>
+  <rect x="15" y="30" width="140" height="52" rx="9" fill="#F4F1FB" stroke="#6952C4" stroke-width="2"/>
+  <text x="85" y="53" text-anchor="middle" font-family="Arial" font-size="12.5" font-weight="bold" fill="#4a3d8f">1. Rubros</text>
+  <text x="85" y="69" text-anchor="middle" font-family="Arial" font-size="10.5" fill="#555">y Subrubros</text>
+  <line x1="160" y1="56" x2="195" y2="56" stroke="#6952C4" stroke-width="2" marker-end="url(#f)"/>
+  <rect x="200" y="30" width="140" height="52" rx="9" fill="#F4F1FB" stroke="#6952C4" stroke-width="2"/>
+  <text x="270" y="53" text-anchor="middle" font-family="Arial" font-size="12.5" font-weight="bold" fill="#4a3d8f">2. Marcas</text>
+  <text x="270" y="69" text-anchor="middle" font-family="Arial" font-size="10.5" fill="#555">opcional</text>
+  <line x1="345" y1="56" x2="380" y2="56" stroke="#6952C4" stroke-width="2" marker-end="url(#f)"/>
+  <rect x="385" y="30" width="150" height="52" rx="9" fill="#F4F1FB" stroke="#6952C4" stroke-width="2"/>
+  <text x="460" y="53" text-anchor="middle" font-family="Arial" font-size="12.5" font-weight="bold" fill="#4a3d8f">3. Productos</text>
+  <text x="460" y="69" text-anchor="middle" font-family="Arial" font-size="10.5" fill="#555">uno a uno o importados</text>
+  <line x1="540" y1="56" x2="575" y2="56" stroke="#6952C4" stroke-width="2" marker-end="url(#f)"/>
+  <rect x="580" y="30" width="215" height="52" rx="9" fill="#EAF7EF" stroke="#4CAF7D" stroke-width="2"/>
+  <text x="687" y="53" text-anchor="middle" font-family="Arial" font-size="12.5" font-weight="bold" fill="#2f7a52">4. Stock inicial</text>
+  <text x="687" y="69" text-anchor="middle" font-family="Arial" font-size="10.5" fill="#555">Entrada por producto</text>
+</svg>
+</div>
+
+<h2>1. Rubros, subrubros y marcas (primero las categorías)</h2>
+<p>Menú <span class="ruta">Gestión → Rubros, subrubros y marcas</span>. La pantalla tiene <strong>tres solapas</strong>: Rubros, Subrubros y Marcas.</p>
+<div class="paso">
+  <strong>A) Rubros</strong> (las categorías grandes): escribí el nombre y tocá <span class="boton">+ Agregar</span>. Ejemplos: <em>Almacén, Bebidas, Limpieza, Ferretería, Perfumería, Viajes</em>...<br/>
+  <strong>B) Subrubros</strong> (van dentro de un rubro): elegí primero el <strong>rubro al que pertenece</strong> y después el nombre. Ejemplo: rubro <em>Almacén</em> → subrubro <em>Papeles</em>; rubro <em>Bebidas</em> → subrubro <em>Gaseosas</em>.<br/>
+  <strong>C) Marcas</strong>: cargá solo las marcas que usás (ej.: <em>La Serenísima, Coca-Cola, Elegante</em>). Es opcional, pero ayuda a buscar y a hacer aumentos por marca.
+</div>
+<div class="clave"><strong>Tip:</strong> podés renombrar cualquier rubro, subrubro o marca con el lápiz, incluso después de usarlo: los productos se actualizan solos. No hace falta cargar todas las categorías de una: podés empezar con las principales y seguir después.</div>
+
+<h2>2. Unidades de medida</h2>
+<p>Menú <span class="ruta">Gestión → Unidades de medida</span>. Cargá las unidades que usás para vender: <strong>UN</strong> (unidad), <strong>KG</strong> (kilo), <strong>LT</strong> (litro), <strong>MT</strong> (metro), <strong>CAJ</strong> (caja), etc. Cada producto después usa una de estas unidades (para vender por peso o por metro, por ejemplo).</p>
+
+<h2>3. Productos: uno a uno</h2>
+<p>Menú <span class="ruta">Gestión → Productos</span> → botón <span class="boton">+ Nuevo producto</span>. La ficha tiene <strong>tres solapas</strong>: <em>General</em> (datos y precios), <em>Packs</em> (códigos de barras adicionales) y <em>Proveedores</em> (costo y código de cada proveedor). En General cargás:</p>
+<table>
+  <tr><th>Campo</th><th>Qué poner</th></tr>
+  <tr><td><strong>Código</strong></td><td>Tu código interno (ej.: <em>A001</em>). Es único: se usa en el POS, la app de vendedores y las planillas.</td></tr>
+  <tr><td><strong>Código de barras</strong></td><td>El número del fabricante (EAN). En la solapa <em>Packs</em> podés cargar códigos adicionales: por ejemplo el código del bulto con su cantidad (6 unidades).</td></tr>
+  <tr><td><strong>Descripción</strong></td><td>El nombre del producto tal como lo busca el vendedor (lo más claro posible).</td></tr>
+  <tr><td><strong>Rubro / Subrubro / Marca</strong></td><td>Se eligen de lo que ya cargaste en el paso 1.</td></tr>
+  <tr><td><strong>Unidad de medida</strong></td><td>UN, KG, LT, etc. (paso 2).</td></tr>
+  <tr><td><strong>Costo</strong></td><td>Lo que te cuesta a vos. Si después completás la <strong>Utilidad %</strong>, el sistema <strong>calcula solo el precio de venta</strong> (costo + IVA + utilidad).</td></tr>
+  <tr><td><strong>Precio de venta</strong></td><td>El precio <strong>final con IVA incluido</strong> (el precio de mostrador). Podés escribirlo directo o dejar que se calcule con la utilidad.</td></tr>
+  <tr><td><strong>IVA</strong></td><td>21% general, 10,5% o exento según el producto.</td></tr>
+  <tr><td><strong>Activo</strong></td><td>Destildado el producto no se vende más, pero <strong>no se borra</strong>: el historial queda completo.</td></tr>
+</table>
+<div class="nota"><strong>Atajos útiles:</strong> desde la lista de productos podés <strong>editar el precio en línea</strong> (sin abrir la ficha) y desactivar los productos que ya no vendés. El precio de la lista es el que va a usar el POS, la app y WhatsApp.</div>
+
+<h2>4. Productos: importar todo de una (si tenés el catálogo en Excel)</h2>
+<p>Si ya tenés tu lista en una planilla, es más rápido: menú <span class="ruta">Gestión → Importar productos</span>. Exportá tu Excel a formato <strong>CSV</strong> (o subí el XLSX) con estas columnas:</p>
+<table>
+  <tr><th>codigo</th><th>barras</th><th>descripcion</th><th>precio</th><th>costo</th><th>iva</th><th>unidad</th></tr>
+  <tr><td>P001</td><td>7790895000101</td><td>Papel higiénico x 4</td><td>3900</td><td>2200</td><td>21</td><td>UN</td></tr>
+  <tr><td>P002</td><td>(opcional)</td><td>Gaseosa cola 2,25 L</td><td>3800</td><td>2100</td><td>21</td><td>UN</td></tr>
+</table>
+<ul>
+  <li>La única columna obligatoria es <strong>codigo</strong>.</li>
+  <li>Si el código <strong>ya existe</strong>, se <strong>actualiza</strong> (precio, costo, descripción); si no existe, se <strong>crea</strong>.</li>
+  <li>Antes de importar, el sistema te muestra una <strong>previsualización</strong> fila por fila: revisá que los datos entren en la columna correcta y confirmá.</li>
+</ul>
+<div class="clave"><strong>Recomendación:</strong> cargá primero a mano un par de productos para probar el circuito, y después importá el resto.</div>
+
+<h2>5. Stock inicial (cuánto tenés hoy)</h2>
+<p>Menú <span class="ruta">Gestión → Inventario</span> → botón <span class="boton">+ Entrada</span>. Buscás el producto por nombre o código, ponés la <strong>cantidad</strong> y el motivo ("Stock inicial", por ejemplo) y guardás. Repetís por cada producto con mercadería.</p>
+<ul>
+  <li>Con el stock cargado, el POS y los pedidos descuentan solo (según la configuración de cada comprobante).</li>
+  <li>Los pedidos de los vendedores <strong>reservan</strong> el stock automáticamente.</li>
+  <li>El <strong>Resumen</strong> del sistema te avisa qué productos quedaron sin stock para reponer.</li>
+  <li>El botón "Salida" sirve para pérdidas, roturas o ajustes (queda registrado con su motivo).</li>
+</ul>
+
+<h2>6. Después: mantener los precios actualizados</h2>
+<p>Menú <span class="ruta">Gestión → Actualización de precios</span>. Permite aplicar un aumento (o descuento) en porcentaje a <strong>todos los productos</strong> o filtrar por <strong>rubro, subrubro, marca, proveedor o tipo</strong>. Es la forma rápida de remarcar toda una categoría cuando te cambian los costos.</p>
+<p>También podés imprimir <strong>precios de góndola</strong> desde <span class="ruta">Gestión → Precios de góndola</span> (etiquetas para las estanterías) y armar <strong>combos, descuentos por cantidad y promociones</strong> desde el menú Gestión.</p>
+
+<h2>7. Preguntas frecuentes</h2>
+<table>
+  <tr><th>Pregunta</th><th>Respuesta</th></tr>
+  <tr><td>¿Tengo que cargar todo de una vez?</td><td>No. Podés empezar con los productos principales y seguir cargando cuando quieras. Lo importante es cargar <strong>rubros antes que productos</strong> para no reasignar después.</td></tr>
+  <tr><td>¿Qué pasa si me equivoqué en el código?</td><td>Se puede editar desde la ficha del producto. El código es el identificador: evitá cambiarlo si ya vendiste con ese código.</td></tr>
+  <tr><td>¿El precio lleva IVA o no?</td><td>El precio de venta se carga <strong>con IVA incluido</strong> (es el precio que ve el cliente). El sistema separa el IVA solo en la factura.</td></tr>
+  <tr><td>¿Puedo cargar productos sin stock?</td><td>Sí. El producto queda activo y aparece sin stock ("Sin stock" en la app). Cuando llegue la mercadería, cargás la entrada.</td></tr>
+  <tr><td>¿Los productos se comparten con la tienda online?</td><td>Sí: si tenés activada la conexión con Tiendanube, desde el menú Tiendanube se exportan los productos y el stock, y se importan los pedidos de la tienda.</td></tr>
+  <tr><td>¿Puedo borrar un producto?</td><td>Mejor desactivalo: deja de venderse pero el historial y los reportes siguen completos.</td></tr>
+</table>
+
+<h2>8. Resumen del orden de carga</h2>
+<div class="dibujo" style="text-align:left">
+<div class="paso" style="border-left-color:#4CAF7D;background:#F2FBF6">
+<strong>Orden recomendado:</strong><br/>
+1. <span class="ruta">Rubros, subrubros y marcas</span> → las categorías principales.<br/>
+2. <span class="ruta">Unidades de medida</span> → UN, KG, LT, etc.<br/>
+3. <span class="ruta">Productos</span> → a mano unos pocos, después <span class="ruta">Importar productos</span> con tu planilla.<br/>
+4. <span class="ruta">Inventario → Entrada</span> → el stock inicial.<br/>
+5. <span class="ruta">Actualización de precios</span> → para remarcar cuando haga falta.
+</div>
+</div>
+<div class="nota">Con esto ya podés vender: los productos aparecen en el Punto de venta, en la app de los vendedores y (si está activado) en WhatsApp y Tiendanube. Las otras cargas (clientes, usuarios y vendedores, puntos de venta y caja) están en las guías del administrador.</div>
+
+<footer>PixeSistemas · ERP Empresarial · Guía de carga de catálogo · Ante cualquier duda, comunicate con el soporte.</footer>
+
+</body>
+</html>
