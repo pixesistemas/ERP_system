@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Bell, Phone, BellRing, BadgeCheck } from "lucide-react";
 import { api } from "../services/api";
 
@@ -42,7 +42,7 @@ export function WhatsappBell({ onNavigate }: { onNavigate: (page: string) => voi
       {nuevos > 0 && <b>{nuevos > 99 ? "99+" : nuevos}</b>}
     </button>
     {open && <div className="wa-bell-panel">
-      <div className="wa-bell-head"><strong>Notificaciones entrantes</strong><button onClick={() => setOpen(false)}>Ã—</button></div>
+      <div className="wa-bell-head"><strong>Notificaciones entrantes</strong><button onClick={() => setOpen(false)}>×</button></div>
       {error && <p className="wa-bell-err">{error}</p>}
       {!items.length ? <p className="wa-bell-empty">No hay novedades por ahora.</p> : items.map((it, i) => <button key={i} className="wa-bell-item" onClick={() => { setOpen(false); onNavigate(it.page); }}>
         <it.icon size={15} /><span>{it.texto}</span><b>Ver</b>
@@ -51,4 +51,3 @@ export function WhatsappBell({ onNavigate }: { onNavigate: (page: string) => voi
     </div>}
   </div>;
 }
-

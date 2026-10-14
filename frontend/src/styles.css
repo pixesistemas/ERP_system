@@ -3662,7 +3662,7 @@ button {
   background:#D9718A!important;
   color:#fff!important;
 }
-/* V3.0: operaciÃ³n por teclado, mÃ³dulos y modales */
+/* V3.0: operación por teclado, módulos y modales */
 .keyboard-help {
   background:var(--sidebar-bg);
   color:var(--line-2);
@@ -3854,7 +3854,7 @@ padding:0 12px;
     grid-column:1/-1;
   }
 }
-/* V3.2 â€” mÃ³dulos operativos y formularios */
+/* V3.2 — módulos operativos y formularios */
 .polished-modal {
   width:min(680px,94vw);
   padding:0;
@@ -4683,7 +4683,7 @@ padding:0 12px;
     grid-template-columns:1fr;
   }
 }
-/* V3.6 â€” consistencia, buscadores, diseÃ±ador y reportes PDF */
+/* V3.6 — consistencia, buscadores, diseñador y reportes PDF */
 .searchable-options-wide {
   width:min(760px,88vw)!important;
   max-width:100%;
@@ -4981,7 +4981,7 @@ padding:0 12px;
     width:98vw;
   }
 }
-/* V4 Beta 1.2 â€” compras: catÃ¡logos rÃ¡pidos y retenciones/percepciones */
+/* V4 Beta 1.2 — compras: catálogos rápidos y retenciones/percepciones */
 .select-add-row {
   display:grid;
   grid-template-columns:minmax(0,1fr) 42px;
@@ -5405,10 +5405,7 @@ padding:0 12px;
 .product-tabs-modal .form-grid{gap:10px;padding:16px 20px}
 .product-tabs-modal .supplier-links{min-height:140px;padding:14px 20px}
 .product-tabs-modal .supplier-link-row{padding:8px;gap:8px}
-/* ActualizaciÃ³n masiva de precios */
-.price-update-card .price-filter-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:14px 0 8px}
-.price-multi{max-height:300px;overflow:auto;margin-bottom:14px}
-/* ActualizaciÃ³n masiva de precios */
+/* Actualización masiva de precios */
 .price-update-card .price-filter-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:14px 0 8px}
 .price-multi{max-height:300px;overflow:auto;margin-bottom:14px}
 
@@ -5697,6 +5694,103 @@ table.reporte-fijo td.neg{color:#B23B58;font-weight:700}
 .onboard-text small{font-size:11.5px;color:var(--muted);margin-top:2px}
 .onboard-step-body{padding:2px 2px 12px 32px}
 .onboard-step-body p{margin:0 0 8px;font-size:12px;color:var(--muted)}
+
+/* ===== Estilo tipo Tiendanube: inputs, botones y tarjetas ===== */
+.products-page label:not(.toggle-row):not(.sa-check),
+.form-grid label:not(.toggle-row):not(.sa-check),
+.settings-card>label:not(.toggle-row) {
+  text-transform:none;
+  letter-spacing:0;
+  font-weight:600;
+  font-size:12.5px;
+  color:#3D3D3D;
+}
+.products-page input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.products-page select,
+.products-page textarea,
+.form-grid input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.form-grid select,
+.form-grid textarea,
+.settings-card input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.settings-card select {
+  border:1px solid #DCDEE3;
+  border-radius:8px;
+  padding:10px 12px;
+  background:#fff;
+  color:#2B2B2B;
+  font-size:13.5px;
+  font-weight:500;
+}
+.products-page input:not([type="checkbox"]):focus,
+.products-page select:focus,
+.products-page textarea:focus,
+.form-grid input:not([type="checkbox"]):focus,
+.form-grid select:focus,
+.form-grid textarea:focus,
+.settings-card input:not([type="checkbox"]):focus,
+.settings-card select:focus {
+  border-color:#3483FA;
+  box-shadow:0 0 0 3px rgba(52,131,250,.16);
+  outline:none;
+}
+.primary-action,
+button.save {
+  background:#3483FA !important;
+  border:1px solid #3483FA !important;
+  color:#fff !important;
+  border-radius:8px !important;
+  text-transform:none !important;
+  letter-spacing:0 !important;
+  font-weight:700 !important;
+  padding:10px 16px !important;
+}
+.primary-action:hover,
+button.save:hover { background:#2F76E0 !important; }
+.secondary-action,
+button.secondary {
+  background:#fff !important;
+  border:1px solid #DCDEE3 !important;
+  color:#2B2B2B !important;
+  border-radius:8px !important;
+  text-transform:none !important;
+  letter-spacing:0 !important;
+  font-weight:600 !important;
+  padding:10px 16px !important;
+}
+.secondary-action:hover { background:#F5F6F8 !important; }
+.danger-action {
+  background:#fff !important;
+  border:1px solid #F3B6AE !important;
+  color:#C0392B !important;
+  border-radius:8px !important;
+  text-transform:none !important;
+  letter-spacing:0 !important;
+  font-weight:700 !important;
+  padding:10px 16px !important;
+}
+.products-card,
+.settings-card {
+  border:1px solid #E6E8EB;
+  border-radius:12px;
+  box-shadow:0 1px 2px rgba(16,24,40,.04);
+}
+.products-card table th,
+.settings-card table th {
+  background:#F7F8FA;
+  color:#6B7280;
+  text-transform:none;
+  letter-spacing:0;
+  font-weight:600;
+  border-bottom:1px solid #E6E8EB;
+}
+.products-card table td { border-bottom:1px solid #F1F2F4; }
+.products-toolbar h3 { letter-spacing:0; text-transform:none; }
+.report-filters label,
+.search-box .pv-filter-label {
+  text-transform:none;
+  letter-spacing:0;
+  font-weight:600;
+}
 
 /* Saldo de cuenta corriente y cobros del pedido (apps moviles y bandeja) */
 .mobile-saldo{font-size:13px;color:var(--muted);margin:4px 0}

@@ -1,12 +1,12 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDown, ChevronUp, MapPin, Package, Phone, RefreshCw, Truck, X } from "lucide-react";
 import { erpApi } from "../services/api";
 import { fmtFecha } from "../utils/fecha";
 import { PagosEditor } from "./MovilPagos";
 
 /*
- * App del repartidor (PWA): hoja de ruta del dÃ­a con paradas ordenadas,
- * carga del vehÃ­culo, navegaciÃ³n y registro de entregas con hora y GPS.
+ * App del repartidor (PWA): hoja de ruta del día con paradas ordenadas,
+ * carga del vehículo, navegación y registro de entregas con hora y GPS.
  */
 export function MobileDriverPage() {
   const [ruta, setRuta] = useState<any>(null);
@@ -37,7 +37,7 @@ export function MobileDriverPage() {
     setEstadoEntrega("ENTREGADO");
     setObsEntrega("");
     limpiarCobro();
-    /* Si ya tenÃ­a devoluciones cargadas, se muestran para corregir. */
+    /* Si ya tenía devoluciones cargadas, se muestran para corregir. */
     const previas: Record<string, number> = {};
     for (const dv of p.devoluciones || []) previas[String(dv.producto_id ?? dv.codigo ?? dv.descripcion)] = Number(dv.cantidad || 0);
     setDevueltos(previas);
@@ -138,8 +138,8 @@ export function MobileDriverPage() {
     return <div className="mobile-app">
       <div className="mobile-card">
         <h3>App del repartidor</h3>
-        <p>No tenÃ©s una ruta activa en este momento.</p>
-        {ultimaCerrada ? <p>Tu Ãºltima ruta estÃ¡ <strong>finalizada</strong> (del {fmtFecha(ultimaCerrada.fecha)}). Pedile a la oficina que la <strong>reabra</strong> o que arme una nueva.</p> : <p>La oficina arma la ruta desde <strong>Ventas â†’ Reparto</strong> y la asigna a <strong>tu usuario</strong>; en cuanto lo haga, aparece acÃ¡ automÃ¡ticamente (se actualiza sola cada 20 segundos).</p>}
+        <p>No tenés una ruta activa en este momento.</p>
+        {ultimaCerrada ? <p>Tu última ruta está <strong>finalizada</strong> (del {fmtFecha(ultimaCerrada.fecha)}). Pedile a la oficina que la <strong>reabra</strong> o que arme una nueva.</p> : <p>La oficina arma la ruta desde <strong>Ventas → Reparto</strong> y la asigna a <strong>tu usuario</strong>; en cuanto lo haga, aparece acá automáticamente (se actualiza sola cada 20 segundos).</p>}
         <button className="mobile-btn-sec" onClick={cargar}><RefreshCw size={16} /> Actualizar ahora</button>
       </div>
       {error && <div className="error-box">{error}</div>}
@@ -152,7 +152,7 @@ export function MobileDriverPage() {
     <div className="mobile-topbar">
       <div className="mobile-hero">
         <h2>Ruta {ruta.ruta.numero}</h2>
-        <p>{fmtFecha(ruta.ruta.fecha)} Â· {ruta.pedidos.length} paradas Â· {pendientes} pendientes</p>
+        <p>{fmtFecha(ruta.ruta.fecha)} · {ruta.pedidos.length} paradas · {pendientes} pendientes</p>
       </div>
       <button className="mobile-back" onClick={cargar}><RefreshCw size={18} /></button>
     </div>
@@ -160,10 +160,10 @@ export function MobileDriverPage() {
     {error && <div className="error-box">{error}</div>}
     {notice && <div className="success-box">{notice}</div>}
 
-    <button className="mobile-btn-sec full" onClick={() => setVerCarga((v) => !v)}><Package size={18} /> {verCarga ? "Ocultar carga del vehÃ­culo" : "Ver carga del vehÃ­culo"}</button>
+    <button className="mobile-btn-sec full" onClick={() => setVerCarga((v) => !v)}><Package size={18} /> {verCarga ? "Ocultar carga del vehículo" : "Ver carga del vehículo"}</button>
 
     {verCarga && <div className="mobile-card">
-      <h3>Carga del vehÃ­culo</h3>
+      <h3>Carga del vehículo</h3>
       <p>Total de productos de toda la ruta.</p>
       {ruta.carga.map((c: any) => <div className="mobile-linea" key={`${c.codigo}-${c.descripcion}`}>
         <div><strong>{c.descripcion}</strong><span>{c.codigo}</span></div>
@@ -176,8 +176,8 @@ export function MobileDriverPage() {
         <div className="parada-head">
           <div>
             <h3>{i + 1}. {p.cliente || "CONSUMIDOR FINAL"}</h3>
-            <p>{p.domicilio || ""} {p.localidad ? `Â· ${p.localidad}` : ""}</p>
-            <p>Pedido {String(p.punto_venta || "").padStart(4, "0")}-{String(p.numero || "").padStart(8, "0")} Â· $ {Number(p.total || 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}</p>
+            <p>{p.domicilio || ""} {p.localidad ? `· ${p.localidad}` : ""}</p>
+            <p>Pedido {String(p.punto_venta || "").padStart(4, "0")}-{String(p.numero || "").padStart(8, "0")} · $ {Number(p.total || 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}</p>
             {Number(p.saldo || 0) !== 0 && <p className={Number(p.saldo) > 0 ? "mobile-saldo debe" : "mobile-saldo favor"}>Saldo cuenta corriente: <strong>$ {Math.abs(Number(p.saldo)).toLocaleString("es-AR", { minimumFractionDigits: 2 })}</strong>{Number(p.saldo) > 0 ? " (debe)" : " (a favor)"}</p>}
           </div>
           <span className={p.estado_entrega === "ENTREGADO" ? "badge success" : p.estado_entrega === "NO_ENTREGADO" ? "badge danger" : p.estado_entrega === "PARCIAL" ? "badge warning" : "badge"}>{p.estado_entrega}</span>
@@ -188,7 +188,7 @@ export function MobileDriverPage() {
           <button className="mobile-btn-sec" onClick={() => setExpandido(expandido === p.ruta_pedido_id ? null : p.ruta_pedido_id)}>{expandido === p.ruta_pedido_id ? <ChevronUp size={16} /> : <ChevronDown size={16} />} Productos</button>
         </div>
         {p.devoluciones?.length ? <div className="parada-devueltos">
-          {p.devoluciones.map((dv: any) => <div key={dv.id}>âˆ’{Number(dv.cantidad).toLocaleString("es-AR")} {dv.descripcion || dv.codigo} {dv.confirmado ? <small>(confirmado)</small> : <small>(pendiente de confirmar)</small>}</div>)}
+          {p.devoluciones.map((dv: any) => <div key={dv.id}>−{Number(dv.cantidad).toLocaleString("es-AR")} {dv.descripcion || dv.codigo} {dv.confirmado ? <small>(confirmado)</small> : <small>(pendiente de confirmar)</small>}</div>)}
         </div> : null}
         {expandido === p.ruta_pedido_id && <div className="parada-items">
           {p.items.map((it: any) => <div className="mobile-linea" key={`${it.codigo}-${it.descripcion}`}>
@@ -211,10 +211,10 @@ export function MobileDriverPage() {
       <label className="mobile-obs">Observaciones<input value={obsEntrega} onChange={(e) => setObsEntrega(e.target.value)} placeholder="Opcional" /></label>
       {estadoEntrega !== "NO_ENTREGADO" && <PagosEditor pagos={pagos} setPagos={setPagos} onDraftChange={setPagoBorrador} resetSignal={resetPagos} />}
       {(entrega.items || []).length > 0 && <div className="mobile-card" style={{ marginTop: 8 }}>
-        <h4>Â¿Te devolvieron algo?</h4>
-        <p>MarcÃ¡ la cantidad que el cliente devolviÃ³. Si no devolviÃ³ nada, dejalo en 0. El administrador lo va a ver en la ruta.</p>
+        <h4>¿Te devolvieron algo?</h4>
+        <p>Marcá la cantidad que el cliente devolvió. Si no devolvió nada, dejalo en 0. El administrador lo va a ver en la ruta.</p>
         {(entrega.items || []).map((i: any) => <div className="mobile-linea" key={claveItem(i)}>
-          <div><strong>{i.descripcion}</strong><span>{i.codigo} Â· pedido: {Number(i.cantidad).toLocaleString("es-AR")}</span></div>
+          <div><strong>{i.descripcion}</strong><span>{i.codigo} · pedido: {Number(i.cantidad).toLocaleString("es-AR")}</span></div>
           <input type="text" inputMode="decimal" pattern="[0-9]*" value={devueltos[claveItem(i)] ?? 0} onFocus={(e) => e.currentTarget.select()} onChange={(e) => { const limpio = String(e.target.value).replace(/[^\d.,]/g, "").replace(",", "."); const n = Number(limpio) || 0; setDevueltos({ ...devueltos, [claveItem(i)]: Math.min(n, Number(i.cantidad)) }); }} style={{ width: 84, height: 38, textAlign: "center", border: "1px solid var(--line-2)", borderRadius: 8, fontWeight: 700 }} />
         </div>)}
       </div>}
@@ -225,5 +225,3 @@ export function MobileDriverPage() {
     </div></div>}
   </div>;
 }
-
-
