@@ -203,12 +203,34 @@ function listarProductos({ empresaId, texto = '', includeInactive = false }) {
 }
 function obtenerProducto({ id, empresaId }) { return conCodigosBarras(mapProducto(db.prepare('SELECT * FROM productos WHERE id = ? AND empresa_id = ?').get(id, empresaId)), empresaId); }
 function saveSuppliers({empresaId, productoId, proveedores}){db.prepare('DELETE FROM producto_proveedores WHERE empresa_id=? AND producto_id=?').run(empresaId,productoId);const ins=db.prepare('INSERT INTO producto_proveedores(empresa_id,producto_id,proveedor_id,codigo_proveedor,costo,principal) VALUES(?,?,?,?,?,?)');for(const r of proveedores||[]){if(r.proveedorId)ins.run(empresaId,productoId,Number(r.proveedorId),r.codigoProveedor||null,Number(r.costo||0),r.principal?1:0)}}
+/*
+ * No se permiten dos productos activos con la misma descripción.
+ * (Evita duplicados al cargar a mano o por importación.)
+ */
+function validarDescripcionUnica({ empresaId, descripcion, excluirId = 0 }) {
+  const texto = String(descripcion || "").trim();
+  if (!texto) return;
+  const dup = db
+    .prepare(
+      "SELECT id, codigo FROM productos WHERE empresa_id=? AND activo=1 AND LOWER(TRIM(descripcion))=LOWER(?) AND id<>? LIMIT 1",
+    )
+    .get(empresaId, texto, Number(excluirId) || 0);
+  if (dup) {
+    const error = new Error(
+      `Ya existe un producto con esa descripción (código ${dup.codigo}). Si es un artículo distinto, agregale una aclaración al nombre.`,
+    );
+    error.statusCode = 409;
+    throw error;
+  }
+}
 function crearProducto({ empresaId, data }) {
   const p = normalizeData(data);
+  validarDescripcionUnica({ empresaId, descripcion: p.descripcion });
   const tx=db.transaction(()=>{const r = db.prepare(`INSERT INTO productos (empresa_id,codigo,codigo_barra,descripcion,precio,iva,unidad,activo,costo,utilidad,rubro_id,subrubro_id,marca_id,unidad_id,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)`).run(empresaId,p.codigo,p.codigo_barra,p.descripcion,p.precio,p.iva,p.unidad,p.activo,p.costo,p.utilidad,p.rubro_id,p.subrubro_id,p.marca_id,p.unidad_id);saveSuppliers({empresaId,productoId:r.lastInsertRowid,proveedores:p.proveedores});saveCodigosBarras({empresaId,productoId:r.lastInsertRowid,codigos:p.codigosBarras});return r.lastInsertRowid});const id=tx();return obtenerProducto({ id, empresaId });
 }
 function actualizarProducto({ id, empresaId, data }) {
   const p = normalizeData(data);
+  validarDescripcionUnica({ empresaId, descripcion: p.descripcion, excluirId: id });
   const tx=db.transaction(()=>{db.prepare(`UPDATE productos SET codigo=?,codigo_barra=?,descripcion=?,precio=?,iva=?,unidad=?,activo=?,costo=?,utilidad=?,rubro_id=?,subrubro_id=?,marca_id=?,unidad_id=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND empresa_id=?`).run(p.codigo,p.codigo_barra,p.descripcion,p.precio,p.iva,p.unidad,p.activo,p.costo,p.utilidad,p.rubro_id,p.subrubro_id,p.marca_id,p.unidad_id,id,empresaId);saveSuppliers({empresaId,productoId:id,proveedores:p.proveedores});db.prepare('DELETE FROM producto_codigos_barras WHERE empresa_id=? AND producto_id=?').run(empresaId,id);saveCodigosBarras({empresaId,productoId:id,codigos:p.codigosBarras})});tx();return obtenerProducto({ id, empresaId });
 }
 function desactivarProducto({ id, empresaId }) { db.prepare('UPDATE productos SET activo=0,updated_at=CURRENT_TIMESTAMP WHERE id=? AND empresa_id=?').run(id,empresaId); return obtenerProducto({ id, empresaId }); }

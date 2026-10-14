@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Cómo cargar códigos por pack (bultos)</title>
+<style>
+  @page { size: A4; margin: 12mm; }
+  * { box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; font-size: 13px; color: #222; line-height: 1.5; max-width: 900px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 24px; margin: 0 0 2px; color: #4a3d8f; }
+  .sub { color: #666; font-size: 13px; margin-bottom: 16px; }
+  h2 { font-size: 17px; color: #4a3d8f; border-bottom: 2px solid #ded8f2; padding-bottom: 3px; margin: 20px 0 10px; }
+  h3 { font-size: 14px; margin: 12px 0 4px; }
+  p, li { margin: 4px 0; }
+  ol, ul { padding-left: 22px; margin: 6px 0; }
+  .paso { background: #F7F9FD; border-left: 4px solid #6952C4; border-radius: 6px; padding: 8px 12px; margin: 8px 0; }
+  .nota { background: #FFF8E6; border: 1px solid #F0C36D; border-radius: 8px; padding: 8px 12px; margin: 8px 0; }
+  .clave { background: #EAF7EF; border: 1px solid #8FD3A8; border-radius: 8px; padding: 8px 12px; margin: 8px 0; }
+  .boton { display: inline-block; background: #6952C4; color: #fff; border-radius: 6px; padding: 1px 7px; font-weight: bold; font-size: 12px; }
+  .ruta { font-family: Consolas, monospace; background: #F0F1F5; border-radius: 4px; padding: 1px 6px; font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 12px; }
+  th, td { border: 1px solid #bbb; padding: 5px 7px; text-align: left; }
+  th { background: #2E3A59; color: #fff; }
+  code { font-family: Consolas, monospace; background: #F0F1F5; border-radius: 4px; padding: 0 4px; }
+  .dibujo { background: #FBFBFE; border: 1px solid #E3E0F2; border-radius: 10px; padding: 8px; margin: 10px 0; text-align: center; }
+  footer { margin-top: 20px; color: #777; font-size: 11px; text-align: center; }
+  @media print { body { padding: 0; } h2 { break-after: avoid; } .paso, .nota, .clave, .dibujo, tr { break-inside: avoid; } }
+</style>
+</head>
+<body>
+
+<h1>Códigos por pack: cargá los bultos una sola vez</h1>
+<div class="sub">Para que al escanear el código del bulto se cargue la cantidad de unidades automáticamente · PixeSistemas</div>
+
+<h2>1. ¿Qué es un "código por pack"?</h2>
+<p>Muchos productos vienen en <strong>bultos</strong>: la gaseosa suelta tiene un código de barras, pero el <strong>pack de 6</strong> tiene <em>otro</em> código distinto, y la <strong>caja de 12</strong> otro más. El sistema permite guardar esos códigos "extra" dentro del mismo producto, con su cantidad.</p>
+<div class="clave"><strong>La ventaja:</strong> cuando el cajero escanea el código del pack, el POS carga solo <strong>6 unidades al precio unitario</strong> (no una). Sin esto, escanear el bulto daría error o cargaría 1 sola unidad.</div>
+
+<div class="dibujo">
+<svg width="800" height="120" viewBox="0 0 800 120" xmlns="http://www.w3.org/2000/svg">
+  <defs><marker id="f" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#6952C4"/></marker></defs>
+  <rect x="20" y="20" width="200" height="76" rx="10" fill="#F4F1FB" stroke="#6952C4" stroke-width="2"/>
+  <text x="120" y="48" text-anchor="middle" font-family="Arial" font-size="12.5" font-weight="bold" fill="#4a3d8f">Código del producto</text>
+  <text x="120" y="66" text-anchor="middle" font-family="Consolas" font-size="11" fill="#555">7790895640101</text>
+  <text x="120" y="84" text-anchor="middle" font-family="Arial" font-size="10.5" fill="#777">unidad suelta · carga 1</text>
+  <line x1="225" y1="58" x2="285" y2="58" stroke="#6952C4" stroke-width="2" marker-end="url(#f)"/>
+  <rect x="290" y="20" width="220" height="76" rx="10" fill="#F7F9FD" stroke="#6952C4" stroke-width="2"/>
+  <text x="400" y="48" text-anchor="middle" font-family="Arial" font-size="12.5" font-weight="bold" fill="#4a3d8f">Código del pack x6</text>
+  <text x="400" y="66" text-anchor="middle" font-family="Consolas" font-size="11" fill="#555">7790895640118</text>
+  <text x="400" y="84" text-anchor="middle" font-family="Arial" font-size="10.5" fill="#2f7a52">escaneás y carga 6 unidades</text>
+  <line x1="515" y1="58" x2="575" y2="58" stroke="#6952C4" stroke-width="2" marker-end="url(#f)"/>
+  <rect x="580" y="20" width="200" height="76" rx="10" fill="#EAF7EF" stroke="#4CAF7D" stroke-width="2"/>
+  <text x="680" y="48" text-anchor="middle" font-family="Arial" font-size="12.5" font-weight="bold" fill="#2f7a52">Código de caja x12</text>
+  <text x="680" y="66" text-anchor="middle" font-family="Consolas" font-size="11" fill="#555">7790895640125</text>
+  <text x="680" y="84" text-anchor="middle" font-family="Arial" font-size="10.5" fill="#2f7a52">escaneás y carga 12 unidades</text>
+</svg>
+</div>
+
+<h2>2. Cómo cargarlo (paso a paso)</h2>
+<div class="paso">
+  <strong>1.</strong> Menú <span class="ruta">Gestión → Productos</span>.<br/>
+  <strong>2.</strong> Buscá el producto y tocá el <strong>lápiz (Editar)</strong> (o creá el producto nuevo primero).<br/>
+  <strong>3.</strong> En la ficha, entrá a la solapa <strong>Códigos por pack</strong>.<br/>
+  <strong>4.</strong> Tocá el botón para <strong>agregar una fila</strong> y completá:<br/>
+  &nbsp;&nbsp;· <strong>Código de barras del pack</strong>: el número impreso en el bulto (escanealo con el lector en esa casilla o tipealo).<br/>
+  &nbsp;&nbsp;· <strong>Cantidad</strong>: cuántas unidades trae (mínimo 2; por ejemplo 6 o 12).<br/>
+  <strong>5.</strong> Si hay varios bultos (pack y caja), repetí con otra fila.<br/>
+  <strong>6.</strong> Guardá el producto y listo.
+</div>
+<div class="nota">Si dejás el mouse sobre los campos verás la ayuda del sistema: <em>"Cada código extra carga su cantidad al escanearlo en el POS (ej: pack x6, caja x12)"</em>.</div>
+
+<h2>3. Ejemplo completo</h2>
+<p>Producto: <em>Gaseosa cola 2,25 L</em> (código interno <code>B001</code>, precio $3.800).</p>
+<table>
+  <tr><th>Campo de la ficha</th><th>Qué cargar</th></tr>
+  <tr><td>Código de barras (dato general)</td><td><code>7790895640101</code> — el de la botella suelta</td></tr>
+  <tr><td>Solapa <strong>Códigos por pack</strong> · fila 1 · Código del pack</td><td><code>7790895640118</code></td></tr>
+  <tr><td>Solapa <strong>Códigos por pack</strong> · fila 1 · Cantidad</td><td><code>6</code></td></tr>
+  <tr><td>Solapa <strong>Códigos por pack</strong> · fila 2 · Código del pack</td><td><code>7790895640125</code></td></tr>
+  <tr><td>Solapa <strong>Códigos por pack</strong> · fila 2 · Cantidad</td><td><code>12</code></td></tr>
+</table>
+<p>En el POS:</p>
+<ul>
+  <li>Escaneás la botella (<code>...101</code>) → carga <strong>1 unidad</strong>.</li>
+  <li>Escaneás el pack (<code>...118</code>) → avisa <strong>"Pack 6 × Gaseosa cola 2,25 L: se cargaron 6 unidades"</strong>.</li>
+  <li>Escaneás la caja (<code>...125</code>) → carga <strong>12 unidades</strong> al mismo precio unitario.</li>
+</ul>
+
+<h2>4. Reglas a tener en cuenta</h2>
+<ul>
+  <li>Cada código de pack es <strong>único</strong>: no se puede repetir en otro producto ni usar el mismo código principal del producto.</li>
+  <li>La cantidad <strong>mínima es 2</strong>. Para la unidad suelta se usa el código de barras principal del producto.</li>
+  <li>Podés cargar <strong>todos los packs que necesites</strong> en el mismo producto (la solapa te muestra cuántos tiene: "Códigos por pack (2)").</li>
+  <li>Si el fabricante cambia un código, editá la fila o borrala con el tacho y cargá el nuevo.</li>
+  <li>En la <strong>app del vendedor</strong>, buscar por el código del pack encuentra el producto (la cantidad se carga a mano). El descuento automático de cantidad es en el POS con lector.</li>
+</ul>
+
+<h2>5. Cómo probarlo (2 minutos)</h2>
+<ol>
+  <li>Cargá el pack en un producto de prueba (por ejemplo, 2 unidades).</li>
+  <li>Abrí el POS (<span class="ruta">Ventas → Punto de venta</span>).</li>
+  <li>En la casilla <strong>CÓDIGO</strong> escribí el código del pack y tocá Enter (es lo mismo que escanearlo).</li>
+  <li>Verificás que la grilla muestra <strong>2 unidades</strong> y el aviso del pack. Borrá la línea y listo.</li>
+</ol>
+
+<h2>6. ¿Para qué productos conviene?</h2>
+<table>
+  <tr><th>Sí, conviene</th><th>No hace falta</th></tr>
+  <tr><td>Bebidas (pack x6, caja x12), cervezas, aguas.</td><td>Productos que no vienen en bultos.</td></tr>
+  <tr><td>Almacén por bulto (fideos x20, azúcar x10).</td><td>Productos que ya se venden fraccionados (por kg).</td></tr>
+  <tr><td>Limpieza (pack x4, caja x8).</td><td>Artículos únicos (un electrodoméstico, un servicio).</td></tr>
+</table>
+<div class="clave"><strong>Resumen:</strong> cargás una sola vez el código de cada bulto con su cantidad, y de ahí en más el control de stock y la facturación salen bien <em>sin importar cómo lo escanee el cajero</em> (unidad, pack o caja).</div>
+
+<footer>PixeSistemas · ERP Empresarial · Guía de códigos por pack · Ante cualquier duda, comunicate con el soporte.</footer>
+
+</body>
+</html>

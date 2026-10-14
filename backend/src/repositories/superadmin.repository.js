@@ -133,6 +133,20 @@ function listarUsuarios(empresaId) {
     .all(...params);
 }
 
+/*
+ * Los IDs de los roles pueden variar entre instalaciones, así que el rol
+ * se resuelve SIEMPRE por nombre en la base (evita el error de clave
+ * foránea al crear usuarios desde el superadmin).
+ */
+function resolverRolId(rol) {
+  const valor = String(rol ?? "").trim().toUpperCase();
+  if (!valor) return null;
+  const porNumero = { "1": "ADMIN", "2": "CAJERO", "3": "VENDEDOR" };
+  const nombre = porNumero[valor] || valor;
+  const row = db.prepare("SELECT id FROM roles WHERE UPPER(nombre)=?").get(nombre);
+  return row ? Number(row.id) : null;
+}
+
 function crearUsuario({ nombre, usuario, email, password, empresaId, rol }) {
   const nombreOk = (nombre || "").trim();
   const usuarioOk = usuario ? String(usuario).trim().toLowerCase() : null;
@@ -142,12 +156,9 @@ function crearUsuario({ nombre, usuario, email, password, empresaId, rol }) {
     error.statusCode = 400;
     throw error;
   }
-  const rolRepartidor = db
-    .prepare("SELECT id FROM roles WHERE nombre='REPARTIDOR'")
-    .get()?.id;
-  const rolesValidos = [1, 3, rolRepartidor].filter(Boolean);
-  if (!rolesValidos.includes(rol)) {
-    const error = new Error("El rol debe ser ADMIN (1), VENDEDOR (3) o REPARTIDOR");
+  const rolId = resolverRolId(rol);
+  if (!rolId) {
+    const error = new Error("El rol elegido no existe en el sistema (revisá ADMIN, VENDEDOR o REPARTIDOR).");
     error.statusCode = 400;
     throw error;
   }
@@ -186,9 +197,9 @@ function crearUsuario({ nombre, usuario, email, password, empresaId, rol }) {
     db.prepare(
       "INSERT INTO usuario_empresas (usuario_id, empresa_id, activo) VALUES (?, ?, 1) ON CONFLICT(usuario_id, empresa_id) DO UPDATE SET activo = 1",
     ).run(usuarioId, empresaId);
-    const rolActual = db.prepare("SELECT id FROM usuario_roles WHERE usuario_id = ? AND empresa_id = ? AND rol_id = ?").get(usuarioId, empresaId, rol);
+    const rolActual = db.prepare("SELECT id FROM usuario_roles WHERE usuario_id = ? AND empresa_id = ? AND rol_id = ?").get(usuarioId, empresaId, rolId);
     if (!rolActual) {
-      db.prepare("INSERT INTO usuario_roles (usuario_id, empresa_id, rol_id) VALUES (?, ?, ?)").run(usuarioId, empresaId, rol);
+      db.prepare("INSERT INTO usuario_roles (usuario_id, empresa_id, rol_id) VALUES (?, ?, ?)").run(usuarioId, empresaId, rolId);
     }
     return usuarioId;
   });
@@ -254,11 +265,17 @@ function actualizarUsuario(id, { nombre, usuario, email, password, activo, empre
         "INSERT INTO usuario_empresas (usuario_id, empresa_id, activo) VALUES (?, ?, 1) ON CONFLICT(usuario_id, empresa_id) DO UPDATE SET activo = 1",
       ).run(id, Number(empresaId));
       if (rol !== undefined && rol !== null && rol !== "") {
+        const rolId = resolverRolId(rol);
+        if (!rolId) {
+          const error = new Error("El rol elegido no existe en el sistema (revisá ADMIN, VENDEDOR o REPARTIDOR).");
+          error.statusCode = 400;
+          throw error;
+        }
         db.prepare("DELETE FROM usuario_roles WHERE usuario_id = ?").run(id);
         db.prepare("INSERT INTO usuario_roles (usuario_id, empresa_id, rol_id) VALUES (?, ?, ?)").run(
           id,
           Number(empresaId),
-          Number(rol),
+          rolId,
         );
       }
     }
@@ -269,7 +286,8 @@ function actualizarUsuario(id, { nombre, usuario, email, password, activo, empre
     .prepare(
       `SELECT u.id, u.nombre, u.email, u.activo,
         MAX(ue.empresa_id) AS empresa_id,
-        (SELECT rol_id FROM usuario_roles ur WHERE ur.usuario_id = u.id LIMIT 1) AS rol_id
+      (SELECT rol_id FROM usuario_roles ur WHERE ur.usuario_id = u.id LIMIT 1) AS rol_id,
+      (SELECT r2.nombre FROM usuario_roles ur2 JOIN roles r2 ON r2.id = ur2.rol_id WHERE ur2.usuario_id = u.id LIMIT 1) AS rol_nombre
        FROM usuarios u
        LEFT JOIN usuario_empresas ue ON ue.usuario_id = u.id AND ue.activo = 1
        WHERE u.id = ? GROUP BY u.id`,

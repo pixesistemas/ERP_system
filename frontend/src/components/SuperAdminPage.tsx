@@ -644,7 +644,7 @@ export function SuperAdminPage() {
           <div><h3>Usuarios</h3><p>Creá usuarios y vincúlalos a una empresa con rol ADMIN o VENDEDOR.</p></div>
           <div className="sa-toolbar-right">
             <label className="sa-filtro">Empresa<select value={filtroEmpresa} onChange={(e) => setFiltroEmpresa(e.target.value)}><option value="">Todas</option>{empresas.map((en) => <option key={en.id} value={en.id}>{en.nombre}</option>)}</select></label>
-            <button className="primary-action" onClick={() => setUsuarioModal({ nombre: "", usuario: "", email: "", password: "", empresaId: empresas[0]?.id || "", rol: "3" })}><Plus/> Nuevo usuario</button>
+            <button className="primary-action" onClick={() => setUsuarioModal({ nombre: "", usuario: "", email: "", password: "", empresaId: empresas[0]?.id || "", rol: "VENDEDOR" })}><Plus/> Nuevo usuario</button>
           </div>
         </div>
         <div className="products-card"><table>
@@ -657,7 +657,7 @@ export function SuperAdminPage() {
             <td>{u.empresas || "—"}</td>
             <td>{u.activo ? <span className="sa-badge ok">Activo</span> : <span className="sa-badge off">Inactivo</span>}</td>
             <td><div className="sa-row-actions">
-              <button className="sa-icon-btn" title="Editar" onClick={() => setUsuarioModal({ id: u.id, nombre: u.nombre, usuario: u.usuario || "", email: u.email || "", password: "", empresaId: u.empresa_id || empresas[0]?.id || "", rol: String(u.rol_id || 3), activo: !!u.activo })}><Pencil size={15}/></button>
+              <button className="sa-icon-btn" title="Editar" onClick={() => setUsuarioModal({ id: u.id, nombre: u.nombre, usuario: u.usuario || "", email: u.email || "", password: "", empresaId: u.empresa_id || empresas[0]?.id || "", rol: u.rol_nombre || "ADMIN", activo: !!u.activo })}><Pencil size={15}/></button>
               <button className="sa-icon-btn" title="Cambiar clave" onClick={() => setClaveModal({ id: u.id, nombre: u.nombre, password: "" })}><KeyRound size={15}/></button>
               <button className="sa-icon-btn" title={u.activo ? "Desactivar" : "Activar"} onClick={async () => { try { await call("PATCH", `/usuarios/${u.id}`, { activo: !u.activo }); setOk(u.activo ? "Usuario desactivado." : "Usuario activado."); await load(); } catch (err: any) { setError(err.message); } }}><Trash2 size={15}/></button>
             </div></td>
@@ -966,7 +966,7 @@ export function SuperAdminPage() {
         <label>Email (usuario de login)<em>Opcional si ya tiene nombre de usuario.</em><input type="email" value={usuarioModal.email || ""} onChange={(e) => setUsuarioModal({ ...usuarioModal, email: e.target.value })} /></label>
         <label>{usuarioModal.id ? "Nueva clave (opcional)" : "Clave inicial"}<input required={!usuarioModal.id} type="text" value={usuarioModal.password} onChange={(e) => setUsuarioModal({ ...usuarioModal, password: e.target.value })} placeholder={usuarioModal.id ? "Dejar vacío para no cambiarla" : ""} /></label>
         <label>Empresa<select required value={usuarioModal.empresaId} onChange={(e) => setUsuarioModal({ ...usuarioModal, empresaId: e.target.value })}>{empresas.map((en) => <option key={en.id} value={en.id}>{en.nombre}</option>)}</select></label>
-        <label>Rol<select value={usuarioModal.rol} onChange={(e) => setUsuarioModal({ ...usuarioModal, rol: e.target.value })}><option value="1">ADMIN</option><option value="3">VENDEDOR</option></select></label>
+        <label>Rol<select value={usuarioModal.rol} onChange={(e) => setUsuarioModal({ ...usuarioModal, rol: e.target.value })}><option value="ADMIN">ADMIN</option><option value="VENDEDOR">VENDEDOR</option><option value="REPARTIDOR">REPARTIDOR</option></select></label>
         <label className="sa-check"><input type="checkbox" checked={usuarioModal.activo !== false} onChange={(e) => setUsuarioModal({ ...usuarioModal, activo: e.target.checked })} /> Activo</label>
       </div>
       <div className="modal-actions"><button type="button" className="secondary" onClick={() => setUsuarioModal(null)}>Cancelar</button><button className="primary-action">{usuarioModal.id ? "Guardar cambios" : "Crear usuario"}</button></div>
