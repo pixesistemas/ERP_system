@@ -1,0 +1,14 @@
+{
+  "nombre": "Lo de Marce Carnes",
+  "razonSocial": "Lo de Marce Carnes",
+  "cuit": "20318111155",
+  "condicionIva": "MONOTRIBUTO",
+  "ingresosBrutos": "20318111155",
+  "direccion": "Neuquen 137",
+  "localidad": "Neuquén",
+  "provincia": "Neuquén",
+  "telefono": "3454288996",
+  "email": "marce@pixesistemas.com.ar",
+  "puntoVenta": 2,
+  "usuarioAdmin": "marce@pixesistemas.com.ar"
+}

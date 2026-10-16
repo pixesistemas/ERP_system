@@ -1,0 +1,8 @@
+Empresa: Lo de Marce Carnes (CUIT 20318111155) - MONOTRIBUTO - punto de venta 2
+Artículos en el dump: 3793
+Productos exportados: 3788 (sin descripción: 5)
+Productos con precio 0: 4 | con costo 0: 3
+Códigos de barras válidos: 3570 | descartados (basura): 110 | duplicados descartados: 1
+Rubros del dump: 144 (útiles: 143) | productos sin rubro: 851
+Descripciones repetidas (mismo nombre en varios códigos): 109
+IVA aplicado a todos: 0%
