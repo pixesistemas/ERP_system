@@ -1706,6 +1706,15 @@ function openOrGetCashSession(e,d,uid){
 }
 async function createPosOperation(req,res){const e=empresaId(req);limpiarNotasVenta(e);
   limpiarNotasVenta(e);const uid=userId(req),d=req.body,rawItems=Array.isArray(d.items)?d.items:[];
+  /*
+   * Idempotencia para terminales del modo sin conexión: el POS genera un
+   * uuid por operación y, si el envío se reintenta (o el servidor ya la
+   * aplicó y se perdió la respuesta), se devuelve la existente sin duplicar.
+   */
+  const uuid=String(d.uuid||'').trim()||null;
+  if(uuid){const existente=db.prepare('SELECT v.id,v.punto_venta,v.numero,v.tipo,v.total,v.condicion_pago,v.estado,v.documento_id,d.cae,d.cae_vencimiento,d.afip_estado FROM ventas_pos v LEFT JOIN documentos_comerciales d ON d.id=v.documento_id WHERE v.empresa_id=? AND v.uuid=?').get(e,uuid);if(existente)return res.json({ok:true,repetida:true,operation:{saleId:existente.id,documentId:existente.documento_id,pointOfSale:existente.punto_venta,number:existente.numero,type:existente.tipo,total:existente.total,condition:existente.condicion_pago,estado:existente.estado,cae:existente.cae||null,caeVencimiento:existente.cae_vencimiento||null,afipEstado:existente.afip_estado||null}});}
+  /* Una venta hecha sin conexión conserva su fecha y hora reales de cobro. */
+  const fechaOperacion=/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(String(d.fecha_cliente||''))?String(d.fecha_cliente).replace('T',' '):nowLocal();
   if(!rawItems.length)return res.status(400).json({ok:false,error:'La operación no tiene artículos.'});
   const mode=String(d.mode||'NORMAL').toUpperCase();
   const reserveWithdrawal=Boolean(d.reserva_monto_id);
@@ -1784,7 +1793,14 @@ async function createPosOperation(req,res){const e=empresaId(req);limpiarNotasVe
     if(!fiscalPendiente&&!fiscal.ok){
       const motivo=fiscal.observaciones||fiscal.errores||fiscal.resultado||null;
       const textoMotivo=typeof motivo==='string'?motivo:JSON.stringify(motivo);
-      return res.status(422).json({ok:false,error:`AFIP rechazó el comprobante. La venta no se registró. Motivo: ${textoMotivo}.`,detalle:motivo});
+      /*
+       * En una venta sincronizada desde el modo sin conexión no se puede
+       * perder la operación (el cobro ya se hizo en el mostrador): queda
+       * registrada como PENDIENTE fiscal para revisarla o reintentarla.
+       */
+      if(!d.offline_replay)return res.status(422).json({ok:false,error:`AFIP rechazó el comprobante. La venta no se registró. Motivo: ${textoMotivo}.`,detalle:motivo});
+      fiscalPendiente={error:`AFIP rechazó al sincronizar: ${textoMotivo}`};
+      fiscal=null;
     }
     if(fiscal&&fiscal.ok){
       number=fiscal.numero;
@@ -1808,7 +1824,7 @@ async function createPosOperation(req,res){const e=empresaId(req);limpiarNotasVe
       db.prepare('INSERT INTO pos_numeradores(empresa_id,punto_venta,tipo,ultimo_numero) VALUES(?,?,?,?) ON CONFLICT(empresa_id,punto_venta,tipo) DO UPDATE SET ultimo_numero=excluded.ultimo_numero WHERE excluded.ultimo_numero>ultimo_numero').run(e,pv,type,number);
     }
     const docOrigen = type==='FACTURA'&&d.documentoOrigenId?db.prepare('SELECT id,tipo,punto_venta,numero,estado,cliente_id FROM documentos_comerciales WHERE id=? AND empresa_id=?').get(Number(d.documentoOrigenId),e):null;
-    const doc=db.prepare(`INSERT INTO documentos_comerciales(empresa_id,cliente_id,vendedor_id,tipo,estado,punto_venta,numero,fecha,condicion_venta,observaciones,importe_neto,importe_iva,importe_total,importe_bruto,descuento_general,descuento_importe,canal,subtipo,cae,cae_vencimiento,comprobante_tipo_afip,comprobante_letra,afip_resultado,afip_observaciones,afip_estado,documento_origen_id,documento_origen_tipo,documento_origen_punto_venta,documento_origen_numero) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(e,d.cliente_id||null,d.vendedor_id||null,type,['RESERVA','PEDIDO','PRESUPUESTO','REMITO_R'].includes(mode)||type==='NOTA_X'?'BORRADOR':'CONFIRMADO',pv,number,nowLocal(),operationCondition,d.observaciones||'',subtotal,importeIva,total,brutoYDescuento(subtotal,d.descuento_general).bruto,Number(d.descuento_general||0),brutoYDescuento(subtotal,d.descuento_general).descuento,'POS',type==='REMITO'?(remitoSub||'X'):null,fiscal?.cae||null,fiscal?.vencimiento||null,fiscal?.tipoComprobante||null,fiscal?.letra||null,fiscal?.resultado||(fiscalPendiente?'PENDIENTE':null),afipObservacionesDe(fiscal,fiscalPendiente),afipEstadoDe(fiscal,fiscalPendiente),docOrigen?.id||null,docOrigen?.tipo||null,docOrigen?.punto_venta||null,docOrigen?.numero||null);
+    const doc=db.prepare(`INSERT INTO documentos_comerciales(empresa_id,cliente_id,vendedor_id,tipo,estado,punto_venta,numero,fecha,condicion_venta,observaciones,importe_neto,importe_iva,importe_total,importe_bruto,descuento_general,descuento_importe,canal,subtipo,cae,cae_vencimiento,comprobante_tipo_afip,comprobante_letra,afip_resultado,afip_observaciones,afip_estado,documento_origen_id,documento_origen_tipo,documento_origen_punto_venta,documento_origen_numero) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(e,d.cliente_id||null,d.vendedor_id||null,type,['RESERVA','PEDIDO','PRESUPUESTO','REMITO_R'].includes(mode)||type==='NOTA_X'?'BORRADOR':'CONFIRMADO',pv,number,fechaOperacion,operationCondition,d.observaciones||'',subtotal,importeIva,total,brutoYDescuento(subtotal,d.descuento_general).bruto,Number(d.descuento_general||0),brutoYDescuento(subtotal,d.descuento_general).descuento,'POS',type==='REMITO'?(remitoSub||'X'):null,fiscal?.cae||null,fiscal?.vencimiento||null,fiscal?.tipoComprobante||null,fiscal?.letra||null,fiscal?.resultado||(fiscalPendiente?'PENDIENTE':null),afipObservacionesDe(fiscal,fiscalPendiente),afipEstadoDe(fiscal,fiscalPendiente),docOrigen?.id||null,docOrigen?.tipo||null,docOrigen?.punto_venta||null,docOrigen?.numero||null);
     const insDoc=db.prepare('INSERT INTO documento_items(documento_id,producto_id,codigo,descripcion,unidad,cantidad,precio_unitario,descuento,iva,subtotal,iva_importe,total,rubro_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)');
     const empresaFiscal=db.prepare('SELECT condicion_iva FROM empresas WHERE id=?').get(e);
     const discriminaIva=String(empresaFiscal?.condicion_iva||'').toUpperCase()==='RESPONSABLE INSCRIPTO';
@@ -1818,7 +1834,7 @@ async function createPosOperation(req,res){const e=empresaId(req);limpiarNotasVe
   const session=mueveCaja?openOrGetCashSession(e,d,uid):null;
     const pvPrint=db.prepare('SELECT formato_impresion FROM puntos_venta WHERE empresa_id=? AND numero=?').get(e,pv)?.formato_impresion||'A4';
     const printFormat=cfg.formato_impresion!=='PUNTO_VENTA'?cfg.formato_impresion:pvPrint;
-    const sale=db.prepare(`INSERT INTO ventas_pos(empresa_id,sucursal_id,cajero_id,caja_sesion_id,cliente_id,vendedor_id,punto_venta,numero,tipo,estado,fecha,condicion_pago,observaciones,subtotal,descuento_general,recargo_general,descuento_promociones,total,vuelto,documento_id,reserva_monto_id,formato_impresion) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(e,d.sucursal_id||null,d.cajero_id||null,session?.id||null,d.cliente_id||null,d.vendedor_id||null,pv,number,type,['RESERVA','PEDIDO','PRESUPUESTO','REMITO_R'].includes(mode)||type==='NOTA_X'?'PENDIENTE':'CONFIRMADA',nowLocal(),operationCondition,d.observaciones||'',subtotal,Number(d.descuento_general||0),Number(d.recargo_general||0),Number(d.descuento_promociones||0),total,Number(d.vuelto||0),doc.lastInsertRowid,d.reserva_monto_id||null,printFormat);
+    const sale=db.prepare(`INSERT INTO ventas_pos(empresa_id,sucursal_id,cajero_id,caja_sesion_id,cliente_id,vendedor_id,punto_venta,numero,tipo,estado,fecha,condicion_pago,observaciones,subtotal,descuento_general,recargo_general,descuento_promociones,total,vuelto,documento_id,reserva_monto_id,formato_impresion,uuid) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(e,d.sucursal_id||null,d.cajero_id||null,session?.id||null,d.cliente_id||null,d.vendedor_id||null,pv,number,type,['RESERVA','PEDIDO','PRESUPUESTO','REMITO_R'].includes(mode)||type==='NOTA_X'?'PENDIENTE':'CONFIRMADA',fechaOperacion,operationCondition,d.observaciones||'',subtotal,Number(d.descuento_general||0),Number(d.recargo_general||0),Number(d.descuento_promociones||0),total,Number(d.vuelto||0),doc.lastInsertRowid,d.reserva_monto_id||null,printFormat,uuid);
     if(type==='FACTURA'&&d.vendedor_id){const vendedor=db.prepare('SELECT comision_porcentaje FROM vendedores WHERE id=? AND empresa_id=?').get(d.vendedor_id,e);if(vendedor&&Number(vendedor.comision_porcentaje||0)>0){const clienteDoc=db.prepare('SELECT cuit,dni FROM clientes WHERE id=? AND empresa_id=?').get(d.cliente_id||0,e)||{};registrarComision({empresaId:e,vendedorId:d.vendedor_id,origenTipo:'FACTURA',origenId:sale.lastInsertRowid,clienteDoc:clienteDoc.cuit||clienteDoc.dni||'0',clienteNombre:d.cliente_nombre||clientQuery,baseCalculo:total,porcentaje:Number(vendedor.comision_porcentaje),observaciones:`Comisión por FACTURA ${String(pv).padStart(4,'0')}-${String(number).padStart(8,'0')} POS`})}}
     if(fiscal?.intentoId||fiscalPendiente?.intentoId){
       db.prepare('UPDATE fiscal_intentos SET venta_id=?,documento_id=? WHERE id=?').run(sale.lastInsertRowid,doc.lastInsertRowid,Number(fiscal?.intentoId||fiscalPendiente?.intentoId));

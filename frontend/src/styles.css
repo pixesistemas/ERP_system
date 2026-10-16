@@ -5421,7 +5421,7 @@ padding:0 12px;
 @page{size:A4 portrait;margin:11mm}
 html,body{height:auto;overflow:visible!important;background:#fff!important}
 .app-shell{display:block!important;height:auto!important;grid-template-columns:none!important}
-.sidebar,.workspace header,.chat-panel,.operation-panel,.keyboard-help,.pos-topbar,.vat-period,.toolbar-actions,.borrador-rubro-title button,.borrador-restituciones input{display:none!important}
+.sidebar,.workspace header,.chat-panel,.operation-panel,.keyboard-help,.pos-offline-bar,.pos-topbar,.vat-period,.toolbar-actions,.borrador-rubro-title button,.borrador-restituciones input{display:none!important}
 .workspace{height:auto!important;overflow:visible!important;display:block!important;padding:0!important;margin:0!important}
 .products-page{height:auto!important;overflow:visible!important;padding:0!important;display:block!important}
 .products-toolbar{margin:0 0 8px}
@@ -5802,3 +5802,13 @@ button.secondary {
 .order-cobros h4{margin:0 0 6px;font-size:13px;color:var(--ink)}
 .order-cobros-linea{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--bg)}
 .order-cobros-linea small{color:var(--muted)}
+/* MODO SIN CONEXIÓN (POS): barra de estado de la cola offline */
+.pos-offline-bar{display:flex;align-items:center;gap:10px;padding:7px 14px;background:#FFF7E6;border-bottom:1px solid #F2D9A0;font-size:12px;color:#7A5B00}
+.pos-offline-bar.sin-conexion{background:#FDECEC;border-bottom-color:#F3BDBD;color:#8A2B2B}
+.pos-offline-dot{width:9px;height:9px;border-radius:50%;background:#E5A400;flex:none}
+.pos-offline-bar.sin-conexion .pos-offline-dot{background:#D64545;animation:pulse-offline 1.4s infinite}
+.pos-offline-bar strong{font-size:11px;letter-spacing:.4px}
+.pos-offline-bar>span:not(.pos-offline-dot){flex:1}
+.pos-offline-bar button{border:1px solid currentColor;background:transparent;color:inherit;border-radius:8px;padding:3px 10px;font-size:11px;cursor:pointer}
+.pos-offline-bar button:disabled{opacity:.5;cursor:not-allowed}
+@keyframes pulse-offline{0%,100%{opacity:1}50%{opacity:.35}}

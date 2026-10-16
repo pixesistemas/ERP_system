@@ -280,6 +280,7 @@ export const erpApi = {
   listPosComprobantesConfig: () => request<any>('/erp/pos/comprobantes-config'),
   savePosComprobanteConfig: (tipo: string, cfg: any) => request<any>(`/erp/pos/comprobantes-config/${encodeURIComponent(tipo)}`, { method: 'PUT', body: JSON.stringify(cfg) }),
   createPosOperation: (data:any) => request<any>('/erp/pos/operaciones',{method:'POST',body:JSON.stringify(data)}),
+  sincronizarCola: (data:{dispositivo:string;operaciones:any[]},signal?:AbortSignal) => request<any>('/erp/offline/sincronizar',{method:'POST',body:JSON.stringify(data),signal}),
   getPosDrafts: () => request<any>('/erp/pos/borradores'),
   savePosDrafts: (draft:any) => request<any>('/erp/pos/borradores',{method:'PUT',body:JSON.stringify({draft})}),
   deletePosDrafts: () => request<any>('/erp/pos/borradores',{method:'DELETE'}),

@@ -95,6 +95,13 @@ const MODULOS_SISTEMA = [
       "Deja en el punto de venta solo facturar y nota de venta: esconde presupuestos, reservas, remitos y notas de pedido.",
   },
   {
+    clave: "MODO_OFFLINE",
+    nombre: "Modo sin conexión (POS)",
+    tipo: "opcional",
+    descripcion:
+      "Permite seguir cobrando en el POS cuando se corta el internet: las ventas quedan guardadas en la computadora y al volver la conexión se sincronizan y facturan solas (si ARCA no responde, quedan pendientes de reintento automático).",
+  },
+  {
     clave: "COMPRAS_MOVIL",
     nombre: "App de compras",
     tipo: "opcional",

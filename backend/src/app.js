@@ -74,7 +74,12 @@ app.use(helmet());
 app.use(cors());
 app.use(morgan("dev"));
 
-app.use(express.json());
+/*
+ * 3 MB: el POS sin conexión sincroniza lotes de ventas y la app de compras
+ * manda fotos de cheques en base64; con el límite anterior (~100 KB) esos
+ * envíos se rechazaban con 413.
+ */
+app.use(express.json({ limit: "3mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/storage", express.static(path.join(process.cwd(), "storage")));
