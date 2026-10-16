@@ -16,6 +16,7 @@
     "db:importar-rubros-marcas": "node scripts/importar-rubros-marcas.js",
     "db:reset-superadmin": "node scripts/reset-superadmin.js",
     "test:beta2": "node tests/beta2-financial.test.js",
+    "test:reset-empresa": "node tests/reset-empresa.test.js",
     "audit:normalized": "node scripts/audit-normalized.js",
     "test:fiscal": "node tests/beta3-fiscal.test.js",
     "verificar:rg5616": "node scripts/verificar-rg5616.js",

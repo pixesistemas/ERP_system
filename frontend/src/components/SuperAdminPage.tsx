@@ -435,7 +435,8 @@ export function SuperAdminPage() {
       const detalle = Object.entries(r.resultados || {})
         .map(([k, v]) => `${k}: ${v}`)
         .join(" · ");
-      setOk(`Datos borrados de ${r.empresa}. Registros eliminados → ${detalle || "sin cambios"}.`);
+      const avisos = Array.isArray(r.errores) && r.errores.length ? ` Avisos: ${r.errores.join(" · ")}` : "";
+      setOk(`Datos borrados de ${r.empresa}. Registros eliminados → ${detalle || "sin cambios"}.${avisos}`);
       setBorrarModal(null);
       await load();
     } catch (err: any) {

@@ -185,17 +185,31 @@ function borrarDatosEmpresa(req, res, next) {
     }
 
     const resultados = {};
+    const errores = [];
     const borrar = (categoria, sql, ...args) => {
       try {
         const r = db.prepare(sql).run(...args);
         resultados[categoria] = (resultados[categoria] || 0) + Number(r.changes || 0);
       } catch (e) {
-        /* Tabla o columna inexistente en esta versión: se ignora. */
+        const mensaje = String(e?.message || e);
+        /* Tabla o columna inexistente en versiones anteriores: se ignora. */
+        if (/no such table|no such column/i.test(mensaje)) return;
+        errores.push(`${categoria}: ${mensaje}`);
       }
     };
 
     const tx = db.transaction(() => {
       if (seleccion.includes("VENTAS")) {
+        /*
+         * Orden pensado para respetar las claves foráneas:
+         * 1) liberar las referencias de tablas que no se borran en esta
+         *    categoría (cuenta corriente apunta a comprobantes y facturas);
+         * 2) borrar primero los hijos (pagos, ítems, pedidos, links);
+         * 3) ventas_pos antes que documentos_comerciales y reservas_monto;
+         * 4) documentos_comerciales antes que facturas.
+         */
+        borrar("VENTAS", "UPDATE cliente_cc_movimientos SET factura_id=NULL WHERE empresa_id=? AND factura_id IS NOT NULL", empresaId);
+        borrar("VENTAS", "UPDATE cliente_cc_movimientos SET documento_id=NULL WHERE empresa_id=? AND documento_id IS NOT NULL", empresaId);
         borrar("VENTAS", "DELETE FROM venta_pos_pagos WHERE venta_id IN (SELECT id FROM ventas_pos WHERE empresa_id=?)", empresaId);
         borrar("VENTAS", "DELETE FROM venta_pos_items WHERE venta_id IN (SELECT id FROM ventas_pos WHERE empresa_id=?)", empresaId);
         borrar("VENTAS", "DELETE FROM pedido_cobros WHERE empresa_id=?", empresaId);
@@ -204,15 +218,16 @@ function borrarDatosEmpresa(req, res, next) {
         borrar("VENTAS", "DELETE FROM devoluciones_pedido WHERE empresa_id=?", empresaId);
         borrar("VENTAS", "DELETE FROM reparto_devoluciones WHERE empresa_id=?", empresaId);
         borrar("VENTAS", "DELETE FROM ruta_pedidos WHERE empresa_id=?", empresaId);
+        borrar("VENTAS", "DELETE FROM links_pago WHERE empresa_id=?", empresaId);
+        borrar("VENTAS", "DELETE FROM ventas_pos WHERE empresa_id=?", empresaId);
+        borrar("VENTAS", "DELETE FROM reserva_monto_consumos WHERE reserva_id IN (SELECT id FROM reservas_monto WHERE empresa_id=?)", empresaId);
+        borrar("VENTAS", "DELETE FROM reservas_monto WHERE empresa_id=?", empresaId);
         borrar("VENTAS", "DELETE FROM documento_relaciones WHERE empresa_id=?", empresaId);
         borrar("VENTAS", "DELETE FROM documento_items WHERE documento_id IN (SELECT id FROM documentos_comerciales WHERE empresa_id=?)", empresaId);
+        borrar("VENTAS", "DELETE FROM documentos_comerciales WHERE empresa_id=?", empresaId);
         borrar("VENTAS", "DELETE FROM factura_items WHERE factura_id IN (SELECT id FROM facturas WHERE empresa_id=?)", empresaId);
         borrar("VENTAS", "DELETE FROM fiscal_intentos WHERE empresa_id=?", empresaId);
         borrar("VENTAS", "DELETE FROM facturas WHERE empresa_id=?", empresaId);
-        borrar("VENTAS", "DELETE FROM documentos_comerciales WHERE empresa_id=?", empresaId);
-        borrar("VENTAS", "DELETE FROM reserva_monto_consumos WHERE reserva_monto_id IN (SELECT id FROM reservas_monto WHERE empresa_id=?)", empresaId);
-        borrar("VENTAS", "DELETE FROM reservas_monto WHERE empresa_id=?", empresaId);
-        borrar("VENTAS", "DELETE FROM ventas_pos WHERE empresa_id=?", empresaId);
       }
       if (seleccion.includes("CUENTA_CORRIENTE")) {
         borrar("CUENTA_CORRIENTE", "DELETE FROM cliente_cc_aplicaciones WHERE empresa_id=?", empresaId);
@@ -254,6 +269,7 @@ function borrarDatosEmpresa(req, res, next) {
         borrar("COMPRAS", "DELETE FROM compra_retenciones WHERE compra_id IN (SELECT id FROM compras WHERE empresa_id=?)", empresaId);
         borrar("COMPRAS", "DELETE FROM compras_pendientes WHERE empresa_id=?", empresaId);
         borrar("COMPRAS", "DELETE FROM compras WHERE empresa_id=?", empresaId);
+        borrar("COMPRAS", "DELETE FROM ordenes_pago WHERE empresa_id=?", empresaId);
       }
       if (seleccion.includes("CLIENTES")) {
         borrar("CLIENTES", "DELETE FROM vendedor_clientes WHERE empresa_id=?", empresaId);
@@ -269,7 +285,7 @@ function borrarDatosEmpresa(req, res, next) {
     });
     tx();
 
-    return res.json({ ok: true, empresa: empresa.nombre, resultados });
+    return res.json({ ok: true, empresa: empresa.nombre, resultados, errores });
   } catch (e) {
     next(e);
   }
