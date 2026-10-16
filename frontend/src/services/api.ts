@@ -1,5 +1,14 @@
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api/v1";
 
+/* Origen del servidor (sin /api/v1): se usa para el chequeo de conexión. */
+export const API_ORIGIN = (() => {
+  try {
+    return new URL(API_URL).origin;
+  } catch {
+    return "";
+  }
+})();
+
 /*
  * Normaliza la URL de un archivo (PDF/QR): corrige bases mal formadas como
  * "https//host" y completa con el origen de la API cuando viene relativa.

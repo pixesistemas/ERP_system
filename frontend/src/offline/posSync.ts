@@ -8,7 +8,7 @@
  * reintentan solas más tarde.
  */
 
-import { erpApi } from "../services/api";
+import { erpApi, API_ORIGIN } from "../services/api";
 import {
   actualizarOperacionPos,
   contarColaPos,
@@ -162,4 +162,135 @@ export function sincronizarColaPos(): Promise<ResultadoSync> {
 export async function descartarOperacionPos(uuid: string) {
   await quitarOperacionPos(uuid);
   avisarCola();
+}
+
+/*
+ * Monitor de conexión con el servidor.
+ *
+ * navigator.onLine solo detecta cortes de la red del equipo (cable/wifi),
+ * no una caída de internet "más arriba": por eso se prueba el servidor
+ * con un /health liviano cada pocos segundos. El estado recién cambia a
+ * "offline" después de 2 fallos seguidos (para no avisar por un microcorte)
+ * y vuelve a "online" con el primer éxito.
+ */
+export type EstadoConexion = "online" | "offline";
+
+const INTERVALO_OK_MS = 8000;
+const INTERVALO_FALLO_MS = 3000;
+const REINTENTO_RAPIDO_MS = 2000;
+const PING_TIMEOUT_MS = 2500;
+
+async function pingServidor(): Promise<boolean> {
+  if (typeof fetch !== "function" || !API_ORIGIN) return true;
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), PING_TIMEOUT_MS);
+    try {
+      const r = await fetch(`${API_ORIGIN}/health?t=${Date.now()}`, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      return r.ok;
+    } finally {
+      clearTimeout(timer);
+    }
+  } catch {
+    return false;
+  }
+}
+
+export function iniciarMonitorConexion(onCambio: (estado: EstadoConexion) => void): () => void {
+  let detenido = false;
+  let estado: EstadoConexion = "online";
+  let fallos = 0;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  const programar = (ms: number) => {
+    if (detenido) return;
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(probar, ms);
+  };
+
+  async function probar() {
+    if (detenido) return;
+    /* Con la pestaña en segundo plano se espacia el chequeo. */
+    if (typeof document !== "undefined" && document.hidden) {
+      programar(5000);
+      return;
+    }
+    const ok = await pingServidor();
+    if (detenido) return;
+    if (ok) {
+      fallos = 0;
+      if (estado !== "online") {
+        estado = "online";
+        onCambio("online");
+      }
+      programar(INTERVALO_OK_MS);
+    } else {
+      fallos++;
+      const necesarios = typeof navigator !== "undefined" && navigator.onLine === false ? 1 : 2;
+      if (fallos >= necesarios && estado !== "offline") {
+        estado = "offline";
+        onCambio("offline");
+      }
+      programar(fallos >= necesarios ? INTERVALO_FALLO_MS : REINTENTO_RAPIDO_MS);
+    }
+  }
+
+  const alReconectar = () => programar(300);
+  const alDesconectar = () => programar(300);
+  const alVolverVisible = () => {
+    if (!document.hidden) programar(200);
+  };
+  if (typeof window !== "undefined") {
+    window.addEventListener("online", alReconectar);
+    window.addEventListener("offline", alDesconectar);
+    document.addEventListener("visibilitychange", alVolverVisible);
+    programar(1200);
+  }
+
+  return () => {
+    detenido = true;
+    if (timer) clearTimeout(timer);
+    if (typeof window !== "undefined") {
+      window.removeEventListener("online", alReconectar);
+      window.removeEventListener("offline", alDesconectar);
+      document.removeEventListener("visibilitychange", alVolverVisible);
+    }
+  };
+}
+
+/*
+ * Aviso sonoro suave (Web Audio, sin archivos): dos notas descendentes
+ * cuando se pierde la conexión y una sola cuando vuelve.
+ */
+let audioCtx: AudioContext | null = null;
+
+export function avisoSonoro(tipo: "sin-conexion" | "conexion") {
+  try {
+    const Ctor = typeof window !== "undefined" ? window.AudioContext || (window as any).webkitAudioContext : null;
+    if (!Ctor) return;
+    if (!audioCtx) audioCtx = new Ctor();
+    const ctx = audioCtx;
+    if (ctx.state === "suspended") ctx.resume().catch(() => {});
+    const ahora = ctx.currentTime;
+    const notas = tipo === "sin-conexion" ? [520, 400] : [620];
+    notas.forEach((frecuencia, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = frecuencia;
+      const inicio = ahora + i * 0.18;
+      gain.gain.setValueAtTime(0.0001, inicio);
+      gain.gain.exponentialRampToValueAtTime(0.05, inicio + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, inicio + 0.22);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(inicio);
+      osc.stop(inicio + 0.25);
+    });
+  } catch (e) {
+    /* Sin audio disponible: el aviso visual sigue funcionando. */
+  }
 }

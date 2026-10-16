@@ -7,7 +7,7 @@ import { Product, PosCartItem, SaleTab, Client } from "../../types";
 import { MoneyInput } from "../shared/MoneyInput";
 import { PdfViewerModal } from "../shared/PdfViewerModal";
 import { canSeeScreen } from "../../utils/screens";
-import { esErrorDeRed, cargarDatosPos, sincronizarColaPos, contarColaPos, descartarOperacionPos } from "../../offline/posSync";
+import { esErrorDeRed, cargarDatosPos, sincronizarColaPos, contarColaPos, descartarOperacionPos, iniciarMonitorConexion, avisoSonoro } from "../../offline/posSync";
 import { encolarOperacion, uuidOffline, fechaLocalAhora, guardarBorradorLocal, listarColaPos } from "../../offline/posDb";
 
 export function AdvancedPosPage({ onSendToAssistant, pantallas = null, modulos = null }: { onSendToAssistant: (text: string) => void; pantallas?: string[] | null; modulos?: Record<string, boolean> | null }) {
@@ -45,14 +45,31 @@ export function AdvancedPosPage({ onSendToAssistant, pantallas = null, modulos =
   useEffect(()=>{setTimeout(()=>barcodeRef.current?.focus(),30)},[activeTab]); useEffect(()=>{if(paymentOpen)setTimeout(()=>cashPaymentRef.current?.focus(),60)},[paymentOpen]);
   useEffect(()=>{
     if(!offlineHabilitado)return;
-    const onOnline=()=>{setSinConexion(false);sincronizarPendientes(true);};
-    const onOffline=()=>setSinConexion(true);
+    /*
+     * El monitor prueba el servidor cada pocos segundos (no confía solo en
+     * navigator.onLine): el cartel aparece cuando hay 2 fallos seguidos y
+     * desaparece con el primer éxito. Cada transición suena suave.
+     */
+    const onEstadoConexion=(estado:"online"|"offline")=>{
+      setSinConexion(estado==="offline");
+      if(estado==="online")sincronizarPendientes(true);
+    };
+    const detenerMonitor=iniciarMonitorConexion(onEstadoConexion);
+    const onOfflineLocal=()=>setSinConexion(true);
     const refrescar=()=>{contarColaPos().then(setPendientesOffline).catch(()=>{})};
-    window.addEventListener("online",onOnline);window.addEventListener("offline",onOffline);window.addEventListener("afip:pos-offline",onOffline);window.addEventListener("afip:pos-cola",refrescar);
+    window.addEventListener("afip:pos-offline",onOfflineLocal);window.addEventListener("afip:pos-cola",refrescar);
     refrescar();
-    if(navigator.onLine)contarColaPos().then(c=>{if(c.pendientes)sincronizarPendientes(true)}).catch(()=>{});
-    return()=>{window.removeEventListener("online",onOnline);window.removeEventListener("offline",onOffline);window.removeEventListener("afip:pos-offline",onOffline);window.removeEventListener("afip:pos-cola",refrescar)};
+    contarColaPos().then(c=>{if(c.pendientes)sincronizarPendientes(true)}).catch(()=>{});
+    return()=>{detenerMonitor();window.removeEventListener("afip:pos-offline",onOfflineLocal);window.removeEventListener("afip:pos-cola",refrescar)};
   },[offlineHabilitado]);
+  const conexionPrevia=useRef(sinConexion);
+  useEffect(()=>{
+    if(!offlineHabilitado)return;
+    if(conexionPrevia.current!==sinConexion){
+      avisoSonoro(sinConexion?"sin-conexion":"conexion");
+      conexionPrevia.current=sinConexion;
+    }
+  },[sinConexion,offlineHabilitado]);
   useEffect(()=>{const onKey=(e:KeyboardEvent)=>{if(e.ctrlKey&&['1','2','3','4'].includes(e.key)){e.preventDefault();setActiveTab(Number(e.key));return}if(e.key==='F2'){e.preventDefault();barcodeRef.current?.focus()}if(e.key==='F4'){e.preventDefault();descriptionRef.current?.focus()}if(e.key==='F8'){e.preventDefault();clientRef.current?.focus()}if(e.key==='F10'){e.preventDefault();beginFinalize()}if(e.key==='Escape'&&paymentOpen){e.preventDefault();setPaymentOpen(false);return}if(choiceOpen){if(e.key==='Enter'||e.key==='s'||e.key==='S'){e.preventDefault();chooseDocument('FACTURA_ELECTRONICA')}else if(e.key==='n'||e.key==='N'){e.preventDefault();chooseDocument('NOTA_X')}return}};window.addEventListener('keydown',onKey);return()=>window.removeEventListener('keydown',onKey)},[tabs,activeTab,paymentOpen,choiceOpen]);
   const tab=tabs.find(t=>t.id===activeTab)!; const cart=tab.cart; const clientQuery=tab.customer.query; const selectedClient=tab.customer.selected; const activeReserve=reserveFunds.find(r=>Number(r.id)===Number(tab.reserveFundId)); const clientReserves=reserveFunds.filter(r=>Number(r.cliente_id)===Number(selectedClient?.id)&&r.estado==='VIGENTE');
   useEffect(()=>{if(!activeReserve)return;setTabs(current=>current.map(sale=>sale.id===activeTab?{...sale,cart:sale.cart.map(item=>{const frozen=activeReserve.precios_snapshot?.[String(item.id)]?.precio;return frozen==null?item:{...item,precio:Math.round(Number(frozen)/(1+ivaRate(item))*10000)/10000}})}:sale));setNotice('Retiro por remito: se usarán los precios congelados de la reserva y no se abrirá el cobro.')},[tab.reserveFundId]);
