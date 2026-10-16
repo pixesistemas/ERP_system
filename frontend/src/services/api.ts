@@ -143,6 +143,7 @@ export const api = {
   listChangelog() { return request<any>("/erp/changelog"); },
   listUsers() { return request<any>("/users"); },
   createUser(data: any) { return request<any>("/users", { method: "POST", body: JSON.stringify(data) }); },
+  updateUser(id: number, data: any) { return request<any>(`/users/${id}`, { method: "PATCH", body: JSON.stringify(data) }); },
   setUserActive(id: number, activo: boolean) { return request<any>(`/users/${id}/activo`, { method: "PATCH", body: JSON.stringify({ activo }) }); },
   changeUserRole(id: number, rol: string) { return request<any>(`/users/${id}/rol`, { method: "PATCH", body: JSON.stringify({ rol }) }); },
   listUserPointsOfSale(id: number) { return request<any>(`/users/${id}/puntos-venta`); },

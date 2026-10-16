@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
-import { Plus, X, UserRound, MonitorSmartphone, Wallet } from "lucide-react";
+import { Plus, X, UserRound, MonitorSmartphone, Wallet, Pencil } from "lucide-react";
 import { api, erpApi } from "../../services/api";
 
 export function UsersPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
   const [creating, setCreating] = useState<any>(null);
+  const [editUser, setEditUser] = useState<any>(null);
+  const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [pvUser, setPvUser] = useState<any>(null);
   const [pointsOfSale, setPointsOfSale] = useState<any[]>([]);
@@ -128,6 +130,32 @@ export function UsersPage() {
     }
   }
 
+  async function submitEdit(e: any) {
+    e.preventDefault();
+    setError("");
+    setNotice("");
+    if (!editUser?.usuario?.trim() && !editUser?.email?.trim()) {
+      setError("Indicá un nombre de usuario o un email para el login.");
+      return;
+    }
+    try {
+      const nombre = editUser.nombre;
+      await api.updateUser(editUser.id, {
+        nombre: editUser.nombre,
+        usuario: editUser.usuario,
+        email: editUser.email,
+        telefono: editUser.telefono,
+        ...(editUser.password ? { password: editUser.password } : {}),
+      });
+      setEditUser(null);
+      setNotice(`Usuario ${nombre} actualizado.`);
+      setTimeout(() => setNotice(""), 2500);
+      await load();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  }
+
   async function toggleActive(u: any) {
     setError("");
     try {
@@ -154,9 +182,10 @@ export function UsersPage() {
       <button className="primary-action" onClick={() => setCreating({ nombre: "", usuario: "", email: "", telefono: "", password: "", rol: roles[0]?.nombre || "ADMIN" })}><Plus /> Nuevo usuario</button>
     </div>
     {error && <div className="error-box">{error}</div>}
+    {notice && <div className="success-box">{notice}</div>}
     <div className="products-card">
       <table>
-        <thead><tr><th>Nombre</th><th>Usuario</th><th>Email</th><th>Teléfono</th><th>Rol</th><th>Estado</th><th></th><th></th><th></th><th></th></tr></thead>
+        <thead><tr><th>Nombre</th><th>Usuario</th><th>Email</th><th>Teléfono</th><th>Rol</th><th>Estado</th><th></th><th></th><th></th><th></th><th></th></tr></thead>
         <tbody>{users.map((u: any) => <tr key={u.id}>
           <td><strong>{u.nombre}</strong></td>
           <td>{u.usuario || "-"}</td>
@@ -168,6 +197,7 @@ export function UsersPage() {
           <td><button className="secondary-action" onClick={() => openPvModal(u)}><MonitorSmartphone /> Puntos de venta</button></td>
           <td><button className="secondary-action" onClick={() => openCajasModal(u)}><Wallet /> Cajas</button></td>
           <td><button className="secondary-action" onClick={() => openDispositivos(u)}>Dispositivos</button></td>
+          <td><button className="secondary-action" onClick={() => { setError(""); setNotice(""); setEditUser({ id: u.id, nombre: u.nombre || "", usuario: u.usuario || "", email: u.email || "", telefono: u.telefono || "", password: "" }); }}><Pencil size={15} /> Editar</button></td>
         </tr>)}</tbody>
       </table>
       {!users.length && <div className="empty-table">No hay usuarios cargados.</div>}
@@ -183,6 +213,17 @@ export function UsersPage() {
         <label>Rol<select value={creating.rol} onChange={e => setCreating({ ...creating, rol: e.target.value })}>{roles.map((r: any) => <option key={r.id} value={r.nombre}>{r.nombre}</option>)}</select></label>
       </div>
       <div className="modal-actions"><button type="button" onClick={() => setCreating(null)}>Cancelar</button><button className="save">Crear usuario</button></div>
+    </form></div>}
+    {editUser && <div className="modal-backdrop"><form className="product-modal polished-modal" onSubmit={submitEdit}>
+      <div className="modal-head"><div><UserRound /><h3>Editar usuario</h3><p>Podés cambiar el nombre, el usuario de login, el email, el teléfono y la clave.</p></div><button type="button" onClick={() => setEditUser(null)}><X /></button></div>
+      <div className="form-grid">
+        <label>Nombre<input required value={editUser.nombre} onChange={e => setEditUser({ ...editUser, nombre: e.target.value })} /></label>
+        <label>Usuario<em>Para el login (sin @).</em><input value={editUser.usuario} onChange={e => setEditUser({ ...editUser, usuario: e.target.value })} placeholder="Ej.: juan" /></label>
+        <label>Email (opcional)<input type="email" value={editUser.email} onChange={e => setEditUser({ ...editUser, email: e.target.value })} /></label>
+        <label>Teléfono<input value={editUser.telefono} onChange={e => setEditUser({ ...editUser, telefono: e.target.value })} /></label>
+        <label className="full">Nueva clave<em>Dejá vacío para no cambiarla.</em><input type="text" value={editUser.password} onChange={e => setEditUser({ ...editUser, password: e.target.value })} placeholder="Opcional" /></label>
+      </div>
+      <div className="modal-actions"><button type="button" onClick={() => setEditUser(null)}>Cancelar</button><button className="save">Guardar cambios</button></div>
     </form></div>}
     {pvUser && <div className="modal-backdrop"><div className="product-modal polished-modal">
       <div className="modal-head"><div><MonitorSmartphone /><h3>Puntos de venta de {pvUser.nombre}</h3></div><button type="button" onClick={() => setPvUser(null)}><X /></button></div>

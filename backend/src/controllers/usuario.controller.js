@@ -1,5 +1,6 @@
 const {
   crearUsuario,
+  actualizarUsuario,
   listUsuariosByEmpresa,
   setUsuarioActivo,
   cambiarRolUsuario,
@@ -54,6 +55,35 @@ function listar(req, res, next) {
     next(error);
   }
 }
+
+/*
+ * Edita los datos de un usuario (nombre, usuario de login, email, teléfono
+ * y clave). El administrador de la empresa puede hacerlo desde Usuarios.
+ */
+function actualizar(req, res, next) {
+  try {
+    const { nombre, usuario, email, telefono, password } = req.body || {};
+    if (usuario !== undefined && !String(usuario || "").trim() && !(email && String(email).trim())) {
+      return res.status(400).json({ ok: false, error: "El usuario necesita un nombre de usuario o un email para el login." });
+    }
+    if (password !== undefined && password !== null && password !== "" && String(password).trim().length < 4) {
+      return res.status(400).json({ ok: false, error: "La clave tiene que tener al menos 4 caracteres." });
+    }
+    const usuarioActualizado = actualizarUsuario({
+      usuarioId: Number(req.params.id),
+      empresaId: req.empresa.id,
+      nombre,
+      usuario,
+      email,
+      telefono,
+      password: password ? String(password).trim() : null,
+    });
+    res.json({ ok: true, usuario: usuarioActualizado });
+  } catch (error) {
+    next(error);
+  }
+}
+
 function activarDesactivar(req, res, next) {
   try {
     const usuario = setUsuarioActivo({
@@ -266,6 +296,7 @@ function revocarDispositivos(req, res, next) {
 
 module.exports = {
   crear,
+  actualizar,
   listar,
   activarDesactivar,
   cambiarRol,

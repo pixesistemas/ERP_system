@@ -8,6 +8,12 @@ router.post("/", requirePermission("usuarios.gestionar"), controller.crear);
 router.get("/", requirePermission("usuarios.gestionar"), controller.listar);
 
 router.patch(
+  "/:id",
+  requirePermission("usuarios.gestionar"),
+  controller.actualizar,
+);
+
+router.patch(
   "/:id/activo",
   requirePermission("usuarios.gestionar"),
   controller.activarDesactivar,
