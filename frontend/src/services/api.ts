@@ -1,9 +1,15 @@
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api/v1";
 
-/* Origen del servidor (sin /api/v1): se usa para el chequeo de conexión. */
-export const API_ORIGIN = (() => {
+/*
+ * Base absoluta de la API: resuelve tanto URLs completas como relativas
+ * ("/api/v1") usando el origen actual. El chequeo de conexión del modo
+ * sin conexión prueba contra esta misma base (mismo camino que el resto
+ * de la API, así funciona detrás de cualquier proxy).
+ */
+export const API_BASE = (() => {
   try {
-    return new URL(API_URL).origin;
+    const base = typeof window !== "undefined" ? window.location.origin : undefined;
+    return new URL(API_URL, base).toString().replace(/\/+$/, "");
   } catch {
     return "";
   }

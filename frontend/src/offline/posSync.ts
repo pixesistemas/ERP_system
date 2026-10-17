@@ -8,7 +8,7 @@
  * reintentan solas más tarde.
  */
 
-import { erpApi, API_ORIGIN } from "../services/api";
+import { erpApi, API_BASE } from "../services/api";
 import {
   actualizarOperacionPos,
   contarColaPos,
@@ -48,6 +48,10 @@ function avisarOffline() {
   if (typeof window !== "undefined") window.dispatchEvent(new Event("afip:pos-offline"));
 }
 
+function avisarOnline() {
+  if (typeof window !== "undefined") window.dispatchEvent(new Event("afip:pos-online"));
+}
+
 /*
  * Carga los datos del POS (catálogo, clientes, config). Si no hay
  * conexión y existe un snapshot local, devuelve esa copia para poder
@@ -58,6 +62,7 @@ export async function cargarDatosPos(calls: Promise<any>[]): Promise<any[]> {
   try {
     const datos = await Promise.all(calls);
     guardarSnapshotPos(datos).catch(() => {});
+    avisarOnline();
     return datos;
   } catch (error: any) {
     if (esErrorDeRed(error)) {
@@ -149,6 +154,7 @@ export function sincronizarColaPos(): Promise<ResultadoSync> {
       }
 
       avisarCola();
+      avisarOnline();
       return { aplicadas, rechazadas, duplicadas, detalles };
     } finally {
       enCurso = null;
@@ -175,18 +181,18 @@ export async function descartarOperacionPos(uuid: string) {
  */
 export type EstadoConexion = "online" | "offline";
 
-const INTERVALO_OK_MS = 8000;
+const INTERVALO_OK_MS = 5000;
 const INTERVALO_FALLO_MS = 3000;
-const REINTENTO_RAPIDO_MS = 2000;
-const PING_TIMEOUT_MS = 2500;
+const REINTENTO_CONFIRMACION_MS = 1000;
+const PING_TIMEOUT_MS = 2000;
 
-async function pingServidor(): Promise<boolean> {
-  if (typeof fetch !== "function" || !API_ORIGIN) return true;
+async function pingUna(url: string): Promise<boolean> {
+  if (typeof fetch !== "function") return true;
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), PING_TIMEOUT_MS);
     try {
-      const r = await fetch(`${API_ORIGIN}/health?t=${Date.now()}`, {
+      const r = await fetch(`${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`, {
         cache: "no-store",
         signal: controller.signal,
       });
@@ -197,6 +203,20 @@ async function pingServidor(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/*
+ * Prueba primero contra la misma base que usa toda la API
+ * ("API_URL/health", funciona aunque el proxy solo exponga /api) y, si
+ * esa ruta no existe en el servidor, cae al /health de la raíz.
+ */
+async function pingServidor(): Promise<boolean> {
+  const candidatos = [API_BASE ? `${API_BASE}/health` : "", typeof window !== "undefined" ? `${window.location.origin}/health` : ""].filter(Boolean);
+  if (!candidatos.length) return true;
+  for (const url of candidatos) {
+    if (await pingUna(url)) return true;
+  }
+  return false;
 }
 
 export function iniciarMonitorConexion(onCambio: (estado: EstadoConexion) => void): () => void {
@@ -234,7 +254,7 @@ export function iniciarMonitorConexion(onCambio: (estado: EstadoConexion) => voi
         estado = "offline";
         onCambio("offline");
       }
-      programar(fallos >= necesarios ? INTERVALO_FALLO_MS : REINTENTO_RAPIDO_MS);
+      programar(fallos >= necesarios ? INTERVALO_FALLO_MS : REINTENTO_CONFIRMACION_MS);
     }
   }
 

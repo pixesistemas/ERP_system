@@ -100,6 +100,15 @@ app.get("/health", (req, res) => {
 });
 
 /*
+ * Salud pública bajo /api/v1: la usa el POS del modo sin conexión para
+ * detectar si el servidor está accesible (mismo camino que el resto de la
+ * API, así funciona aunque el proxy solo exponga /api).
+ */
+app.get("/api/v1/health", (req, res) => {
+  res.json({ ok: true, now: new Date().toISOString() });
+});
+
+/*
  * Webhook público de WhatsApp Cloud (Meta):
  * GET verifica el token de suscripción y POST recibe
  * los mensajes de los clientes (sin autenticación JWT).
