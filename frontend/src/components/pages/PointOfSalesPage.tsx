@@ -74,6 +74,7 @@ export function PointOfSalesPage() {
         fiscal: editing.fiscal,
         activo: editing.activo,
         formato_impresion: editing.formato_impresion || 'A4',
+        impresion_directa: Boolean(editing.impresion_directa),
       };
       if (editing.id) await erpApi.updatePointOfSale(editing.id, payload);
       else await erpApi.createPointOfSale(payload);
@@ -87,7 +88,7 @@ export function PointOfSalesPage() {
   return <div className="products-page">
     <div className="products-toolbar">
       <div><h3>Puntos de venta</h3><p>Una empresa puede tener varios puntos de venta y numeraciones independientes.</p></div>
-      <button className="primary-action" onClick={() => setEditing({ numero: '', nombre: '', nombre_fantasia: '', direccion: '', telefono: '', whatsapp: '', email: '', sucursal_id: '', fiscal: true, activo: true, formato_impresion: 'A4' })}><Plus /> Nuevo punto</button>
+      <button className="primary-action" onClick={() => setEditing({ numero: '', nombre: '', nombre_fantasia: '', direccion: '', telefono: '', whatsapp: '', email: '', sucursal_id: '', fiscal: true, activo: true, formato_impresion: 'A4', impresion_directa: false })}><Plus /> Nuevo punto</button>
     </div>
     {error && <div className="error-box">{error}</div>}
     <div className="products-card">
@@ -100,7 +101,7 @@ export function PointOfSalesPage() {
           <td>{r.direccion || <span className="muted">—</span>}</td>
           <td>{[r.telefono && `Tel: ${r.telefono}`, r.whatsapp && `WhatsApp: ${r.whatsapp}`, r.email && r.email].filter(Boolean).join(' · ') || <span className="muted">—</span>}</td>
           <td>{branches.find((b: any) => String(b.id) === String(r.sucursal_id))?.nombre || '-'}</td>
-          <td>{r.formato_impresion === '80MM' ? 'Ticket 80 mm' : 'Hoja A4'}</td>
+          <td>{r.formato_impresion === '80MM' ? 'Ticket 80 mm' : 'Hoja A4'}{r.impresion_directa ? ' · Directa' : ''}</td>
           <td>{r.logo ? <span className="pv-logo-cell">{r.logo.startsWith('data:image/') && <img src={r.logo} alt="logo" />}<button type="button" className="link-button" disabled={logoBusy} onClick={() => removeLogo(r)}>Quitar</button></span> : <button type="button" className="link-button" disabled={logoBusy} onClick={() => logoRefs.current[r.id]?.click()}><ImageUp size={14} /> Subir logo</button>}<input ref={el => { logoRefs.current[r.id] = el; }} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) uploadLogo(r, f); }} /></td>
           <td>{r.fiscal ? 'HABILITADO' : 'INTERNO'}</td>
           <td>{r.activo ? 'ACTIVO' : 'INACTIVO'}</td>
@@ -121,6 +122,7 @@ export function PointOfSalesPage() {
         <label>Email<input type="email" value={editing.email || ''} placeholder="Ej.: sucursal@empresa.com" onChange={e => setEditing({ ...editing, email: e.target.value })} /></label>
         <label>Sucursal<select value={editing.sucursal_id || ''} onChange={e => setEditing({ ...editing, sucursal_id: e.target.value })}><option value="">Seleccionar...</option>{branches.map((b: any) => <option key={b.id} value={b.id}>{b.nombre}</option>)}</select></label>
         <label>Formato de impresión<select value={editing.formato_impresion || 'A4'} onChange={e => setEditing({ ...editing, formato_impresion: e.target.value })}><option value="A4">Hoja A4</option><option value="80MM">Ticket 80 mm</option></select></label>
+        <label className="toggle-row" title="Con Chrome en modo kiosco (--kiosk-printing) el comprobante sale directo a la impresora, sin abrir la vista previa. El ticket de 80 mm imprime directo siempre, tenga o no esta opción."><span>Impresión directa (sin vista previa)</span><input type="checkbox" checked={Boolean(editing.impresion_directa)} onChange={e => setEditing({ ...editing, impresion_directa: e.target.checked })} /></label>
         <label className="toggle-row"><span>Habilitado para ARCA</span><input type="checkbox" checked={Boolean(editing.fiscal)} onChange={e => setEditing({ ...editing, fiscal: e.target.checked })} /></label>
       </div>
       <div className="modal-actions"><button type="button" onClick={() => setEditing(null)}>Cancelar</button><button className="save">Guardar</button></div>

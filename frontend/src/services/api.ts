@@ -180,6 +180,33 @@ export const api = {
   reactivarWhatsappOrderRequest(id: number) { return request<any>(`/whatsapp/clientes/${id}/reactivar`, { method: "POST" }); },
 };
 
+/*
+ * Impresión directa: escribe el comprobante en un iframe oculto; la propia
+ * página trae window.print(), así que con Chrome --kiosk-printing el
+ * comprobante sale a la impresora sin abrir vista previa ni diálogo.
+ */
+function imprimirHtmlDirecto(html: string) {
+  const frame = document.createElement("iframe");
+  frame.setAttribute("aria-hidden", "true");
+  frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden";
+  document.body.appendChild(frame);
+  const doc = frame.contentDocument || frame.contentWindow?.document;
+  if (!doc) {
+    frame.remove();
+    throw new Error("No se pudo preparar la impresión directa.");
+  }
+  doc.open();
+  doc.write(html);
+  doc.close();
+  setTimeout(() => {
+    try {
+      frame.remove();
+    } catch (e) {
+      /* el iframe ya no está */
+    }
+  }, 120000);
+}
+
 export const erpApi = {
   listBanks: () => request<any>('/erp/bancos'),
   bankReconciliation: () => request<any>('/erp/bancos/reconciliacion'),
@@ -349,15 +376,19 @@ export const erpApi = {
   closeCashWithCount: (id:number,data:any) => request<any>(`/erp/cajas/sesiones/${id}/arqueo-cerrar`,{method:'POST',body:JSON.stringify(data)}),
   openCash: (data:any) => request<any>('/erp/cajas/sesiones/abrir',{method:'POST',body:JSON.stringify(data)}),
   createCashMovement: (data:any) => request<any>('/erp/cajas/movimientos',{method:'POST',body:JSON.stringify(data)}),
-  async printPosOperation(id:number){
+  async printPosOperation(id:number,directo=false){
     const token=getToken();const response=await fetch(`${API_URL}/erp/pos/operaciones/${id}/imprimir`,{headers:token?{Authorization:`Bearer ${token}`}:{}});
     if(!response.ok)throw new Error((await response.json().catch(()=>({}))).error||'No se pudo preparar la impresión.');
-    const html=await response.text(),win=window.open('','_blank');if(!win)throw new Error('El navegador bloqueó la ventana de impresión.');win.document.open();win.document.write(html);win.document.close();
+    const html=await response.text();
+    if(directo){imprimirHtmlDirecto(html);return}
+    const win=window.open('','_blank');if(!win)throw new Error('El navegador bloqueó la ventana de impresión.');win.document.open();win.document.write(html);win.document.close();
   },
-  async printPosVouchers(id:number){
+  async printPosVouchers(id:number,directo=false){
     const token=getToken();const response=await fetch(`${API_URL}/erp/pos/operaciones/${id}/imprimir-regalos`,{headers:token?{Authorization:`Bearer ${token}`}:{}});
     if(!response.ok)throw new Error((await response.json().catch(()=>({}))).error||'No se pudo preparar el vale.');
-    const html=await response.text(),win=window.open('','_blank');if(!win)throw new Error('El navegador bloqueó la ventana del vale.');win.document.open();win.document.write(html);win.document.close();
+    const html=await response.text();
+    if(directo){imprimirHtmlDirecto(html);return}
+    const win=window.open('','_blank');if(!win)throw new Error('El navegador bloqueó la ventana del vale.');win.document.open();win.document.write(html);win.document.close();
   },
   async printPaymentOrder(id:number){
     const token=getToken();const response=await fetch(`${API_URL}/erp/ordenes-pago/${id}/imprimir`,{headers:token?{Authorization:`Bearer ${token}`}:{}});

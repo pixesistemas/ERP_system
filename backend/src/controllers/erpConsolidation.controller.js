@@ -86,8 +86,8 @@ function savePos(req,res){
   const whatsapp=d.whatsapp!=null?String(d.whatsapp).trim():'';
   const email=d.email!=null?String(d.email).trim():'';
   try{
-    if(req.params.id) db.prepare(`UPDATE puntos_venta SET numero=?,nombre=?,nombre_fantasia=?,direccion=?,telefono=?,whatsapp=?,email=?,sucursal_id=?,fiscal=?,activo=?,formato_impresion=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND empresa_id=?`).run(numero,d.nombre.trim(),nombreFantasia,direccion,telefono,whatsapp,email,d.sucursal_id||null,bool(d.fiscal ?? true)?1:0,bool(d.activo ?? true)?1:0,formato,Number(req.params.id),e);
-    else db.prepare(`INSERT INTO puntos_venta(empresa_id,sucursal_id,numero,nombre,nombre_fantasia,direccion,telefono,whatsapp,email,fiscal,activo,formato_impresion) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`).run(e,d.sucursal_id||null,numero,d.nombre.trim(),nombreFantasia,direccion,telefono,whatsapp,email,bool(d.fiscal ?? true)?1:0,bool(d.activo ?? true)?1:0,formato);
+    if(req.params.id) db.prepare(`UPDATE puntos_venta SET numero=?,nombre=?,nombre_fantasia=?,direccion=?,telefono=?,whatsapp=?,email=?,sucursal_id=?,fiscal=?,activo=?,formato_impresion=?,impresion_directa=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND empresa_id=?`).run(numero,d.nombre.trim(),nombreFantasia,direccion,telefono,whatsapp,email,d.sucursal_id||null,bool(d.fiscal ?? true)?1:0,bool(d.activo ?? true)?1:0,formato,bool(d.impresion_directa)?1:0,Number(req.params.id),e);
+    else db.prepare(`INSERT INTO puntos_venta(empresa_id,sucursal_id,numero,nombre,nombre_fantasia,direccion,telefono,whatsapp,email,fiscal,activo,formato_impresion,impresion_directa) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(e,d.sucursal_id||null,numero,d.nombre.trim(),nombreFantasia,direccion,telefono,whatsapp,email,bool(d.fiscal ?? true)?1:0,bool(d.activo ?? true)?1:0,formato,bool(d.impresion_directa)?1:0);
   }catch(err){if(String(err.message).includes('UNIQUE'))return res.status(409).json({ok:false,error:'Ese punto de venta ya existe para la empresa.'});throw err;}
   listPos(req,res);
 }
@@ -1499,9 +1499,9 @@ function listPosCatalogs(req,res){
 function misPuntosVenta(req,res){
   const e=empresaId(req);
   const uid=Number(req.usuario?.id||req.user?.id||0);
-  const asignados=db.prepare(`SELECT up.punto_venta_id,up.predeterminado,p.numero,p.nombre FROM usuario_puntos_venta up JOIN puntos_venta p ON p.id=up.punto_venta_id AND p.empresa_id=up.empresa_id WHERE up.empresa_id=? AND up.usuario_id=? ORDER BY p.numero`).all(e,uid);
+  const asignados=db.prepare(`SELECT up.punto_venta_id,up.predeterminado,p.numero,p.nombre,p.formato_impresion,p.impresion_directa FROM usuario_puntos_venta up JOIN puntos_venta p ON p.id=up.punto_venta_id AND p.empresa_id=up.empresa_id WHERE up.empresa_id=? AND up.usuario_id=? ORDER BY p.numero`).all(e,uid);
   const todos=db.prepare('SELECT * FROM puntos_venta WHERE empresa_id=? AND activo=1 ORDER BY numero').all(e);
-  const puntosVenta=(asignados.length?asignados:todos).map(r=>({id:Number(r.punto_venta_id||r.id),numero:Number(r.numero),nombre:r.nombre,predeterminado:Boolean(r.predeterminado)}));
+  const puntosVenta=(asignados.length?asignados:todos).map(r=>({id:Number(r.punto_venta_id||r.id),numero:Number(r.numero),nombre:r.nombre,formato_impresion:r.formato_impresion||'A4',impresion_directa:Boolean(r.impresion_directa),predeterminado:Boolean(r.predeterminado)}));
   const predeterminado=puntosVenta.find(p=>p.predeterminado)||puntosVenta[0]||null;
   res.json({ok:true,puntosVenta,predeterminado});
 }
