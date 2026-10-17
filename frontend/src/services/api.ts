@@ -324,6 +324,13 @@ export const erpApi = {
   posFacturarPendiente: (id:number,body?:any) => request<any>(`/erp/pos/operaciones/${id}/facturar`,{method:'POST',body:JSON.stringify(body||{})}),
   posAnularOperacion: (id:number) => request<any>(`/erp/pos/operaciones/${id}/anular`,{method:'POST',body:JSON.stringify({})}),
   listCashSessions: () => request<any>('/erp/cajas/sesiones'),
+  cashCollections: (params:{desde?:string;hasta?:string;pv?:number}) => {
+    const qs=new URLSearchParams();
+    if(params.desde)qs.set('desde',params.desde);
+    if(params.hasta)qs.set('hasta',params.hasta);
+    if(params.pv)qs.set('pv',String(params.pv));
+    return request<any>(`/erp/cajas/cobros?${qs.toString()}`);
+  },
   listCashSessionMedios: (id: number) => request<any>(`/erp/cajas/sesiones/${id}/medios`),
   getCashSession: (id:number) => request<any>(`/erp/cajas/sesiones/${id}`),
   closeCashSession: (id:number) => request<any>(`/erp/cajas/sesiones/${id}/arqueo-cerrar`,{method:'POST',body:JSON.stringify({})}),

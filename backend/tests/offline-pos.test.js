@@ -50,6 +50,12 @@ const offline = require("../src/controllers/offline.controller");
 
 const empresa = db.prepare("SELECT * FROM empresas WHERE nombre='empresa1'").get();
 if (!empresa) throw new Error("No se encontró la empresa demo del seed.");
+/* Módulos como en producción: la migración 097 los activa en las empresas existentes. */
+for (const modulo of ["REMITOS", "CHEQUES", "RESERVAS_MONTO", "PROVEEDORES"]) {
+  db.prepare(
+    "INSERT OR IGNORE INTO modulos_empresa(empresa_id,modulo,activo,updated_at) VALUES(?,?,1,CURRENT_TIMESTAMP)",
+  ).run(empresa.id, modulo);
+}
 const producto = db.prepare("SELECT * FROM productos WHERE empresa_id=? ORDER BY id LIMIT 1").get(empresa.id);
 if (!producto) throw new Error("El seed demo no tiene productos.");
 

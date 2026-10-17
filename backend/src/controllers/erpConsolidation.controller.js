@@ -14,6 +14,7 @@ const { generarPdfPedidosPendientes } = require('../pdf/pedidosPendientesPdf.ser
 const { generarPdfReciboProvisorio } = require('../pdf/reciboProvisorioPdf.service');
 const OcrCompra = require('../services/ocrCompra.service');
 const { crearRecibo, confirmarRecibo } = require('../repositories/recibo.repository');
+const { empresaTieneModulo } = require('../utils/modulos');
 
 function empresaId(req) { return Number(req.empresa?.id || req.usuario?.empresaId || req.user?.empresaId || 1); }
 function bool(v) { return v === true || v === 1 || v === '1'; }
@@ -1717,6 +1718,8 @@ async function createPosOperation(req,res){const e=empresaId(req);limpiarNotasVe
   const fechaOperacion=/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(String(d.fecha_cliente||''))?String(d.fecha_cliente).replace('T',' '):nowLocal();
   if(!rawItems.length)return res.status(400).json({ok:false,error:'La operación no tiene artículos.'});
   const mode=String(d.mode||'NORMAL').toUpperCase();
+  /* Remitos activables por empresa (el retiro de reserva por monto los usa igual). */
+  if(['REMITO_X','REMITO_R'].includes(mode)&&!empresaTieneModulo(e,'REMITOS'))return res.status(403).json({ok:false,error:'El módulo de remitos no está habilitado para esta empresa.'});
   const reserveWithdrawal=Boolean(d.reserva_monto_id);
   if(['RESERVA','PEDIDO'].includes(mode)&&!d.cliente_id)return res.status(400).json({ok:false,error:'El cliente es obligatorio para reservas y notas de pedido.'});
   if(mode==='PEDIDO'&&!d.vendedor_id)return res.status(400).json({ok:false,error:'El vendedor es obligatorio para la nota de pedido.'});
@@ -1815,6 +1818,9 @@ async function createPosOperation(req,res){const e=empresaId(req);limpiarNotasVe
   }
 
   const chequeMonto=Number((d.pagos||{}).CHEQUE||(d.pagos||{}).cheque||0);
+  if(chequeMonto>0&&!empresaTieneModulo(e,'CHEQUES')){
+    return res.status(403).json({ok:false,error:'El módulo de cheques no está habilitado para esta empresa.'});
+  }
   if(chequeMonto>0&&!(d.cheques||[]).some(c=>Number(c.importe)>0)){
     return res.status(400).json({ok:false,error:'Ingresá al menos un cheque (número e importe) para pagar con CHEQUE.'});
   }
@@ -1919,6 +1925,34 @@ function listPosOperationItems(req,res){const e=empresaId(req),id=Number(req.par
 function listPosOperations(req,res){const e=empresaId(req);limpiarNotasVenta(e);const rows=db.prepare(`SELECT v.*,(SELECT SUM(i.costo_unitario*i.cantidad) FROM venta_pos_items i WHERE i.venta_id=v.id) costo_total,c.razon_social cliente,ca.nombre cajero,s.nombre sucursal,vd.nombre vendedor_nombre,d.afip_estado,d.afip_resultado,d.afip_observaciones,d.cae,d.cae_vencimiento,d.comprobante_tipo_afip,d.comprobante_letra,d.subtipo FROM ventas_pos v LEFT JOIN clientes c ON c.id=v.cliente_id LEFT JOIN cajeros ca ON ca.id=v.cajero_id LEFT JOIN sucursales s ON s.id=v.sucursal_id LEFT JOIN vendedores vd ON vd.id=v.vendedor_id LEFT JOIN documentos_comerciales d ON d.id=v.documento_id WHERE v.empresa_id=? ORDER BY v.id DESC LIMIT ?`).all(e,Number(req.query.limit||200));res.json({ok:true,operations:rows})}
 function listCashSessions(req,res){const e=empresaId(req),pv=Number(req.query.pv||0);const rows=db.prepare(`SELECT cs.*,c.nombre cajero,s.nombre sucursal FROM caja_sesiones cs LEFT JOIN cajeros c ON c.id=cs.cajero_id LEFT JOIN sucursales s ON s.id=cs.sucursal_id WHERE cs.empresa_id=? ${pv?'AND COALESCE(cs.punto_venta,0)=? ':''}ORDER BY cs.id DESC`).all(e,...(pv?[pv]:[]));res.json({ok:true,sessions:rows})}
 function listCashSessionMedios(req,res){const e=empresaId(req),id=Number(req.params.id);const rows=db.prepare(`SELECT p.medio,SUM(p.importe) importe,COUNT(DISTINCT v.id) ventas FROM venta_pos_pagos p JOIN ventas_pos v ON v.id=p.venta_id WHERE v.empresa_id=? AND v.caja_sesion_id=? GROUP BY p.medio ORDER BY p.medio`).all(e,id);res.json({ok:true,medios:rows})}
+/*
+ * Cobros por fecha y medio: suma los pagos de las ventas del POS en el
+ * rango (incluye las ventas del modo sin conexión, que conservan su fecha
+ * real de cobro) y cuenta las sesiones de caja del período. Es la consulta
+ * de "qué se cobró" entre dos fechas.
+ */
+function cashCollectionsSummary(req,res){
+  const e=empresaId(req);
+  const desde=String(req.query.desde||'').trim();
+  const hasta=String(req.query.hasta||'').trim();
+  const pv=Number(req.query.pv||0);
+  const cond=['v.empresa_id=?',"v.estado<>'ANULADO'"];
+  const params=[e];
+  if(/^\d{4}-\d{2}-\d{2}$/.test(desde)){cond.push('date(v.fecha)>=date(?)');params.push(desde)}
+  if(/^\d{4}-\d{2}-\d{2}$/.test(hasta)){cond.push('date(v.fecha)<=date(?)');params.push(hasta)}
+  if(pv){cond.push('v.punto_venta=?');params.push(pv)}
+  const medios=db.prepare(`SELECT p.medio,SUM(p.importe) importe,COUNT(DISTINCT v.id) ventas FROM venta_pos_pagos p JOIN ventas_pos v ON v.id=p.venta_id WHERE ${cond.join(' AND ')} GROUP BY p.medio ORDER BY p.medio`).all(...params);
+  const operaciones=Number(db.prepare(`SELECT COUNT(*) n FROM ventas_pos v WHERE ${cond.join(' AND ')}`).get(...params).n||0);
+  const condSesion=['empresa_id=?'];
+  const paramsSesion=[e];
+  if(pv){condSesion.push('COALESCE(punto_venta,0)=?');paramsSesion.push(pv)}
+  if(/^\d{4}-\d{2}-\d{2}$/.test(desde)){condSesion.push('date(fecha_apertura)>=date(?)');paramsSesion.push(desde)}
+  if(/^\d{4}-\d{2}-\d{2}$/.test(hasta)){condSesion.push('date(fecha_apertura)<=date(?)');paramsSesion.push(hasta)}
+  const sesiones=Number(db.prepare(`SELECT COUNT(*) n FROM caja_sesiones WHERE ${condSesion.join(' AND ')}`).get(...paramsSesion).n||0);
+  const total=medios.reduce((n,m)=>n+Number(m.importe||0),0);
+  res.json({ok:true,desde,hasta,pv,medios,total,operaciones,sesiones});
+}
+module.exports.cashCollectionsSummary=cashCollectionsSummary;
 const DEFAULT_COMPROBANTE_CONFIG={FACTURA:{descuenta_stock:1,registra_caja:1,requiere_cliente:0,formato_impresion:'PUNTO_VENTA',numerador_tipo:null},NOTA_X:{descuenta_stock:0,registra_caja:0,requiere_cliente:0,formato_impresion:'PUNTO_VENTA',numerador_tipo:null},NOTA_CREDITO:{descuenta_stock:0,registra_caja:0,requiere_cliente:0,formato_impresion:'PUNTO_VENTA',numerador_tipo:null},NOTA_DEBITO:{descuenta_stock:0,registra_caja:0,requiere_cliente:0,formato_impresion:'PUNTO_VENTA',numerador_tipo:null},PRESUPUESTO:{descuenta_stock:0,registra_caja:0,requiere_cliente:0,formato_impresion:'PUNTO_VENTA',numerador_tipo:null},NOTA_PEDIDO:{descuenta_stock:0,registra_caja:0,requiere_cliente:0,formato_impresion:'PUNTO_VENTA',numerador_tipo:null},REMITO:{descuenta_stock:1,registra_caja:0,requiere_cliente:1,formato_impresion:'PUNTO_VENTA',numerador_tipo:null}};
 function comprobanteConfig(e,tipo){const base=DEFAULT_COMPROBANTE_CONFIG[tipo]||{descuenta_stock:0,registra_caja:0,requiere_cliente:0,formato_impresion:'PUNTO_VENTA',numerador_tipo:null};const row=db.prepare('SELECT * FROM config_comprobantes WHERE empresa_id=? AND tipo=?').get(e,tipo);return row?{...base,descuenta_stock:Number(row.descuenta_stock||0),registra_caja:Number(row.registra_caja||0),requiere_cliente:Number(row.requiere_cliente||0),requiere_vendedor:Number(row.requiere_vendedor||0),formato_impresion:row.formato_impresion||'PUNTO_VENTA',numerador_tipo:row.numerador_tipo||null}:base}
 function listPosComprobantesConfig(req,res){const e=empresaId(req);const rows=db.prepare('SELECT * FROM config_comprobantes WHERE empresa_id=? ORDER BY tipo').all(e);res.json({ok:true,configs:rows.map(r=>({tipo:r.tipo,descuenta_stock:Number(r.descuenta_stock||0),registra_caja:Number(r.registra_caja||0),requiere_cliente:Number(r.requiere_cliente||0),requiere_vendedor:Number(r.requiere_vendedor||0),pie_pegado:Number(r.pie_pegado??1),formato_impresion:r.formato_impresion||'PUNTO_VENTA',numerador_tipo:r.numerador_tipo||null}))})}

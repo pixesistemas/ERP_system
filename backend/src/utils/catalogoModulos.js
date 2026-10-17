@@ -102,6 +102,34 @@ const MODULOS_SISTEMA = [
       "Permite seguir cobrando en el POS cuando se corta el internet: las ventas quedan guardadas en la computadora y al volver la conexión se sincronizan y facturan solas (si ARCA no responde, quedan pendientes de reintento automático).",
   },
   {
+    clave: "RESERVAS_MONTO",
+    nombre: "Reservas por monto",
+    tipo: "opcional",
+    descripcion:
+      "Reservas de mercadería por un importe a favor del cliente, con lista de precios congelada; el retiro se hace con remito y se descuenta el saldo. Incluye la pantalla de reservas por monto y el selector en el punto de venta.",
+  },
+  {
+    clave: "PROVEEDORES",
+    nombre: "Proveedores y órdenes de pago",
+    tipo: "opcional",
+    descripcion:
+      "Catálogo de proveedores, órdenes de pago (efectivo y cheques de la cartera) y su impresión.",
+  },
+  {
+    clave: "CHEQUES",
+    nombre: "Cheques",
+    tipo: "opcional",
+    descripcion:
+      "Cartera de cheques propios y de terceros, depósitos, conciliación de depósitos y cobros con cheque en el punto de venta y en cuentas corrientes.",
+  },
+  {
+    clave: "REMITOS",
+    nombre: "Remitos",
+    tipo: "opcional",
+    descripcion:
+      "Remitos internos (X) y con cliente (R), retiro de reservas por monto mediante remito, y facturación posterior de remitos desde el punto de venta.",
+  },
+  {
     clave: "COMPRAS_MOVIL",
     nombre: "App de compras",
     tipo: "opcional",

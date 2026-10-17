@@ -16,6 +16,7 @@ const {
 const { generarPDFDocumento } = require("../services/documentoPdf.service");
 
 const WorkflowEngine = require("../workflow/workflowEngine");
+const { empresaTieneModulo } = require("../utils/modulos");
 
 async function crearDocumento(req, res, next) {
   try {
@@ -177,6 +178,14 @@ function convertir(req, res, next) {
       return res.status(400).json({
         ok: false,
         error: "Debe informar nuevoTipo",
+      });
+    }
+
+    /* La conversión a remito se activa por empresa (módulo REMITOS). */
+    if (String(nuevoTipo).toUpperCase() === "REMITO" && !empresaTieneModulo(req.empresa.id, "REMITOS")) {
+      return res.status(403).json({
+        ok: false,
+        error: "El módulo de remitos no está habilitado para esta empresa.",
       });
     }
 

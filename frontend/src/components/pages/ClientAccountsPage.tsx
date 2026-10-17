@@ -6,7 +6,9 @@ import { Client } from "../../types";
 import { MoneyInput } from "../shared/MoneyInput";
 import { PdfViewerModal } from "../shared/PdfViewerModal";
 
-export function ClientAccountsPage() {
+export function ClientAccountsPage({ modulos = null }: { modulos?: Record<string, boolean> | null }) {
+  /* Cobros con cheque: se ocultan si la empresa no tiene el módulo activo. */
+  const chequeHabilitado = modulos ? Boolean(modulos.CHEQUES) : true;
   const [clients, setClients] = useState<Client[]>([]);
   const [summaries, setSummaries] = useState<Record<string, { saldo: number; vencido: number; aVencer: number }>>({});
   const [query, setQuery] = useState("");
@@ -127,7 +129,7 @@ export function ClientAccountsPage() {
       const detalles = Object.entries(payments)
         .filter(([medio, v]) => medio !== 'cheque' && Number(v) > 0)
         .map(([medioPago, importe]) => ({ medioPago: medioPago.toUpperCase(), importe: Number(importe) }));
-      for (const c of receivedChecks) {
+      for (const c of (chequeHabilitado ? receivedChecks : [])) {
         if (Number(c.importe) > 0) {
           detalles.push({
             medioPago: 'CHEQUE',
@@ -191,7 +193,7 @@ export function ClientAccountsPage() {
               {puntos.map((p: any) => <option key={p.id} value={p.id}>PV {String(p.numero).padStart(4, "0")} · {p.nombre || ""}{p.predeterminado ? " (pred)" : ""}</option>)}
             </select>
           </label>}
-          {Object.keys(payments).map(k => <label key={k}>
+          {Object.keys(payments).filter(k => k !== 'cheque' || chequeHabilitado).map(k => <label key={k}>
             <span>{k.toUpperCase()}</span>
             <MoneyInput value={payments[k]} onChange={v => setPayments({ ...payments, [k]: v })} onCompleteMissing={() => {
               const current = Number(payments[k] || 0);
@@ -199,7 +201,7 @@ export function ClientAccountsPage() {
               setPayments({ ...payments, [k]: Number(missing.toFixed(2)) });
             }} />
           </label>)}
-          {Number(payments.cheque) > 0 && <div className="check-capture">
+          {chequeHabilitado && Number(payments.cheque) > 0 && <div className="check-capture">
             <div className="check-capture-head">
               <strong>Cheques recibidos</strong>
               <button type="button" onClick={() => { const usados = receivedChecks.reduce((n, c) => n + Number(c.importe || 0), 0); const falta = Math.max(0, Number(payments.cheque || 0) - usados); setReceivedChecks([...receivedChecks, { id: Date.now(), numero: "", banco: "", librador: "", importe: Number(falta.toFixed(2)), fechaEmision: new Date().toISOString().slice(0, 10), vencimiento: new Date().toISOString().slice(0, 10) }]); }}><Plus size={15} /> Agregar cheque</button>

@@ -78,7 +78,7 @@ const pedido = r.payload.operation;
   const docF = db.prepare('SELECT * FROM documentos_comerciales WHERE id=?').get(fact.documentId);
   if (docF.estado !== 'CONFIRMADO' || docF.cae !== '65626266267400') throw new Error('El documento de la factura no quedó CONFIRMADO con CAE.');
   const docOld = db.prepare('SELECT * FROM documentos_comerciales WHERE id=?').get(doc1.id);
-  if (docOld.estado !== 'ANULADO') throw new Error('El BORRADOR del pedido debe quedar ANULADO al facturar.');
+  if (docOld.estado !== 'FACTURADO') throw new Error('El BORRADOR del pedido debe quedar FACTURADO al facturar.');
   if (stock() !== 99) throw new Error('Al facturar el pedido debe descontarse stock (quedaron 99).');
   if (cajaMovs() !== 1) throw new Error('Al facturar debe registrarse el cobro en caja.');
   const pay = db.prepare('SELECT * FROM venta_pos_pagos WHERE venta_id=?').get(pedido.saleId);
