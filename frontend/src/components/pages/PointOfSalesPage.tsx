@@ -8,6 +8,7 @@ export function PointOfSalesPage() {
   const [editing, setEditing] = useState<any>(null);
   const [logoBusy, setLogoBusy] = useState(false);
   const [error, setError] = useState('');
+  const [ok, setOk] = useState('');
   const logoRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   async function load() {
@@ -27,8 +28,14 @@ export function PointOfSalesPage() {
   /* Ticket de prueba: sale por la misma vía directa que usa el POS (iframe oculto). */
   async function pruebaImpresion(pv: any) {
     setError('');
+    setOk('');
     try {
-      await erpApi.printTestTicket(Number(pv.id), true);
+      const res = await erpApi.printTestTicket(Number(pv.id), true);
+      if (res === false) {
+        setError('El ticket se generó, pero Chrome no confirmó la impresión. Revisá: 1) que esta ventana sea la de Chrome abierta con --kiosk-printing; 2) que la impresora del puerto 9100 sea la predeterminada en Windows; 3) la "página de prueba" de esa impresora desde Windows.');
+      } else {
+        setOk(`Orden de impresión enviada (PV ${String(pv.numero).padStart(4, '0')}). Si no aparece en el emulador, el problema está en Windows: probá la página de prueba de esa impresora y revisá la cola de impresión.`);
+      }
     } catch (e: any) {
       setError(e.message);
     }
@@ -101,6 +108,7 @@ export function PointOfSalesPage() {
       <button className="primary-action" onClick={() => setEditing({ numero: '', nombre: '', nombre_fantasia: '', direccion: '', telefono: '', whatsapp: '', email: '', sucursal_id: '', fiscal: true, activo: true, formato_impresion: 'A4', impresion_directa: false })}><Plus /> Nuevo punto</button>
     </div>
     {error && <div className="error-box">{error}</div>}
+    {ok && <div className="success-box">{ok}</div>}
     <div className="products-card">
       <table>
         <thead><tr><th>Número</th><th>Nombre</th><th>Nombre fantasía</th><th>Dirección</th><th>Contacto</th><th>Sucursal</th><th>Formato</th><th>Logo propio</th><th>ARCA</th><th>Estado</th><th></th></tr></thead>
