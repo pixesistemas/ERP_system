@@ -142,20 +142,47 @@ class CommercialPDFService {
   }
 
   async writePdf(html, filePath) {
+    const es80 = /80mm/i.test(html);
+    /*
+     * Para el PDF se quitan dos cosas del HTML del ticket:
+     * - @page: Chrome falla con "Page.printToPDF: Printing failed" cuando
+     *   el CSS trae @page con size en milímetros y "auto" (80mm auto); el
+     *   tamaño del PDF se pasa por parámetros.
+     * - <script>: el ticket de 80 mm trae "window.onafterprint = window.close()"
+     *   para cerrar la ventanita al imprimir desde el navegador, pero al
+     *   generar el PDF ese cierre ocurre durante printToPDF y Chrome falla.
+     */
+    const limpio = html
+      .replace(/@page\s*\{[^}]*\}/gi, "")
+      .replace(/<script[\s\S]*?<\/script>/gi, "");
+
     await conNavegador(async (browser) => {
       const page = await browser.newPage();
 
-      await page.setContent(html, {
+      await page.setContent(limpio, {
         waitUntil: "networkidle0",
       });
 
-      const es80 = /80MM/.test(html);
-
       if (es80) {
+        /*
+         * Alto calculado según el contenido: si se usa un alto fijo, los
+         * tickets largos se cortan y algunos Chrome fallan al paginar.
+         */
+        let altoMm = 200;
+        try {
+          const altoPx = await page.evaluate(() =>
+            Math.max(document.body?.scrollHeight || 0, document.documentElement?.scrollHeight || 0),
+          );
+          if (Number.isFinite(altoPx) && altoPx > 0) {
+            altoMm = Math.min(1000, Math.max(120, Math.ceil((altoPx / 96) * 25.4) + 10));
+          }
+        } catch (error) {
+          /* se usa el alto por defecto */
+        }
         await page.pdf({
           path: filePath,
           width: "80mm",
-          height: "200mm",
+          height: `${altoMm}mm`,
           printBackground: true,
           margin: {
             top: "4mm",

@@ -1008,6 +1008,7 @@ const CLAVES_COMPROBANTE = [
   "mostrarVendedor",
   "mostrarObservaciones",
   "mostrarPie",
+  "mostrarDatosFiscales",
   "mostrarQR",
 ];
 

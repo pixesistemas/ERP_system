@@ -53,6 +53,7 @@ export function SuperAdminPage() {
     { key: "mostrarVendedor", label: "Vendedor" },
     { key: "mostrarObservaciones", label: "Observaciones" },
     { key: "mostrarPie", label: "Pie del comprobante" },
+    { key: "mostrarDatosFiscales", label: "Datos fiscales (CUIT / IIBB)" },
     { key: "mostrarQR", label: "QR / CAE fiscal" },
   ];
 

@@ -173,25 +173,26 @@ const NOMBRE_TIPO = {
   TICKET_PRUEBA: "TICKET DE PRUEBA",
 };
 
-function encabezado(t, { empresa, puntoVenta, titulo }) {
+function encabezado(t, { empresa, puntoVenta, titulo, ver = () => true }) {
   const nombre = puntoVenta?.nombre_fantasia || empresa?.nombre_fantasia || empresa?.razon_social || empresa?.nombre || "EMPRESA";
   t.texto(nombre, { align: "center", bold: true, size: 2 });
   const cuit = String(empresa?.cuit || "").trim();
-  if (cuit) t.texto(`CUIT ${cuit}`, { align: "center" });
+  if (cuit && ver("mostrarDatosFiscales")) t.texto(`CUIT ${cuit}`, { align: "center" });
   const direccion = puntoVenta?.direccion || empresa?.direccion || "";
-  if (direccion) t.texto(direccion, { align: "center" });
+  if (direccion && ver("mostrarDireccion")) t.texto(direccion, { align: "center" });
   const telefono = puntoVenta?.telefono || empresa?.telefono || "";
-  if (telefono) t.texto(`Tel. ${telefono}`, { align: "center" });
+  if (telefono && ver("mostrarTelefono")) t.texto(`Tel. ${telefono}`, { align: "center" });
   if (titulo) t.texto(titulo, { align: "center", bold: true });
   t.separador("=");
   return t;
 }
 
-function generarTicketEscpos({ empresa, sale, items, puntoVenta }) {
+function generarTicketEscpos({ empresa, sale, items, puntoVenta, plantilla }) {
+  const ver = (clave) => (plantilla || {})[clave] !== false;
   const t = new TicketEscpos();
   const tipoNombre = NOMBRE_TIPO[String(sale.tipo || "").toUpperCase()] || String(sale.tipo || "COMPROBANTE");
   const letra = sale.comprobante_letra ? ` ${sale.comprobante_letra}` : "";
-  encabezado(t, { empresa, puntoVenta, titulo: `${tipoNombre}${letra}` });
+  encabezado(t, { empresa, puntoVenta, titulo: `${tipoNombre}${letra}`, ver });
 
   t.par(`Nro: ${String(sale.punto_venta || "").padStart(4, "0")}-${String(sale.numero || "").padStart(8, "0")}`.trim(), "");
   t.texto(`Fecha: ${fechaCorta(sale.fecha)}`);
@@ -257,7 +258,7 @@ function generarTicketEscpos({ empresa, sale, items, puntoVenta }) {
   }
   t.separador("=");
 
-  if (sale.cae) {
+  if (sale.cae && ver("mostrarQR")) {
     t.texto(`CAE: ${sale.cae}`, { align: "center", bold: true });
     if (sale.cae_vencimiento) t.texto(`Vto. CAE: ${fechaCorta(sale.cae_vencimiento)}`, { align: "center" });
     t.texto("Comprobante autorizado por ARCA", { align: "center" });
@@ -272,14 +273,15 @@ function generarTicketEscpos({ empresa, sale, items, puntoVenta }) {
   }
 
   const pie = empresa?.pie_factura || "";
-  if (pie) t.lineas(pie);
+  if (pie && ver("mostrarPie")) t.lineas(pie);
   t.cortar();
   return t.aBuffer();
 }
 
-function generarTicketPruebaEscpos({ empresa, puntoVenta }) {
+function generarTicketPruebaEscpos({ empresa, puntoVenta, plantilla }) {
+  const ver = (clave) => (plantilla || {})[clave] !== false;
   const t = new TicketEscpos();
-  encabezado(t, { empresa, puntoVenta, titulo: "*** TICKET DE PRUEBA ***" });
+  encabezado(t, { empresa, puntoVenta, titulo: "*** TICKET DE PRUEBA ***", ver });
   t.texto(`Punto de venta ${String(puntoVenta?.numero || "").padStart(4, "0")}`);
   t.texto(`Fecha: ${fechaCorta(new Date().toISOString())}`);
   t.separador();

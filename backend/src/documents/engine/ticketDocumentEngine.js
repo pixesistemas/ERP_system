@@ -248,6 +248,17 @@ class TicketDocumentEngine {
       html = html.split(key).join(String(value ?? ""));
     }
 
+    /*
+     * Datos fiscales del encabezado (CUIT, condición IVA, IIBB e inicio de
+     * actividad): se pueden ocultar por comprobante desde superadmin.
+     */
+    if (!ver("mostrarDatosFiscales")) {
+      html = html.replace(
+        /^[ \t]*<div class="header-line"><strong>(?:Condición IVA|CUIT|Ingresos Brutos|Inicio Actividad):<\/strong>.*?<\/div>[ \t]*\r?\n/gm,
+        "",
+      );
+    }
+
     return html;
   }
 

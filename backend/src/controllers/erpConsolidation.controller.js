@@ -4,7 +4,7 @@ const XLSX = require('xlsx');
 const db = require('../db/database');
 const { nowLocal, fromUtcSql } = require('../utils/time');
 const { registrarMovimientoCC } = require('../repositories/clienteCuentaCorriente.repository');
-const { getEmpresaById } = require('../repositories/empresa.repository');
+const { getEmpresaById, getPlantillaComprobante } = require('../repositories/empresa.repository');
 const { getClienteById } = require('../repositories/cliente.repository');
 const { emitirComprobanteAfip, FiscalNetworkError } = require('../afip/fiscalEmission.service');
 const { getLetraComprobante, getNombreComprobante } = require('../afip/fiscal.constants');
@@ -1520,7 +1520,8 @@ function datosTicketEscpos(e,id){
   const items=db.prepare('SELECT * FROM venta_pos_items WHERE venta_id=? ORDER BY id').all(id);
   const empresa=getEmpresaById(e);
   const puntoVenta=db.prepare('SELECT * FROM puntos_venta WHERE empresa_id=? AND numero=?').get(e,sale.punto_venta)||null;
-  return {sale,items,empresa,puntoVenta};
+  const plantilla=getPlantillaComprobante(e,sale.tipo)||null;
+  return {sale,items,empresa,puntoVenta,plantilla};
 }
 /*
  * Ticket ESC/POS de una operación: lo pide el POS y se lo manda al agente
@@ -1538,7 +1539,7 @@ function ticketPruebaEscpos(req,res){
   const e=empresaId(req);
   const pv=db.prepare('SELECT * FROM puntos_venta WHERE id=? AND empresa_id=?').get(Number(req.params.id),e);
   if(!pv)return res.status(404).json({ok:false,error:'Punto de venta no encontrado.'});
-  const buffer=generarTicketPruebaEscpos({empresa:getEmpresaById(e),puntoVenta:pv});
+  const buffer=generarTicketPruebaEscpos({empresa:getEmpresaById(e),puntoVenta:pv,plantilla:getPlantillaComprobante(e,'GENERAL')||null});
   res.json({ok:true,base64:buffer.toString('base64'),bytes:buffer.length});
 }
 
@@ -1579,7 +1580,7 @@ function ticketPruebaAgente(req,res){
   const pv=db.prepare('SELECT * FROM puntos_venta WHERE id=? AND empresa_id=?').get(Number(req.params.id),e);
   if(!pv)return res.status(404).json({ok:false,error:'Punto de venta no encontrado.'});
   if(String(pv.impresion_modo||'').toUpperCase()!=='AGENTE')return res.status(400).json({ok:false,error:'El punto de venta no está configurado para imprimir con agente.'});
-  const buffer=generarTicketPruebaEscpos({empresa:getEmpresaById(e),puntoVenta:pv});
+  const buffer=generarTicketPruebaEscpos({empresa:getEmpresaById(e),puntoVenta:pv,plantilla:getPlantillaComprobante(e,'GENERAL')||null});
   const r=encolarTicketPv({empresaId:e,pv,datos:buffer,descripcion:'Ticket de prueba (servidor)'});
   if(!r.ok)return res.status(r.status).json({ok:false,error:r.error});
   res.json({ok:true,encolado:true,trabajoId:r.trabajoId});

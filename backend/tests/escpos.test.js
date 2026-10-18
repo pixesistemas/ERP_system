@@ -177,5 +177,39 @@ function item(precio = 1000, cantidad = 1) {
   if (!textoA.includes("Neto") || !textoA.includes("IVA")) throw new Error("La factura A debe discriminar Neto e IVA.");
   if (textoA.includes("Transparencia Fiscal")) throw new Error("La factura A no lleva la leyenda de consumidor final.");
 
-  console.log("escpos: OK — factura B con precios finales, sin discriminación y con RG 5614 (IVA contenido); factura A discriminada; nota de venta final; QR, CP437 y corte.");
+  /* Tildes de superadmin: ocultar datos fiscales (CUIT/IIBB/IVA) y QR. */
+  db.prepare(
+    `INSERT INTO comprobante_plantillas(empresa_id,tipo,configuracion_json) VALUES(?,?,?)
+     ON CONFLICT(empresa_id,tipo) DO UPDATE SET configuracion_json=excluded.configuracion_json`,
+  ).run(empresa.id, "GENERAL", JSON.stringify({ mostrarDatosFiscales: false, mostrarQR: false }));
+
+  const ticketOculto = await conRespuesta(erp.ticketEscposOperacion, {}, { id: String(facturaA.payload.operation.saleId) });
+  const bufOculto = Buffer.from(ticketOculto.payload.base64, "base64");
+  const textoOculto = bufOculto.toString("latin1");
+  if (textoOculto.includes("CUIT ")) throw new Error("El tilde de datos fiscales no ocultó el CUIT en ESC/POS.");
+  if (bufOculto.indexOf(Buffer.from([0x1d, 0x28, 0x6b])) >= 0) throw new Error("El tilde de QR no ocultó el QR fiscal en ESC/POS.");
+  if (textoOculto.includes("CAE:")) throw new Error("El tilde de QR / CAE fiscal no ocultó el bloque fiscal en ESC/POS.");
+
+  /* La misma plantilla se respeta en el ticket HTML (impresión por navegador). */
+  const saleHtml = db
+    .prepare(
+      `SELECT v.*,c.razon_social cliente,c.cuit,c.dni,p.formato_impresion,d.cae,d.cae_vencimiento,d.comprobante_tipo_afip,
+       d.importe_neto documento_neto,d.importe_iva documento_iva,d.importe_total documento_total
+       FROM ventas_pos v LEFT JOIN clientes c ON c.id=v.cliente_id
+       LEFT JOIN puntos_venta p ON p.empresa_id=v.empresa_id AND p.numero=v.punto_venta
+       LEFT JOIN documentos_comerciales d ON d.id=v.documento_id WHERE v.id=? AND v.empresa_id=?`,
+    )
+    .get(facturaA.payload.operation.saleId, empresa.id);
+  saleHtml.neto = saleHtml.documento_neto;
+  saleHtml.ivaImporte = saleHtml.documento_iva;
+  saleHtml.totalFiscal = saleHtml.documento_total;
+  const itemsHtml = db.prepare("SELECT * FROM venta_pos_items WHERE venta_id=?").all(facturaA.payload.operation.saleId);
+  const TicketDocumentEngine = require("../src/documents/engine/ticketDocumentEngine");
+  const { getEmpresaById } = require("../src/repositories/empresa.repository");
+  const htmlOculto = await TicketDocumentEngine.render({ empresa: getEmpresaById(empresa.id), sale: saleHtml, items: itemsHtml });
+  if (htmlOculto.includes('<strong>CUIT:</strong>')) throw new Error("El tilde de datos fiscales no ocultó el CUIT en el ticket HTML.");
+  if (htmlOculto.includes('<strong>Ingresos Brutos:</strong>')) throw new Error("El tilde de datos fiscales no ocultó IIBB en el ticket HTML.");
+  if (htmlOculto.includes("afip.gob.ar/fe/qr")) throw new Error("El tilde de QR no ocultó el QR en el ticket HTML.");
+
+  console.log("escpos: OK — factura B con precios finales, sin discriminación y con RG 5614 (IVA contenido); factura A discriminada; nota de venta final; QR, CP437 y corte; tildes de datos fiscales y QR respetados en ESC/POS y HTML.");
 })();
