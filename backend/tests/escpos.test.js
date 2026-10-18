@@ -175,6 +175,11 @@ function item(precio = 1000, cantidad = 1) {
   const ticketA = await conRespuesta(erp.ticketEscposOperacion, {}, { id: String(facturaA.payload.operation.saleId) });
   const textoA = Buffer.from(ticketA.payload.base64, "base64").toString("latin1");
   if (!textoA.includes("Neto") || !textoA.includes("IVA")) throw new Error("La factura A debe discriminar Neto e IVA.");
+  const posNeto = textoA.indexOf("Neto");
+  const posIva = textoA.indexOf("IVA");
+  const posTotal = textoA.indexOf("TOTAL");
+  if (!(posNeto >= 0 && posIva > posNeto && posTotal > posIva)) throw new Error("El orden debe ser Neto, IVA y TOTAL.");
+  if (!textoA.includes("\x1bE\x01TOTAL")) throw new Error("El TOTAL debe imprimirse en negrita.");
   if (textoA.includes("Transparencia Fiscal")) throw new Error("La factura A no lleva la leyenda de consumidor final.");
 
   /* Tildes de superadmin: ocultar datos fiscales (CUIT/IIBB/IVA) y QR. */

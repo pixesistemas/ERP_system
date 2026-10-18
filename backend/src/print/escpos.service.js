@@ -128,11 +128,11 @@ class TicketEscpos {
     return this;
   }
 
-  par(izq, der) {
+  par(izq, der, opciones = {}) {
     const i = String(izq == null ? "" : izq);
     const d = String(der == null ? "" : der);
     const espacio = Math.max(1, this.ancho - i.length - d.length);
-    this.texto(`${i}${" ".repeat(espacio)}${d}`);
+    this.texto(`${i}${" ".repeat(espacio)}${d}`, { bold: Boolean(opciones.bold) });
     return this;
   }
 
@@ -236,13 +236,18 @@ function generarTicketEscpos({ empresa, sale, items, puntoVenta, plantilla }) {
   const iva = Number(sale.ivaImporte != null ? sale.ivaImporte : Math.max(0, total - neto));
   if (descuentoGeneral) t.par(`Descuento ${descuentoGeneral}%`, `-$${money(Number(sale.descuento_importe || 0))}`);
   if (recargoGeneral) t.par(`Recargo ${recargoGeneral}%`, `+$${money(total * recargoGeneral / (100 + recargoGeneral))}`);
-  t.par("TOTAL", `$${money(total)}`);
+  /*
+   * Orden pedido: Neto, IVA y TOTAL (este último en negrita). En los
+   * comprobantes sin discriminación se muestra solo el TOTAL.
+   */
   if (esComprobanteA) {
     if (neto || iva) {
       t.par("Neto", `$${money(neto)}`);
       t.par("IVA", `$${money(iva)}`);
     }
-  } else if (tipoComprobante === "FACTURA") {
+  }
+  t.par("TOTAL", `$${money(total)}`, { bold: true });
+  if (!esComprobanteA && tipoComprobante === "FACTURA") {
     /*
      * RG 5614/2024 (Régimen de Transparencia Fiscal al Consumidor):
      * a consumidor final se informa el IVA contenido y los demás
