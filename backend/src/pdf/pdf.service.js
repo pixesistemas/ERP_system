@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const puppeteer = require("puppeteer");
+const { conNavegador } = require("./navegador");
 
 const DocumentEngine = require("../documents/engine/documentEngine");
 
@@ -24,31 +24,25 @@ class PDFService {
     const fileName = `${request.tipoComprobante}-${request.puntoVenta}-${response.numero}.pdf`;
     const filePath = path.join(dir, fileName);
 
-    const browser = await puppeteer.launch({
-      headless: "new",
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    await conNavegador(async (browser) => {
+      const page = await browser.newPage();
+
+      await page.setContent(html, {
+        waitUntil: "networkidle0",
+      });
+
+      await page.pdf({
+        path: filePath,
+        format: "A4",
+        printBackground: true,
+        margin: {
+          top: "8mm",
+          right: "8mm",
+          bottom: "8mm",
+          left: "8mm",
+        },
+      });
     });
-
-    const page = await browser.newPage();
-
-    await page.setContent(html, {
-      waitUntil: "networkidle0",
-    });
-
-    await page.pdf({
-      path: filePath,
-      format: "A4",
-      printBackground: true,
-      margin: {
-        top: "8mm",
-        right: "8mm",
-        bottom: "8mm",
-        left: "8mm",
-      },
-    });
-
-    await browser.close();
 
     return {
       filePath,

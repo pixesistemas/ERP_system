@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const puppeteer = require("puppeteer");
+const { conNavegador } = require("./navegador");
 
 const { urlPublica } = require("../utils/url");
 
@@ -82,18 +82,11 @@ async function generarPdfReciboProvisorio({ empresa, venta, cobros }) {
   const fileName = `RECIBO-PROVISORIO-${String(venta.punto_venta || 1).padStart(4, "0")}-${String(venta.numero || 0).padStart(8, "0")}-${Date.now()}.pdf`;
   const filePath = path.join(directory, fileName);
 
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-  });
-  try {
+  await conNavegador(async (browser) => {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });
     await page.pdf({ path: filePath, format: "A4", printBackground: true, margin: { top: "10mm", bottom: "10mm", left: "10mm", right: "10mm" } });
-  } finally {
-    await browser.close();
-  }
+  });
 
   const url = `/storage/pdf/${empresa?.nombre || "general"}/provisorios/${fileName}`;
   return { fileName, filePath, url, publicUrl: urlPublica(url) };

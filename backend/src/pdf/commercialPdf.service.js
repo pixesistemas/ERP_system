@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const puppeteer = require("puppeteer");
+const { conNavegador } = require("./navegador");
 
 const db = require("../db/database");
 const CommercialDocumentEngine = require("../documents/engine/commercialDocumentEngine");
@@ -142,13 +142,7 @@ class CommercialPDFService {
   }
 
   async writePdf(html, filePath) {
-    const browser = await puppeteer.launch({
-      headless: true,
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
-
-    try {
+    await conNavegador(async (browser) => {
       const page = await browser.newPage();
 
       await page.setContent(html, {
@@ -183,9 +177,7 @@ class CommercialPDFService {
           },
         });
       }
-    } finally {
-      await browser.close();
-    }
+    });
   }
 }
 
