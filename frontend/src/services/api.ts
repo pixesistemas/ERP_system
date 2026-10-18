@@ -474,14 +474,21 @@ export const erpApi = {
   getTicketPruebaEscpos: (puntoVentaId:number) => request<any>(`/erp/puntos-venta/${puntoVentaId}/ticket-prueba-escpos`),
   /*
    * Envía el ticket al agente de impresión que corre en la PC del local
-   * (127.0.0.1). Devuelve true si imprimió; lanza error con el motivo si no.
+   * (127.0.0.1). Le pasa la configuración del punto de venta (tipo de
+   * impresora, IP/puerto o nombre instalado) junto con el ticket ESC/POS.
    */
   async imprimirEnAgente(pv:any,datos:{datos_base64:string;descripcion?:string}){
     const base=String(pv?.agente_url||'http://127.0.0.1:17777').replace(/\/+$/,'');
+    const impresora={
+      tipo:String(pv?.impresora_tipo||'RED').toUpperCase()==='SISTEMA'?'SISTEMA':'RED',
+      host:String(pv?.impresora_host||'').trim(),
+      puerto:Number(pv?.impresora_puerto)||9100,
+      nombre:String(pv?.impresora_nombre||'').trim(),
+    };
     const controller=new AbortController();
     const timer=setTimeout(()=>controller.abort(),20000);
     try{
-      const r=await fetch(`${base}/imprimir`,{method:'POST',headers:{'Content-Type':'application/json',...(pv?.agente_token?{'X-Token':String(pv.agente_token)}:{})},body:JSON.stringify(datos),signal:controller.signal});
+      const r=await fetch(`${base}/imprimir`,{method:'POST',headers:{'Content-Type':'application/json',...(pv?.agente_token?{'X-Token':String(pv.agente_token)}:{})},body:JSON.stringify({...datos,impresora}),signal:controller.signal});
       const j=await r.json().catch(()=>({}));
       if(!r.ok||!j.ok)throw new Error(j.error||`El agente de impresión respondió ${r.status}.`);
       return true;
