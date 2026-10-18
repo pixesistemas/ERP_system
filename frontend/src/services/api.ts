@@ -181,13 +181,14 @@ export const api = {
 };
 
 /*
- * Impresión directa: escribe el comprobante en un iframe oculto; la propia
- * página trae window.print(), así que con Chrome --kiosk-printing el
- * comprobante sale a la impresora sin abrir vista previa ni diálogo.
- * Devuelve true si Chrome confirmó el trabajo (afterprint) y false si no
- * se detectó impresión (para poder avisar al usuario).
+ * Impresión directa (sin vista previa). Primero se intenta abrir una
+ * ventana propia con el comprobante: la plantilla llama a window.print()
+ * sola (el mismo patrón de la prueba de Chrome kiosco que ya funciona en
+ * el local). Si el navegador bloquea la ventana, se usa un iframe fuera de
+ * pantalla como respaldo. Devuelve true si Chrome confirmó el trabajo
+ * (afterprint) y false si no se detectó impresión (para avisar al usuario).
  */
-function imprimirHtmlDirecto(html: string): Promise<boolean> {
+function imprimirHtmlEnIframe(html: string): Promise<boolean> {
   return new Promise((resolve) => {
     const frame = document.createElement("iframe");
     frame.setAttribute("aria-hidden", "true");
@@ -230,6 +231,51 @@ function imprimirHtmlDirecto(html: string): Promise<boolean> {
         /* el iframe ya no está */
       }
     }, 120000);
+  });
+}
+
+function imprimirHtmlDirecto(html: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    let win: Window | null = null;
+    try {
+      win = window.open("", "_blank");
+    } catch (e) {
+      win = null;
+    }
+    if (!win) {
+      imprimirHtmlEnIframe(html).then(resolve);
+      return;
+    }
+    let confirmado = false;
+    try {
+      win.addEventListener(
+        "afterprint",
+        () => {
+          confirmado = true;
+          /* La ventana se cierra sola al terminar de imprimir. */
+          try {
+            win!.close();
+          } catch (e) {
+            /* ya cerrada */
+          }
+          resolve(true);
+        },
+        { once: true },
+      );
+    } catch (e) {
+      /* sin eventos: se resuelve por tiempo */
+    }
+    try {
+      win.document.open();
+      win.document.write(html);
+      win.document.close();
+    } catch (e) {
+      resolve(false);
+      return;
+    }
+    setTimeout(() => {
+      if (!confirmado) resolve(false);
+    }, 6000);
   });
 }
 
