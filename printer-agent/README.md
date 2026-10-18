@@ -24,16 +24,18 @@ Windows.
 ### Opción B: ejecutable único (sin Node instalado)
 
 Doble clic en `empaquetar-windows.bat`: genera `pixe-print-agent.exe` en esta
-misma carpeta. A partir de ahí podés copiar solo esa carpeta con el `.exe`
-a las PCs de los clientes (no hace falta Node).
+misma carpeta (reintenta con Node 22, 20 y 18). Si la carpeta ya tiene el
+`.exe`, los accesos de inicio lo usan automáticamente en lugar de Node.
+El ejecutable guarda `config.json` y `agente.log` **al lado del .exe**.
+Podés copiar solo esa carpeta con el `.exe` a las PCs de los clientes.
 
 Equivale a:
 
 ```
-npx @yao-pkg/pkg server.js --targets node18-win-x64 --output pixe-print-agent.exe
+npx @yao-pkg/pkg server.js --targets node22-win-x64 --output pixe-print-agent.exe
 ```
 
-Para Linux/Mac usar `node18-linux-x64` / `node18-macos-x64`.
+Para Linux/Mac usar `node22-linux-x64` / `node22-macos-x64`.
 
 ## Sin ventana, con icono en la bandeja y arranque automático
 
@@ -43,10 +45,15 @@ registrado en `agente.log` (al lado del agente).
 
 - **Iniciar con icono en la bandeja**: doble clic en
   `iniciar-con-bandeja.vbs`. El icono (clic izquierdo o derecho) tiene:
+  - **Ver datos de conexión (token)** → ventana con la URL y el **token**
+    para copiar con un botón.
+  - **Copiar token al portapapeles**
   - Ver registro (`agente.log`)
   - Abrir carpeta del agente
   - Reiniciar agente
   - Detener y salir
+- La **primera vez** que arranca, la bandeja abre sola la ventana con el
+  token para que lo copies.
 - **Arranque automático al iniciar Windows**: doble clic en
   `instalar-inicio-automatico.bat` (copia el inicio a la carpeta de Inicio
   del usuario). Para quitarlo: `desinstalar-inicio-automatico.bat`.

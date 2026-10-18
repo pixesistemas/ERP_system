@@ -23,7 +23,12 @@ const crypto = require("crypto");
 const { execFile } = require("child_process");
 
 const VERSION = "1.0.0";
-const DIR = __dirname;
+/*
+ * Empaquetado como .exe (pkg/SEA): __dirname queda dentro de un snapshot de
+ * solo lectura, así que la configuración, el log y el script de Windows se
+ * guardan al lado del ejecutable.
+ */
+const DIR = process.pkg ? path.dirname(process.execPath) : __dirname;
 const CONFIG_PATH = path.join(DIR, "config.json");
 const PS1_PATH = path.join(DIR, "imprimir-raw.ps1");
 const LOG_PATH = path.join(DIR, "agente.log");

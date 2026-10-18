@@ -1,7 +1,7 @@
 # Bandeja del sistema para el agente de impresion (Windows).
-# Muestra un icono junto al reloj con opciones para ver el registro,
-# reiniciar o cerrar el agente. El agente corre oculto como hijo de este
-# proceso; si se cierra la bandeja, se cierra el agente.
+# Muestra un icono junto al reloj con el estado, los datos de conexion
+# (URL + token para copiar), el registro y las opciones de reiniciar/cerrar.
+# El agente corre oculto como hijo de este proceso.
 #
 # Se lanza con iniciar-con-bandeja.vbs (sin ventanas).
 
@@ -14,8 +14,10 @@ $logPath = Join-Path $pasta "agente.log"
 $exe = Join-Path $pasta "pixe-print-agent.exe"
 $server = Join-Path $pasta "server.js"
 
-$puerto = 17777
 $cfgPath = Join-Path $pasta "config.json"
+$primeraVez = -not (Test-Path $cfgPath)
+
+$puerto = 17777
 if (Test-Path $cfgPath) {
   try { $puerto = [int](Get-Content $cfgPath -Raw | ConvertFrom-Json).puerto } catch { }
 }
@@ -25,6 +27,12 @@ $mutex = New-Object System.Threading.Mutex($false, "Global\PixePrintAgentBandeja
 if (-not $mutex.WaitOne(0)) { exit }
 
 $script:proceso = $null
+$script:token = ""
+
+function Leer-Token {
+  if (-not (Test-Path $cfgPath)) { return "" }
+  try { return [string](Get-Content $cfgPath -Raw | ConvertFrom-Json).token } catch { return "" }
+}
 
 function Iniciar-Agente {
   if (Test-Path $exe) {
@@ -51,14 +59,101 @@ function Estado-Agente {
   } catch { return "desconocido" }
 }
 
+function Mostrar-Datos {
+  $script:token = Leer-Token
+  $form = New-Object System.Windows.Forms.Form
+  $form.Text = "PixeSistemas - Agente de impresion"
+  $form.Size = New-Object System.Drawing.Size(500, 250)
+  $form.StartPosition = "CenterScreen"
+  $form.FormBorderStyle = "FixedDialog"
+  $form.MaximizeBox = $false
+  $form.MinimizeBox = $false
+  $form.TopMost = $true
+
+  $lblUrl = New-Object System.Windows.Forms.Label
+  $lblUrl.Text = "URL del agente (va en Puntos de venta):"
+  $lblUrl.Location = New-Object System.Drawing.Point(14, 12)
+  $lblUrl.AutoSize = $true
+  $form.Controls.Add($lblUrl)
+
+  $txtUrl = New-Object System.Windows.Forms.TextBox
+  $txtUrl.Text = "http://127.0.0.1:$puerto"
+  $txtUrl.ReadOnly = $true
+  $txtUrl.Location = New-Object System.Drawing.Point(14, 32)
+  $txtUrl.Width = 455
+  $form.Controls.Add($txtUrl)
+
+  $lblTok = New-Object System.Windows.Forms.Label
+  $lblTok.Text = "Token (copialo y pegalo en Puntos de venta):"
+  $lblTok.Location = New-Object System.Drawing.Point(14, 70)
+  $lblTok.AutoSize = $true
+  $form.Controls.Add($lblTok)
+
+  $txtTok = New-Object System.Windows.Forms.TextBox
+  $txtTok.Text = $(if ($script:token) { $script:token } else { "(el agente todavia esta generando el token...)" })
+  $txtTok.ReadOnly = $true
+  $txtTok.Location = New-Object System.Drawing.Point(14, 90)
+  $txtTok.Width = 455
+  $form.Controls.Add($txtTok)
+
+  $btnCopiar = New-Object System.Windows.Forms.Button
+  $btnCopiar.Text = "Copiar token"
+  $btnCopiar.Location = New-Object System.Drawing.Point(14, 130)
+  $btnCopiar.Width = 120
+  $btnCopiar.Add_Click({
+      $script:token = Leer-Token
+      if (-not $script:token) {
+        [System.Windows.Forms.MessageBox]::Show("El token todavia no esta generado. Espera unos segundos y volve a abrir esta ventana.") | Out-Null
+        return
+      }
+      Set-Clipboard -Value $script:token
+      [System.Windows.Forms.MessageBox]::Show("Token copiado al portapapeles.`nPegalo en el ERP: Puntos de venta -> Token del agente.") | Out-Null
+    })
+  $form.Controls.Add($btnCopiar)
+
+  $btnCopiarUrl = New-Object System.Windows.Forms.Button
+  $btnCopiarUrl.Text = "Copiar URL"
+  $btnCopiarUrl.Location = New-Object System.Drawing.Point(144, 130)
+  $btnCopiarUrl.Width = 100
+  $btnCopiarUrl.Add_Click({
+      Set-Clipboard -Value "http://127.0.0.1:$puerto"
+      [System.Windows.Forms.MessageBox]::Show("URL copiada al portapapeles.") | Out-Null
+    })
+  $form.Controls.Add($btnCopiarUrl)
+
+  $btnCerrar = New-Object System.Windows.Forms.Button
+  $btnCerrar.Text = "Cerrar"
+  $btnCerrar.Location = New-Object System.Drawing.Point(369, 130)
+  $btnCerrar.Width = 100
+  $btnCerrar.Add_Click({ $form.Close() })
+  $form.Controls.Add($btnCerrar)
+
+  $form.ShowDialog() | Out-Null
+}
+
+function Copiar-Token {
+  $script:token = Leer-Token
+  if (-not $script:token) {
+    [System.Windows.Forms.MessageBox]::Show("El token todavia no esta generado.") | Out-Null
+    return
+  }
+  Set-Clipboard -Value $script:token
+  $icono.BalloonTipTitle = "Token copiado"
+  $icono.BalloonTipText = "Pegalo en el ERP: Puntos de venta -> Token del agente."
+  $icono.ShowBalloonTip(3000)
+}
+
 Iniciar-Agente
+# Espera a que el agente cree config.json (token) la primera vez.
+for ($i = 0; $i -lt 20 -and -not (Test-Path $cfgPath); $i++) { Start-Sleep -Milliseconds 200 }
+$script:token = Leer-Token
 
 $icono = New-Object System.Windows.Forms.NotifyIcon
 $icono.Icon = [System.Drawing.SystemIcons]::Information
 $icono.Text = "PixeSistemas - Agente de impresion (puerto $puerto)"
 $icono.Visible = $true
 $icono.BalloonTipTitle = "Agente de impresion"
-$icono.BalloonTipText = "Activo en el puerto $puerto. Clic derecho en este icono para opciones."
+$icono.BalloonTipText = "Activo en el puerto $puerto. Clic derecho para ver el token y las opciones."
 $icono.ShowBalloonTip(4000)
 
 $menu = New-Object System.Windows.Forms.ContextMenuStrip
@@ -68,6 +163,9 @@ $itemEstado.Text = "Estado: $((Estado-Agente))"
 $itemEstado.Enabled = $false
 $menu.Items.Add($itemEstado) | Out-Null
 
+$menu.Items.Add("-") | Out-Null
+$menu.Items.Add("Ver datos de conexion (token)", $null, { Mostrar-Datos }) | Out-Null
+$menu.Items.Add("Copiar token al portapapeles", $null, { Copiar-Token }) | Out-Null
 $menu.Items.Add("-") | Out-Null
 $menu.Items.Add("Ver registro (agente.log)", $null, {
     if (Test-Path $logPath) { Start-Process notepad.exe $logPath }
@@ -95,10 +193,10 @@ $icono.add_MouseClick({
     }
   })
 
-$icono.add_MouseDoubleClick({
-    $mensaje = "PixeSistemas - Agente de impresion`n`nEstado: $((Estado-Agente))`nPuerto: $puerto`nCarpeta: $pasta"
-    [System.Windows.Forms.MessageBox]::Show($mensaje, "Agente de impresion") | Out-Null
-  })
+$icono.add_MouseDoubleClick({ Mostrar-Datos })
+
+# Primera vez: mostramos directamente los datos para copiar el token.
+if ($primeraVez) { Mostrar-Datos }
 
 [System.Windows.Forms.Application]::Run()
 Detener-Agente
