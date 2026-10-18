@@ -1,0 +1,5 @@
+config.json
+agente.log
+agente.log.*
+imprimir-raw.ps1
+pixe-print-agent.exe
