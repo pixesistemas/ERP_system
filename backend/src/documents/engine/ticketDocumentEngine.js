@@ -142,6 +142,7 @@ class TicketDocumentEngine {
 
       "{{FISCAL_BLOCK}}": "",
       "{{NO_FISCAL_LEGEND}}": "",
+      "{{TRANSPARENCIA_BLOCK}}": "",
       "{{BANCO_TRANSFERENCIA}}": "",
       "{{SORTEO_BLOCK}}": "",
       "{{SIGNATURES}}": "",
@@ -181,6 +182,26 @@ class TicketDocumentEngine {
         replacements["{{VENDEDOR_FOOTER}}"] =
           `<div class="vendedor-footer">Vendedor: <strong>${this.escape(sale.vendedor)}</strong></div>`;
       }
+    }
+
+    /*
+     * RG 5614/2024 (Régimen de Transparencia Fiscal al Consumidor): en las
+     * facturas B/C a consumidor final se informa el IVA contenido sin
+     * discriminar impuestos en el detalle.
+     */
+    const tipoAfipTransparencia = Number(sale.comprobante_tipo_afip || 0);
+    if (sale.tipo === "FACTURA" && ![1, 2, 3].includes(tipoAfipTransparencia) && !String(sale.cuit || "").trim()) {
+      const totalTransparencia = Number(sale.totalFiscal != null ? sale.totalFiscal : sale.total || 0);
+      const netoTransparencia = Number(sale.neto != null ? sale.neto : sale.subtotal || 0);
+      const ivaContenido = Number(
+        sale.ivaImporte != null ? sale.ivaImporte : Math.max(0, totalTransparencia - netoTransparencia),
+      );
+      replacements["{{TRANSPARENCIA_BLOCK}}"] = `
+        <div class="legend transparency" style="text-align:left">
+          <div><strong>Régimen de Transparencia Fiscal al Consumidor (Ley 27.743)</strong></div>
+          <div>IVA Contenido: $ ${this.money(ivaContenido)}</div>
+          <div>Otros Impuestos Nacionales Indirectos: $ 0,00</div>
+        </div>`;
     }
 
     if (

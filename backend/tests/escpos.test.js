@@ -8,6 +8,7 @@ for (const suffix of ["", "-wal", "-shm"]) fs.rmSync(testDb + suffix, { force: t
 /* AFIP simulado: en la prueba no hay certificados ni internet. */
 const fiscalPath = require.resolve("../src/afip/fiscalEmission.service");
 class FiscalNetworkError extends Error {}
+let comprobanteEmulado = { numero: 987654, tipo: 6, letra: "B", nombre: "FACTURA B" };
 require.cache[fiscalPath] = {
   id: fiscalPath,
   filename: fiscalPath,
@@ -20,12 +21,12 @@ require.cache[fiscalPath] = {
       const importeIva = Math.round(importeNeto * 0.21 * 100) / 100;
       return {
         ok: true,
-        numero: 987654,
+        numero: comprobanteEmulado.numero,
         cae: "70123456789012",
         vencimiento: "2026-11-25",
-        tipoComprobante: 6,
-        letra: "B",
-        nombreComprobante: "FACTURA B",
+        tipoComprobante: comprobanteEmulado.tipo,
+        letra: comprobanteEmulado.letra,
+        nombreComprobante: comprobanteEmulado.nombre,
         resultado: "A",
         importeNeto,
         importeIva,
@@ -107,6 +108,13 @@ function item(precio = 1000, cantidad = 1) {
   if (!texto.includes("TOTAL")) throw new Error("El ticket no incluye el total.");
   if (!texto.includes("CAE: 70123456789012")) throw new Error("El ticket no incluye el CAE.");
   if (!texto.includes("Comprobante autorizado por ARCA")) throw new Error("Falta la leyenda fiscal.");
+  /* Factura B: precios finales también en el detalle y sin discriminar IVA. */
+  if (!texto.includes("1 x $1.210,00")) throw new Error("El detalle de la factura B no muestra el precio final con IVA.");
+  if (texto.includes("Neto")) throw new Error("La factura B no debe discriminar el Neto.");
+  /* RG 5614/2024: leyenda de transparencia fiscal a consumidor final. */
+  if (!texto.includes("Transparencia Fiscal al") || !texto.includes("Consumidor (Ley 27.743)")) throw new Error("Falta la leyenda de transparencia fiscal.");
+  if (!texto.includes("IVA Contenido: $210,00")) throw new Error("Falta el IVA contenido de la factura B (210,00).");
+  if (!texto.includes("Otros Impuestos Nacionales Indirectos: $0,00")) throw new Error("Falta el renglón de otros impuestos nacionales.");
   const qr = buf.indexOf(Buffer.from([0x1d, 0x28, 0x6b, 0x04, 0x00, 0x31, 0x41, 50, 0]));
   if (qr < 0) throw new Error("El ticket fiscal no incluye el comando de QR ESC/POS.");
   const corte = buf.indexOf(Buffer.from([0x1d, 0x56, 0x00]));
@@ -134,6 +142,8 @@ function item(precio = 1000, cantidad = 1) {
   const ticketNota = await conRespuesta(erp.ticketEscposOperacion, {}, { id: String(nota.payload.operation.saleId) });
   const bufNota = Buffer.from(ticketNota.payload.base64, "base64");
   if (!bufNota.toString("latin1").includes("NOTA DE VENTA")) throw new Error("La nota de venta no lleva su nombre en el ticket.");
+  if (!bufNota.toString("latin1").includes("1 x $605,00")) throw new Error("La nota de venta no muestra el precio final en el detalle.");
+  if (bufNota.toString("latin1").includes("Transparencia Fiscal")) throw new Error("La nota de venta no debe llevar la leyenda de transparencia.");
   /* La leyenda lleva "VÁLIDO" con Á, que en CP437 es 0xB5 (no texto UTF-8). */
   if (!bufNota.toString("latin1").includes("DOCUMENTO NO V") || !bufNota.toString("latin1").includes("COMO FACTURA")) {
     throw new Error("Falta la leyenda de documento no válido.");
@@ -146,5 +156,26 @@ function item(precio = 1000, cantidad = 1) {
   const bufPrueba = Buffer.from(prueba.payload.base64, "base64");
   if (!bufPrueba.toString("latin1").includes("TICKET DE PRUEBA")) throw new Error("El ticket de prueba no se identifica como tal.");
 
-  console.log("escpos: OK — factura con CAE y QR ESC/POS, nota de venta sin QR con leyenda, acentos en CP437, corte de papel y ticket de prueba.");
+  /* Factura A: sigue discriminando IVA (sin leyenda de transparencia). */
+  comprobanteEmulado = { numero: 776655, tipo: 1, letra: "A", nombre: "FACTURA A" };
+  const facturaA = await conRespuesta(erp.createPosOperation, {
+    mode: "NORMAL",
+    document_kind: "FACTURA_ELECTRONICA",
+    cliente_nombre: "CONSUMIDOR FINAL",
+    sucursal_id: branch.id,
+    cajero_id: cashier.id,
+    punto_venta: 1,
+    condicion_pago: "CONTADO",
+    subtotal: 1000,
+    total: 1210,
+    pagos: { EFECTIVO: 1210 },
+    items: [item(1000, 1)],
+  });
+  if (facturaA.status !== 201 || !facturaA.payload?.ok) throw new Error(`No se pudo crear la factura A: ${JSON.stringify(facturaA.payload)}`);
+  const ticketA = await conRespuesta(erp.ticketEscposOperacion, {}, { id: String(facturaA.payload.operation.saleId) });
+  const textoA = Buffer.from(ticketA.payload.base64, "base64").toString("latin1");
+  if (!textoA.includes("Neto") || !textoA.includes("IVA")) throw new Error("La factura A debe discriminar Neto e IVA.");
+  if (textoA.includes("Transparencia Fiscal")) throw new Error("La factura A no lleva la leyenda de consumidor final.");
+
+  console.log("escpos: OK — factura B con precios finales, sin discriminación y con RG 5614 (IVA contenido); factura A discriminada; nota de venta final; QR, CP437 y corte.");
 })();

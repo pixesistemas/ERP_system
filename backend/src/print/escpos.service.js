@@ -201,32 +201,58 @@ function generarTicketEscpos({ empresa, sale, items, puntoVenta }) {
   t.texto(`Condición: ${sale.condicion_pago || "CONTADO"}`);
   t.separador();
 
+  /*
+   * Factura A (códigos AFIP 1, 2 y 3) discrimina IVA, como exige AFIP.
+   * El resto de los comprobantes muestra precios finales (IVA incluido),
+   * también en el detalle: es lo que ve el consumidor en la góndola.
+   */
+  const tipoAfip = Number(sale.comprobante_tipo_afip || 0);
+  const esComprobanteA = [1, 2, 3].includes(tipoAfip) || String(sale.comprobante_letra || "").toUpperCase() === "A";
+  const tipoComprobante = String(sale.tipo || "").toUpperCase();
+
   for (const x of items || []) {
     const descripcion = String(x.descripcion || "");
     const cantidad = Number(x.cantidad || 0);
     const precio = Number(x.precio_unitario || x.precio || 0);
     const descuento = Number(x.descuento || 0);
-    const totalLinea = Number(x.subtotal != null && x.subtotal !== 0
+    const ivaPct = Number(x.iva || 0);
+    const netoLinea = Number(x.subtotal != null && x.subtotal !== 0
       ? x.subtotal
       : precio * cantidad * (1 - descuento / 100));
+    const factor = esComprobanteA ? 1 : 1 + ivaPct / 100;
+    const precioMostrar = precio * factor;
+    const totalMostrar = netoLinea * factor;
     for (const l of envolver(descripcion, ANCHO)) t.texto(l);
-    const izquierda = `  ${cantidad} x $${money(precio)}${descuento ? ` (-${descuento}%)` : ""}`;
-    t.par(izquierda, `$${money(totalLinea)}`);
+    const izquierda = `  ${cantidad} x $${money(precioMostrar)}${descuento ? ` (-${descuento}%)` : ""}`;
+    t.par(izquierda, `$${money(totalMostrar)}`);
   }
 
   t.separador();
   const descuentoGeneral = Number(sale.descuento_general || 0);
   const recargoGeneral = Number(sale.recargo_general || 0);
   const total = Number(sale.totalFiscal != null && sale.totalFiscal !== 0 ? sale.totalFiscal : sale.total || 0);
+  const neto = Number(sale.neto != null ? sale.neto : sale.subtotal || 0);
+  const iva = Number(sale.ivaImporte != null ? sale.ivaImporte : Math.max(0, total - neto));
   if (descuentoGeneral) t.par(`Descuento ${descuentoGeneral}%`, `-$${money(Number(sale.descuento_importe || 0))}`);
   if (recargoGeneral) t.par(`Recargo ${recargoGeneral}%`, `+$${money(total * recargoGeneral / (100 + recargoGeneral))}`);
   t.par("TOTAL", `$${money(total)}`);
-  if (String(sale.tipo || "").toUpperCase() === "FACTURA") {
-    const neto = Number(sale.neto != null ? sale.neto : sale.subtotal || 0);
-    const iva = Number(sale.ivaImporte != null ? sale.ivaImporte : Math.max(0, total - neto));
+  if (esComprobanteA) {
     if (neto || iva) {
       t.par("Neto", `$${money(neto)}`);
       t.par("IVA", `$${money(iva)}`);
+    }
+  } else if (tipoComprobante === "FACTURA") {
+    /*
+     * RG 5614/2024 (Régimen de Transparencia Fiscal al Consumidor):
+     * a consumidor final se informa el IVA contenido y los demás
+     * impuestos nacionales indirectos, sin discriminar en el detalle.
+     */
+    const esConsumidorFinal = !String(sale.cuit || "").trim();
+    if (esConsumidorFinal) {
+      t.separador("-");
+      t.lineas("Régimen de Transparencia Fiscal al Consumidor (Ley 27.743)");
+      t.texto(`IVA Contenido: $${money(iva)}`);
+      t.texto("Otros Impuestos Nacionales Indirectos: $0,00");
     }
   }
   t.separador("=");
