@@ -1,0 +1,12 @@
+{
+  "name": "pixe-print-agent",
+  "version": "1.0.0",
+  "description": "Agente local de impresión para impresoras térmicas (PixeSistemas ERP)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node tests/agent.test.js"
+  },
+  "author": "PixeSistemas",
+  "license": "UNLICENSED"
+}

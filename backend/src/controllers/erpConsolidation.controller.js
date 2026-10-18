@@ -15,6 +15,7 @@ const { generarPdfReciboProvisorio } = require('../pdf/reciboProvisorioPdf.servi
 const OcrCompra = require('../services/ocrCompra.service');
 const { crearRecibo, confirmarRecibo } = require('../repositories/recibo.repository');
 const { empresaTieneModulo } = require('../utils/modulos');
+const { generarTicketEscpos, generarTicketPruebaEscpos } = require('../print/escpos.service');
 
 function empresaId(req) { return Number(req.empresa?.id || req.usuario?.empresaId || req.user?.empresaId || 1); }
 function bool(v) { return v === true || v === 1 || v === '1'; }
@@ -80,14 +81,22 @@ function savePos(req,res){
   if(!Number.isInteger(numero)||numero<1||numero>99999)return res.status(400).json({ok:false,error:'El número de punto de venta es inválido.'});
   if(!d.nombre?.trim())return res.status(400).json({ok:false,error:'El nombre es obligatorio.'});
   const formato=String(d.formato_impresion||d.formatoImpresion||'A4').toUpperCase()==='80MM'?'80MM':'A4';
+  /* Impresión por agente local (ESC/POS). */
+  const impresionModo=String(d.impresion_modo||'NAVEGADOR').toUpperCase()==='AGENTE'?'AGENTE':'NAVEGADOR';
+  const impresoraTipo=String(d.impresora_tipo||'RED').toUpperCase()==='SISTEMA'?'SISTEMA':'RED';
+  const impresoraHost=String(d.impresora_host||'').trim();
+  const impresoraPuerto=Number(d.impresora_puerto||9100)||9100;
+  const impresoraNombre=String(d.impresora_nombre||'').trim();
+  const agenteUrl=String(d.agente_url||'http://127.0.0.1:17777').trim()||'http://127.0.0.1:17777';
+  const agenteToken=String(d.agente_token||'').trim();
   const nombreFantasia=d.nombre_fantasia!=null?String(d.nombre_fantasia).trim():(d.nombreFantasia!=null?String(d.nombreFantasia).trim():'');
   const direccion=d.direccion!=null?String(d.direccion).trim():'';
   const telefono=d.telefono!=null?String(d.telefono).trim():'';
   const whatsapp=d.whatsapp!=null?String(d.whatsapp).trim():'';
   const email=d.email!=null?String(d.email).trim():'';
   try{
-    if(req.params.id) db.prepare(`UPDATE puntos_venta SET numero=?,nombre=?,nombre_fantasia=?,direccion=?,telefono=?,whatsapp=?,email=?,sucursal_id=?,fiscal=?,activo=?,formato_impresion=?,impresion_directa=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND empresa_id=?`).run(numero,d.nombre.trim(),nombreFantasia,direccion,telefono,whatsapp,email,d.sucursal_id||null,bool(d.fiscal ?? true)?1:0,bool(d.activo ?? true)?1:0,formato,bool(d.impresion_directa)?1:0,Number(req.params.id),e);
-    else db.prepare(`INSERT INTO puntos_venta(empresa_id,sucursal_id,numero,nombre,nombre_fantasia,direccion,telefono,whatsapp,email,fiscal,activo,formato_impresion,impresion_directa) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(e,d.sucursal_id||null,numero,d.nombre.trim(),nombreFantasia,direccion,telefono,whatsapp,email,bool(d.fiscal ?? true)?1:0,bool(d.activo ?? true)?1:0,formato,bool(d.impresion_directa)?1:0);
+    if(req.params.id) db.prepare(`UPDATE puntos_venta SET numero=?,nombre=?,nombre_fantasia=?,direccion=?,telefono=?,whatsapp=?,email=?,sucursal_id=?,fiscal=?,activo=?,formato_impresion=?,impresion_directa=?,impresion_modo=?,impresora_tipo=?,impresora_host=?,impresora_puerto=?,impresora_nombre=?,agente_url=?,agente_token=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND empresa_id=?`).run(numero,d.nombre.trim(),nombreFantasia,direccion,telefono,whatsapp,email,d.sucursal_id||null,bool(d.fiscal ?? true)?1:0,bool(d.activo ?? true)?1:0,formato,bool(d.impresion_directa)?1:0,impresionModo,impresoraTipo,impresoraHost,impresoraPuerto,impresoraNombre,agenteUrl,agenteToken,Number(req.params.id),e);
+    else db.prepare(`INSERT INTO puntos_venta(empresa_id,sucursal_id,numero,nombre,nombre_fantasia,direccion,telefono,whatsapp,email,fiscal,activo,formato_impresion,impresion_directa,impresion_modo,impresora_tipo,impresora_host,impresora_puerto,impresora_nombre,agente_url,agente_token) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(e,d.sucursal_id||null,numero,d.nombre.trim(),nombreFantasia,direccion,telefono,whatsapp,email,bool(d.fiscal ?? true)?1:0,bool(d.activo ?? true)?1:0,formato,bool(d.impresion_directa)?1:0,impresionModo,impresoraTipo,impresoraHost,impresoraPuerto,impresoraNombre,agenteUrl,agenteToken);
   }catch(err){if(String(err.message).includes('UNIQUE'))return res.status(409).json({ok:false,error:'Ese punto de venta ya existe para la empresa.'});throw err;}
   listPos(req,res);
 }
@@ -1499,7 +1508,41 @@ function printTestTicket(req,res){
   res.type('html').send(html);
 }
 
-module.exports={listBanks,saveBank,listPos,savePos,listChecks,createCheck,deleteCajero,depositChecks,listWhatsapp,saveWhatsapp,uploadFiscal,fiscalFiles,listPurchases,savePurchase,deletePurchase,importarComprasExcel,ocrCompraFoto,listComprasPendientes,confirmarCompraPendiente,descartarCompraPendiente,listPedidosClientes,listPedidosActivos,listDevoluciones,devolverItemsPedido,listVendedorClientes,guardarVendedorClientes,crearVisita,listVisitas,movilBootstrap,crearPedidoMovil,listPedidosMovil,listBandejaPedidos,detallePedidoMovil,revisarPedidoMovil,cambiarEstadoPedidoMovil,confirmarCobroPedido,confirmarCobrosPedido,reciboProvisorioMovil,pdfPedidosPendientes,rentabilidadRubros,listPedidosParaRuta,crearRutaReparto,listRutasReparto,detalleRutaReparto,reordenarRutaReparto,marcarEntregaRuta,cerrarRutaReparto,reabrirRutaReparto,asignarRepartidorRuta,miRutaReparto,listRepartoDevoluciones,confirmarDevolucion,reporteVendedoresDetalle,crearReporteUsuario,listFiscalIntentos,vatBook,borradorIva,saveBorradorIvaAjuste,renameBorradorIvaRubro,updatePrices,listReserveFunds,createReserveFund,consumeReserveFund,printTestTicket};
+/* Datos de la venta + ítems para el ticket ESC/POS (mismo formato que la impresión del POS). */
+function datosTicketEscpos(e,id){
+  const sale=db.prepare(`SELECT v.*,c.razon_social cliente,c.cuit,c.dni,p.formato_impresion,d.cae,d.cae_vencimiento,d.comprobante_tipo_afip,d.comprobante_letra,d.subtipo,d.importe_neto documento_neto,d.importe_iva documento_iva,d.importe_total documento_total FROM ventas_pos v LEFT JOIN clientes c ON c.id=v.cliente_id LEFT JOIN puntos_venta p ON p.empresa_id=v.empresa_id AND p.numero=v.punto_venta LEFT JOIN documentos_comerciales d ON d.id=v.documento_id WHERE v.id=? AND v.empresa_id=?`).get(id,e);
+  if(!sale)return null;
+  sale.neto=sale.documento_neto??null;
+  sale.ivaImporte=sale.documento_iva??null;
+  sale.totalFiscal=sale.documento_total??null;
+  const items=db.prepare('SELECT * FROM venta_pos_items WHERE venta_id=? ORDER BY id').all(id);
+  const empresa=getEmpresaById(e);
+  const puntoVenta=db.prepare('SELECT * FROM puntos_venta WHERE empresa_id=? AND numero=?').get(e,sale.punto_venta)||null;
+  return {sale,items,empresa,puntoVenta};
+}
+/*
+ * Ticket ESC/POS de una operación: lo pide el POS y se lo manda al agente
+ * local (modo AGENTE) que corre en la PC del local para imprimir sin
+ * navegador. Devuelve el ticket en base64.
+ */
+function ticketEscposOperacion(req,res){
+  const e=empresaId(req),id=Number(req.params.id);
+  const datos=datosTicketEscpos(e,id);
+  if(!datos)return res.status(404).json({ok:false,error:'Operación no encontrada.'});
+  const buffer=generarTicketEscpos(datos);
+  res.json({ok:true,base64:buffer.toString('base64'),bytes:buffer.length});
+}
+function ticketPruebaEscpos(req,res){
+  const e=empresaId(req);
+  const pv=db.prepare('SELECT * FROM puntos_venta WHERE id=? AND empresa_id=?').get(Number(req.params.id),e);
+  if(!pv)return res.status(404).json({ok:false,error:'Punto de venta no encontrado.'});
+  const buffer=generarTicketPruebaEscpos({empresa:getEmpresaById(e),puntoVenta:pv});
+  res.json({ok:true,base64:buffer.toString('base64'),bytes:buffer.length});
+}
+module.exports.ticketEscposOperacion=ticketEscposOperacion;
+module.exports.ticketPruebaEscpos=ticketPruebaEscpos;
+
+module.exports={listBanks,saveBank,listPos,savePos,listChecks,createCheck,deleteCajero,depositChecks,listWhatsapp,saveWhatsapp,uploadFiscal,fiscalFiles,listPurchases,savePurchase,deletePurchase,importarComprasExcel,ocrCompraFoto,listComprasPendientes,confirmarCompraPendiente,descartarCompraPendiente,listPedidosClientes,listPedidosActivos,listDevoluciones,devolverItemsPedido,listVendedorClientes,guardarVendedorClientes,crearVisita,listVisitas,movilBootstrap,crearPedidoMovil,listPedidosMovil,listBandejaPedidos,detallePedidoMovil,revisarPedidoMovil,cambiarEstadoPedidoMovil,confirmarCobroPedido,confirmarCobrosPedido,reciboProvisorioMovil,pdfPedidosPendientes,rentabilidadRubros,listPedidosParaRuta,crearRutaReparto,listRutasReparto,detalleRutaReparto,reordenarRutaReparto,marcarEntregaRuta,cerrarRutaReparto,reabrirRutaReparto,asignarRepartidorRuta,miRutaReparto,listRepartoDevoluciones,confirmarDevolucion,reporteVendedoresDetalle,crearReporteUsuario,listFiscalIntentos,vatBook,borradorIva,saveBorradorIvaAjuste,renameBorradorIvaRubro,updatePrices,listReserveFunds,createReserveFund,consumeReserveFund,printTestTicket,ticketEscposOperacion,ticketPruebaEscpos};
 
 function userId(req){ return Number(req.usuario?.id || req.user?.id || req.user?.userId || 1); }
 function listPosCatalogs(req,res){
@@ -1520,9 +1563,9 @@ function listPosCatalogs(req,res){
 function misPuntosVenta(req,res){
   const e=empresaId(req);
   const uid=Number(req.usuario?.id||req.user?.id||0);
-  const asignados=db.prepare(`SELECT up.punto_venta_id,up.predeterminado,p.numero,p.nombre,p.formato_impresion,p.impresion_directa FROM usuario_puntos_venta up JOIN puntos_venta p ON p.id=up.punto_venta_id AND p.empresa_id=up.empresa_id WHERE up.empresa_id=? AND up.usuario_id=? ORDER BY p.numero`).all(e,uid);
+  const asignados=db.prepare(`SELECT up.punto_venta_id,up.predeterminado,p.numero,p.nombre,p.formato_impresion,p.impresion_directa,p.impresion_modo,p.impresora_tipo,p.impresora_host,p.impresora_puerto,p.impresora_nombre,p.agente_url,p.agente_token FROM usuario_puntos_venta up JOIN puntos_venta p ON p.id=up.punto_venta_id AND p.empresa_id=up.empresa_id WHERE up.empresa_id=? AND up.usuario_id=? ORDER BY p.numero`).all(e,uid);
   const todos=db.prepare('SELECT * FROM puntos_venta WHERE empresa_id=? AND activo=1 ORDER BY numero').all(e);
-  const puntosVenta=(asignados.length?asignados:todos).map(r=>({id:Number(r.punto_venta_id||r.id),numero:Number(r.numero),nombre:r.nombre,formato_impresion:r.formato_impresion||'A4',impresion_directa:Boolean(r.impresion_directa),predeterminado:Boolean(r.predeterminado)}));
+  const puntosVenta=(asignados.length?asignados:todos).map(r=>({id:Number(r.punto_venta_id||r.id),numero:Number(r.numero),nombre:r.nombre,formato_impresion:r.formato_impresion||'A4',impresion_directa:Boolean(r.impresion_directa),impresion_modo:String(r.impresion_modo||'NAVEGADOR').toUpperCase(),impresora_tipo:String(r.impresora_tipo||'RED').toUpperCase(),impresora_host:r.impresora_host||'',impresora_puerto:Number(r.impresora_puerto||9100),impresora_nombre:r.impresora_nombre||'',agente_url:r.agente_url||'http://127.0.0.1:17777',agente_token:r.agente_token||'',predeterminado:Boolean(r.predeterminado)}));
   const predeterminado=puntosVenta.find(p=>p.predeterminado)||puntosVenta[0]||null;
   res.json({ok:true,puntosVenta,predeterminado});
 }

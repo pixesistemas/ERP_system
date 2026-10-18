@@ -469,6 +469,27 @@ export const erpApi = {
     if(directo){return imprimirHtmlDirecto(html)}
     const win=window.open('','_blank');if(!win)throw new Error('El navegador bloqueó la ventana de impresión.');win.document.open();win.document.write(html);win.document.close();return true;
   },
+  /* Ticket ESC/POS de una operación: lo manda el POS al agente local. */
+  getTicketEscpos: (saleId:number) => request<any>(`/erp/pos/operaciones/${saleId}/ticket-escpos`),
+  getTicketPruebaEscpos: (puntoVentaId:number) => request<any>(`/erp/puntos-venta/${puntoVentaId}/ticket-prueba-escpos`),
+  /*
+   * Envía el ticket al agente de impresión que corre en la PC del local
+   * (127.0.0.1). Devuelve true si imprimió; lanza error con el motivo si no.
+   */
+  async imprimirEnAgente(pv:any,datos:{datos_base64:string;descripcion?:string}){
+    const base=String(pv?.agente_url||'http://127.0.0.1:17777').replace(/\/+$/,'');
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),20000);
+    try{
+      const r=await fetch(`${base}/imprimir`,{method:'POST',headers:{'Content-Type':'application/json',...(pv?.agente_token?{'X-Token':String(pv.agente_token)}:{})},body:JSON.stringify(datos),signal:controller.signal});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok||!j.ok)throw new Error(j.error||`El agente de impresión respondió ${r.status}.`);
+      return true;
+    }catch(e:any){
+      if(e?.name==='AbortError')throw new Error('El agente de impresión no respondió (¿está abierto en esta PC?).');
+      throw e;
+    }finally{clearTimeout(timer)}
+  },
   async printPaymentOrder(id:number){
     const token=getToken();const response=await fetch(`${API_URL}/erp/ordenes-pago/${id}/imprimir`,{headers:token?{Authorization:`Bearer ${token}`}:{}});
     if(!response.ok)throw new Error('No se pudo preparar la orden de pago.');

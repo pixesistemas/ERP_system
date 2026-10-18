@@ -25,11 +25,17 @@ export function PointOfSalesPage() {
   }
   useEffect(() => { load(); }, []);
 
-  /* Ticket de prueba: sale por la misma vía directa que usa el POS (iframe oculto). */
+  /* Ticket de prueba: con agente local sale en ESC/POS; si no, por el navegador. */
   async function pruebaImpresion(pv: any) {
     setError('');
     setOk('');
     try {
+      if (String(pv.impresion_modo || 'NAVEGADOR').toUpperCase() === 'AGENTE') {
+        const t = await erpApi.getTicketPruebaEscpos(Number(pv.id));
+        await erpApi.imprimirEnAgente(pv, { datos_base64: t.base64, descripcion: 'Ticket de prueba (agente)' });
+        setOk(`Ticket de prueba enviado al agente local (PV ${String(pv.numero).padStart(4, '0')}). Revisá la impresora.`);
+        return;
+      }
       const res = await erpApi.printTestTicket(Number(pv.id), true);
       if (res === false) {
         setError('El ticket se generó, pero Chrome no confirmó la impresión. Revisá: 1) que esta ventana sea la de Chrome abierta con --kiosk-printing; 2) que la impresora del puerto 9100 sea la predeterminada en Windows; 3) la "página de prueba" de esa impresora desde Windows.');
@@ -92,6 +98,13 @@ export function PointOfSalesPage() {
         activo: editing.activo,
         formato_impresion: editing.formato_impresion || 'A4',
         impresion_directa: Boolean(editing.impresion_directa),
+        impresion_modo: String(editing.impresion_modo || 'NAVEGADOR').toUpperCase() === 'AGENTE' ? 'AGENTE' : 'NAVEGADOR',
+        impresora_tipo: String(editing.impresora_tipo || 'RED').toUpperCase() === 'SISTEMA' ? 'SISTEMA' : 'RED',
+        impresora_host: editing.impresora_host || '',
+        impresora_puerto: Number(editing.impresora_puerto) || 9100,
+        impresora_nombre: editing.impresora_nombre || '',
+        agente_url: editing.agente_url || 'http://127.0.0.1:17777',
+        agente_token: editing.agente_token || '',
       };
       if (editing.id) await erpApi.updatePointOfSale(editing.id, payload);
       else await erpApi.createPointOfSale(payload);
@@ -105,7 +118,7 @@ export function PointOfSalesPage() {
   return <div className="products-page">
     <div className="products-toolbar">
       <div><h3>Puntos de venta</h3><p>Una empresa puede tener varios puntos de venta y numeraciones independientes.</p></div>
-      <button className="primary-action" onClick={() => setEditing({ numero: '', nombre: '', nombre_fantasia: '', direccion: '', telefono: '', whatsapp: '', email: '', sucursal_id: '', fiscal: true, activo: true, formato_impresion: 'A4', impresion_directa: false })}><Plus /> Nuevo punto</button>
+      <button className="primary-action" onClick={() => setEditing({ numero: '', nombre: '', nombre_fantasia: '', direccion: '', telefono: '', whatsapp: '', email: '', sucursal_id: '', fiscal: true, activo: true, formato_impresion: 'A4', impresion_directa: false, impresion_modo: 'NAVEGADOR', impresora_tipo: 'RED', impresora_host: '', impresora_puerto: 9100, impresora_nombre: '', agente_url: 'http://127.0.0.1:17777', agente_token: '' })}><Plus /> Nuevo punto</button>
     </div>
     {error && <div className="error-box">{error}</div>}
     {ok && <div className="success-box">{ok}</div>}
@@ -119,7 +132,7 @@ export function PointOfSalesPage() {
           <td>{r.direccion || <span className="muted">—</span>}</td>
           <td>{[r.telefono && `Tel: ${r.telefono}`, r.whatsapp && `WhatsApp: ${r.whatsapp}`, r.email && r.email].filter(Boolean).join(' · ') || <span className="muted">—</span>}</td>
           <td>{branches.find((b: any) => String(b.id) === String(r.sucursal_id))?.nombre || '-'}</td>
-          <td>{r.formato_impresion === '80MM' ? 'Ticket 80 mm' : 'Hoja A4'}{r.impresion_directa ? ' · Directa' : ''}</td>
+          <td>{r.formato_impresion === '80MM' ? 'Ticket 80 mm' : 'Hoja A4'}{String(r.impresion_modo || 'NAVEGADOR').toUpperCase() === 'AGENTE' ? ` · Agente ${String(r.impresora_tipo || 'RED').toUpperCase() === 'SISTEMA' ? (r.impresora_nombre || 'sistema') : `${r.impresora_host || '?'}:${r.impresora_puerto || 9100}`}` : r.impresion_directa ? ' · Directa' : ''}</td>
           <td>{r.logo ? <span className="pv-logo-cell">{r.logo.startsWith('data:image/') && <img src={r.logo} alt="logo" />}<button type="button" className="link-button" disabled={logoBusy} onClick={() => removeLogo(r)}>Quitar</button></span> : <button type="button" className="link-button" disabled={logoBusy} onClick={() => logoRefs.current[r.id]?.click()}><ImageUp size={14} /> Subir logo</button>}<input ref={el => { logoRefs.current[r.id] = el; }} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) uploadLogo(r, f); }} /></td>
           <td>{r.fiscal ? 'HABILITADO' : 'INTERNO'}</td>
           <td>{r.activo ? 'ACTIVO' : 'INACTIVO'}</td>
@@ -141,6 +154,15 @@ export function PointOfSalesPage() {
         <label>Sucursal<select value={editing.sucursal_id || ''} onChange={e => setEditing({ ...editing, sucursal_id: e.target.value })}><option value="">Seleccionar...</option>{branches.map((b: any) => <option key={b.id} value={b.id}>{b.nombre}</option>)}</select></label>
         <label>Formato de impresión<select value={editing.formato_impresion || 'A4'} onChange={e => setEditing({ ...editing, formato_impresion: e.target.value })}><option value="A4">Hoja A4</option><option value="80MM">Ticket 80 mm</option></select></label>
         <label className="toggle-row" title="Con Chrome en modo kiosco (--kiosk-printing) el comprobante sale directo a la impresora, sin abrir la vista previa. El ticket de 80 mm imprime directo siempre, tenga o no esta opción."><span>Impresión directa (sin vista previa)</span><input type="checkbox" checked={Boolean(editing.impresion_directa)} onChange={e => setEditing({ ...editing, impresion_directa: e.target.checked })} /></label>
+        <label>Modo de impresión<select value={editing.impresion_modo || 'NAVEGADOR'} onChange={e => setEditing({ ...editing, impresion_modo: e.target.value })}><option value="NAVEGADOR">Navegador (ventana / Chrome kiosco)</option><option value="AGENTE">Agente local (ESC/POS, sin navegador)</option></select></label>
+        {String(editing.impresion_modo || 'NAVEGADOR').toUpperCase() === 'AGENTE' && <>
+          <label>Tipo de impresora<select value={editing.impresora_tipo || 'RED'} onChange={e => setEditing({ ...editing, impresora_tipo: e.target.value })}><option value="RED">De red (IP y puerto)</option><option value="SISTEMA">Instalada en Windows/Linux (USB)</option></select></label>
+          {String(editing.impresora_tipo || 'RED').toUpperCase() === 'SISTEMA'
+            ? <label>Nombre de la impresora instalada<input value={editing.impresora_nombre || ''} placeholder="Ej.: POS-80" onChange={e => setEditing({ ...editing, impresora_nombre: e.target.value })} /></label>
+            : <><label>IP de la impresora<input value={editing.impresora_host || ''} placeholder="Ej.: 192.168.0.50" onChange={e => setEditing({ ...editing, impresora_host: e.target.value })} /></label><label>Puerto<input type="number" value={editing.impresora_puerto || 9100} onChange={e => setEditing({ ...editing, impresora_puerto: Number(e.target.value) || 9100 })} /></label></>}
+          <label>URL del agente<input value={editing.agente_url || 'http://127.0.0.1:17777'} onChange={e => setEditing({ ...editing, agente_url: e.target.value })} /></label>
+          <label>Token del agente<input value={editing.agente_token || ''} placeholder="Lo muestra el agente al iniciar" onChange={e => setEditing({ ...editing, agente_token: e.target.value })} /></label>
+        </>}
         <label className="toggle-row"><span>Habilitado para ARCA</span><input type="checkbox" checked={Boolean(editing.fiscal)} onChange={e => setEditing({ ...editing, fiscal: e.target.checked })} /></label>
       </div>
       <div className="modal-actions"><button type="button" onClick={() => setEditing(null)}>Cancelar</button><button className="save">Guardar</button></div>

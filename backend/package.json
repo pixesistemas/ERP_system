@@ -20,6 +20,7 @@
     "test:beta2": "node tests/beta2-financial.test.js",
     "test:reset-empresa": "node tests/reset-empresa.test.js",
     "test:offline": "node tests/offline-pos.test.js",
+    "test:escpos": "node tests/escpos.test.js",
     "audit:normalized": "node scripts/audit-normalized.js",
     "test:fiscal": "node tests/beta3-fiscal.test.js",
     "verificar:rg5616": "node scripts/verificar-rg5616.js",
