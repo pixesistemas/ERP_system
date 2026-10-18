@@ -26,7 +26,19 @@ const VERSION = "1.0.0";
 const DIR = __dirname;
 const CONFIG_PATH = path.join(DIR, "config.json");
 const PS1_PATH = path.join(DIR, "imprimir-raw.ps1");
+const LOG_PATH = path.join(DIR, "agente.log");
 const ES_WINDOWS = process.platform === "win32";
+
+/* Registro en agente.log: es la forma de diagnosticar cuando corre sin ventana. */
+function log(...partes) {
+  const linea = `[${new Date().toISOString()}] ${partes.join(" ")}`;
+  console.log(linea);
+  try {
+    fs.appendFileSync(LOG_PATH, linea + "\n");
+  } catch (error) {
+    /* sin permisos de escritura: seguimos solo con consola */
+  }
+}
 
 function cargarConfig() {
   if (fs.existsSync(CONFIG_PATH)) {
@@ -235,6 +247,7 @@ function crearServidor(cfg) {
       if (req.method === "POST" && url.startsWith("/imprimir")) {
         const body = JSON.parse((await leerCuerpo(req)).toString("utf8") || "{}");
         if (config.token && String(body.token || req.headers["x-token"] || "") !== config.token) {
+          log("RECHAZADO: token incorrecto");
           return json(res, 401, { ok: false, error: "Token incorrecto. Copiá el token del agente en la configuración del punto de venta." });
         }
         const datos = Buffer.from(String(body.datos_base64 || ""), "base64");
@@ -245,15 +258,18 @@ function crearServidor(cfg) {
           const nombre = String(impresora.nombre || "").trim();
           if (!nombre) return json(res, 400, { ok: false, error: "Falta el nombre de la impresora instalada." });
           await imprimirSistema(nombre, datos);
+          log(`IMPRESO ${datos.length} bytes en impresora del sistema "${nombre}"${body.descripcion ? " (" + body.descripcion + ")" : ""}`);
         } else {
           const host = String(impresora.host || "").trim();
           if (!host) return json(res, 400, { ok: false, error: "Falta la IP de la impresora." });
           await imprimirRed({ host, puerto: Number(impresora.puerto || 9100) || 9100 }, datos, config.espera_impresora_ms);
+          log(`IMPRESO ${datos.length} bytes en ${host}:${Number(impresora.puerto || 9100) || 9100}${body.descripcion ? " (" + body.descripcion + ")" : ""}`);
         }
         return json(res, 200, { ok: true, bytes: datos.length });
       }
       return json(res, 404, { ok: false, error: "Ruta no encontrada." });
     } catch (error) {
+      log("ERROR:", error.message);
       return json(res, 500, { ok: false, error: String(error.message || error) });
     }
   });
@@ -262,8 +278,15 @@ function crearServidor(cfg) {
 if (require.main === module) {
   const cfg = cargarConfig();
   asegurarScriptWindows();
+  try {
+    /* El log no crece sin control: si pasa 1 MB se reinicia al arrancar. */
+    if (fs.existsSync(LOG_PATH) && fs.statSync(LOG_PATH).size > 1024 * 1024) fs.writeFileSync(LOG_PATH, "");
+  } catch (error) {
+    /* si no se puede rotar, no pasa nada */
+  }
   const server = crearServidor(cfg);
   server.listen(cfg.puerto, "127.0.0.1", async () => {
+    log(`Agente v${VERSION} iniciado en http://127.0.0.1:${cfg.puerto} (${process.platform})`);
     console.log("==============================================");
     console.log("  PixeSistemas - Agente de impresion  v" + VERSION);
     console.log("==============================================");
@@ -282,6 +305,7 @@ if (require.main === module) {
     console.log("==============================================");
   });
   server.on("error", (error) => {
+    log("ERROR al iniciar:", error.message);
     console.error("No se pudo iniciar el agente:", error.message);
     console.error("¿Ya hay otro agente corriendo en el puerto " + cfg.puerto + "?");
     process.exit(1);

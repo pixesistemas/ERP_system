@@ -23,14 +23,30 @@ Windows.
 
 ### Opción B: ejecutable único (sin Node instalado)
 
-Con [pkg](https://github.com/vercel/pkg) o Node SEA:
+Doble clic en `empaquetar-windows.bat`: genera `pixe-print-agent.exe` en esta
+misma carpeta. A partir de ahí podés copiar solo esa carpeta con el `.exe`
+a las PCs de los clientes (no hace falta Node).
+
+Equivale a:
 
 ```
-npx pkg server.js --targets node18-win-x64 --output pixe-print-agent.exe
+npx @yao-pkg/pkg server.js --targets node18-win-x64 --output pixe-print-agent.exe
 ```
 
-Para Linux/Mac usar `node18-linux-x64` / `node18-macos-x64`. El ejecutable
-genera su `config.json` al lado cuando arranca.
+Para Linux/Mac usar `node18-linux-x64` / `node18-macos-x64`.
+
+## Sin ventana y arranque automático
+
+El agente está pensado para quedar corriendo de fondo, sin ninguna ventana
+abierta. Todo queda registrado en `agente.log` (al lado del agente).
+
+- **Windows**: copiá `iniciar-oculto.vbs` a la carpeta de Inicio
+  (`Win+R` → `shell:startup`). El VBS arranca el `.exe` si existe, si no
+  `node server.js`, siempre sin ventana.
+  - Probalo primero con `iniciar-windows.bat` (con ventana) para ver el
+    token y las impresoras; después pasá al modo oculto.
+  - Alternativa: Programador de tareas → al iniciar sesión →
+    `wscript.exe "ruta\iniciar-oculto.vbs"`.
 
 ## Inicio automático
 

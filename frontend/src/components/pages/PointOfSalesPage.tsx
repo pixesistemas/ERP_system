@@ -9,6 +9,7 @@ export function PointOfSalesPage() {
   const [logoBusy, setLogoBusy] = useState(false);
   const [error, setError] = useState('');
   const [ok, setOk] = useState('');
+  const [agenteEstado, setAgenteEstado] = useState('');
   const logoRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   async function load() {
@@ -44,6 +45,29 @@ export function PointOfSalesPage() {
       }
     } catch (e: any) {
       setError(e.message);
+    }
+  }
+
+  /*
+   * Consulta el agente local configurado en el formulario: verifica que
+   * esté corriendo y muestra el nombre exacto de las impresoras instaladas
+   * (para el tipo "Instalada en Windows/Linux").
+   */
+  async function consultarAgente() {
+    const base = String(editing?.agente_url || 'http://127.0.0.1:17777').replace(/\/+$/, '');
+    setAgenteEstado('Consultando el agente…');
+    try {
+      const salud = await fetch(`${base}/salud`).then((r) => r.json());
+      let impresoras: string[] = [];
+      try {
+        const listaRes = await fetch(`${base}/impresoras`).then((r) => r.json());
+        impresoras = listaRes.impresoras || [];
+      } catch (e) {
+        /* la lista es informativa */
+      }
+      setAgenteEstado(`Agente v${salud.version || '?'} (${salud.plataforma || ''}) respondiendo en ${base}. Impresoras del sistema: ${impresoras.length ? impresoras.join(' | ') : 'ninguna detectada'}.`);
+    } catch (e) {
+      setAgenteEstado(`No se pudo contactar al agente en ${base}. Verificá que esté corriendo en esta PC (iniciar-oculto.vbs o iniciar-windows.bat).`);
     }
   }
 
@@ -162,6 +186,10 @@ export function PointOfSalesPage() {
             : <><label>IP de la impresora<input value={editing.impresora_host || ''} placeholder="Ej.: 192.168.0.50" onChange={e => setEditing({ ...editing, impresora_host: e.target.value })} /></label><label>Puerto<input type="number" value={editing.impresora_puerto || 9100} onChange={e => setEditing({ ...editing, impresora_puerto: Number(e.target.value) || 9100 })} /></label></>}
           <label>URL del agente<input value={editing.agente_url || 'http://127.0.0.1:17777'} onChange={e => setEditing({ ...editing, agente_url: e.target.value })} /></label>
           <label>Token del agente<input value={editing.agente_token || ''} placeholder="Lo muestra el agente al iniciar" onChange={e => setEditing({ ...editing, agente_token: e.target.value })} /></label>
+          <div className="full">
+            <button type="button" className="link-button" onClick={() => consultarAgente()}>Consultar agente</button>
+            {agenteEstado && <div className="agent-status">{agenteEstado}</div>}
+          </div>
         </>}
         <label className="toggle-row"><span>Habilitado para ARCA</span><input type="checkbox" checked={Boolean(editing.fiscal)} onChange={e => setEditing({ ...editing, fiscal: e.target.checked })} /></label>
       </div>

@@ -486,7 +486,11 @@ export const erpApi = {
       if(!r.ok||!j.ok)throw new Error(j.error||`El agente de impresión respondió ${r.status}.`);
       return true;
     }catch(e:any){
-      if(e?.name==='AbortError')throw new Error('El agente de impresión no respondió (¿está abierto en esta PC?).');
+      if(e?.name==='AbortError')throw new Error('El agente de impresión no respondió (¿está corriendo en esta PC?).');
+      const msg=String(e?.message||e);
+      if(e instanceof TypeError||/failed to fetch|networkerror|load failed|network request failed/i.test(msg)){
+        throw new Error(`No se pudo conectar con el agente de impresión en ${base}. Verificá que esté corriendo en esta PC (iniciar-oculto.vbs o iniciar-windows.bat).`);
+      }
       throw e;
     }finally{clearTimeout(timer)}
   },
