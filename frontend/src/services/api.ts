@@ -489,7 +489,7 @@ export const erpApi = {
       if(e?.name==='AbortError')throw new Error('El agente de impresión no respondió (¿está corriendo en esta PC?).');
       const msg=String(e?.message||e);
       if(e instanceof TypeError||/failed to fetch|networkerror|load failed|network request failed/i.test(msg)){
-        throw new Error(`No se pudo conectar con el agente de impresión en ${base}. Verificá que esté corriendo en esta PC (iniciar-oculto.vbs o iniciar-windows.bat).`);
+        throw new Error(`No se pudo conectar con el agente de impresión en ${base}. Probá abrir ${base}/salud en este mismo navegador: si no carga, el agente no está corriendo en esta PC; si carga, dale permiso de "red local" al sitio (icono del candado al lado de la dirección) y volvé a probar.`);
       }
       throw e;
     }finally{clearTimeout(timer)}

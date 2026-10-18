@@ -35,18 +35,33 @@ npx @yao-pkg/pkg server.js --targets node18-win-x64 --output pixe-print-agent.ex
 
 Para Linux/Mac usar `node18-linux-x64` / `node18-macos-x64`.
 
-## Sin ventana y arranque automático
+## Sin ventana, con icono en la bandeja y arranque automático
 
 El agente está pensado para quedar corriendo de fondo, sin ninguna ventana
-abierta. Todo queda registrado en `agente.log` (al lado del agente).
+abierta y con un **icono junto al reloj** para controlarlo. Todo queda
+registrado en `agente.log` (al lado del agente).
 
-- **Windows**: copiá `iniciar-oculto.vbs` a la carpeta de Inicio
-  (`Win+R` → `shell:startup`). El VBS arranca el `.exe` si existe, si no
-  `node server.js`, siempre sin ventana.
-  - Probalo primero con `iniciar-windows.bat` (con ventana) para ver el
-    token y las impresoras; después pasá al modo oculto.
-  - Alternativa: Programador de tareas → al iniciar sesión →
-    `wscript.exe "ruta\iniciar-oculto.vbs"`.
+- **Iniciar con icono en la bandeja**: doble clic en
+  `iniciar-con-bandeja.vbs`. El icono (clic izquierdo o derecho) tiene:
+  - Ver registro (`agente.log`)
+  - Abrir carpeta del agente
+  - Reiniciar agente
+  - Detener y salir
+- **Arranque automático al iniciar Windows**: doble clic en
+  `instalar-inicio-automatico.bat` (copia el inicio a la carpeta de Inicio
+  del usuario). Para quitarlo: `desinstalar-inicio-automatico.bat`.
+- **Cerrar un agente que está corriendo sin icono** (por ejemplo si se
+  inició con `iniciar-oculto.vbs`): doble clic en `detener-agente.bat`, o
+  desde el Administrador de tareas terminar el proceso `node.exe`. Si al
+  abrir otra vez dice `EADDRINUSE ... 17777`, es que **ya hay uno
+  corriendo** (no es un error).
+- **Sin icono (modo mínimo)**: `iniciar-oculto.vbs` hace lo mismo que el de
+  bandeja pero sin icono; para cerrarlo usar `detener-agente.bat`.
+- Probalo primero con `iniciar-windows.bat` (con ventana) para ver el
+  token y las impresoras; después pasá al modo con bandeja.
+
+Alternativa por Programador de tareas: al iniciar sesión →
+`wscript.exe "ruta\iniciar-con-bandeja.vbs"`.
 
 ## Inicio automático
 
@@ -90,7 +105,15 @@ Si el agente está apagado o falla, el POS imprime igual por el navegador
 
 ## Diagnóstico
 
-- `GET http://127.0.0.1:17777/salud` → el agente está vivo.
-- `GET http://127.0.0.1:17777/impresoras` → lista las impresoras del sistema.
+- **Probar desde el navegador**: abrir `http://127.0.0.1:17777/salud`.
+  - Si muestra JSON → el agente responde.
+  - Si **no carga** desde el ERP, dale permiso de **"red local"** al sitio
+    web del ERP: clic en el candado/ajustes al lado de la dirección del
+    navegador → Permisos → Red local → Permitir y recargar la página. Es un
+    permiso nuevo de Chrome para que una web de internet pueda hablar con
+    programas de la PC.
+- `GET /impresoras` → lista las impresoras del sistema.
 - `config.json` → puerto, token y tiempo de espera.
-- Los errores de impresión aparecen en la consola del agente y en el POS.
+- `agente.log` → registro de arranques, impresiones y errores.
+- El botón **Consultar agente** en Puntos de venta del ERP muestra versión,
+  plataforma e impresoras, o avisa si no responde.
