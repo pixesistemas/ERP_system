@@ -32,6 +32,11 @@ export function PointOfSalesPage() {
     setOk('');
     try {
       if (String(pv.impresion_modo || 'NAVEGADOR').toUpperCase() === 'AGENTE') {
+        if (String(pv.agente_conexion || 'LOCAL').toUpperCase() === 'SERVIDOR') {
+          await erpApi.imprimirTicketPruebaAgente(Number(pv.id));
+          setOk(`Ticket de prueba encolado al agente (PV ${String(pv.numero).padStart(4, '0')}). En unos segundos sale por la impresora.`);
+          return;
+        }
         const t = await erpApi.getTicketPruebaEscpos(Number(pv.id));
         await erpApi.imprimirEnAgente(pv, { datos_base64: t.base64, descripcion: 'Ticket de prueba (agente)' });
         setOk(`Ticket de prueba enviado al agente local (PV ${String(pv.numero).padStart(4, '0')}). Revisá la impresora.`);
@@ -49,13 +54,31 @@ export function PointOfSalesPage() {
   }
 
   /*
-   * Consulta el agente local configurado en el formulario: verifica que
-   * esté corriendo y muestra el nombre exacto de las impresoras instaladas
-   * (para el tipo "Instalada en Windows/Linux").
+   * Consulta el agente configurado en el formulario:
+   * - SERVIDOR: pregunta al ERP por el último latido del token.
+   * - LOCAL: consulta el agente en 127.0.0.1 y lista las impresoras.
    */
   async function consultarAgente() {
-    const base = String(editing?.agente_url || 'http://127.0.0.1:17777').replace(/\/+$/, '');
     setAgenteEstado('Consultando el agente…');
+    if (String(editing?.agente_conexion || 'LOCAL').toUpperCase() === 'SERVIDOR') {
+      const token = String(editing?.agente_token || '').trim();
+      if (!token) {
+        setAgenteEstado('Pegá primero el token del agente.');
+        return;
+      }
+      try {
+        const e = await erpApi.estadoAgente(token);
+        if (e.conectado) {
+          setAgenteEstado(`Agente conectado al servidor (v${e.version || '?'} · ${e.plataforma || '?'}). Impresión lista.`);
+        } else {
+          setAgenteEstado('El agente no está conectado al servidor. Verificá que esté abierto en la PC del local y que en la bandeja esté configurada la URL del ERP.');
+        }
+      } catch (err: any) {
+        setAgenteEstado(err.message);
+      }
+      return;
+    }
+    const base = String(editing?.agente_url || 'http://127.0.0.1:17777').replace(/\/+$/, '');
     try {
       const salud = await fetch(`${base}/salud`).then((r) => r.json());
       let impresoras: string[] = [];
@@ -129,6 +152,7 @@ export function PointOfSalesPage() {
         impresora_nombre: editing.impresora_nombre || '',
         agente_url: editing.agente_url || 'http://127.0.0.1:17777',
         agente_token: editing.agente_token || '',
+        agente_conexion: String(editing.agente_conexion || 'LOCAL').toUpperCase() === 'SERVIDOR' ? 'SERVIDOR' : 'LOCAL',
       };
       if (editing.id) await erpApi.updatePointOfSale(editing.id, payload);
       else await erpApi.createPointOfSale(payload);
@@ -142,7 +166,7 @@ export function PointOfSalesPage() {
   return <div className="products-page">
     <div className="products-toolbar">
       <div><h3>Puntos de venta</h3><p>Una empresa puede tener varios puntos de venta y numeraciones independientes.</p></div>
-      <button className="primary-action" onClick={() => setEditing({ numero: '', nombre: '', nombre_fantasia: '', direccion: '', telefono: '', whatsapp: '', email: '', sucursal_id: '', fiscal: true, activo: true, formato_impresion: 'A4', impresion_directa: false, impresion_modo: 'NAVEGADOR', impresora_tipo: 'RED', impresora_host: '', impresora_puerto: 9100, impresora_nombre: '', agente_url: 'http://127.0.0.1:17777', agente_token: '' })}><Plus /> Nuevo punto</button>
+      <button className="primary-action" onClick={() => setEditing({ numero: '', nombre: '', nombre_fantasia: '', direccion: '', telefono: '', whatsapp: '', email: '', sucursal_id: '', fiscal: true, activo: true, formato_impresion: 'A4', impresion_directa: false, impresion_modo: 'NAVEGADOR', impresora_tipo: 'RED', impresora_host: '', impresora_puerto: 9100, impresora_nombre: '', agente_url: 'http://127.0.0.1:17777', agente_token: '', agente_conexion: 'LOCAL' })}><Plus /> Nuevo punto</button>
     </div>
     {error && <div className="error-box">{error}</div>}
     {ok && <div className="success-box">{ok}</div>}
@@ -156,7 +180,7 @@ export function PointOfSalesPage() {
           <td>{r.direccion || <span className="muted">—</span>}</td>
           <td>{[r.telefono && `Tel: ${r.telefono}`, r.whatsapp && `WhatsApp: ${r.whatsapp}`, r.email && r.email].filter(Boolean).join(' · ') || <span className="muted">—</span>}</td>
           <td>{branches.find((b: any) => String(b.id) === String(r.sucursal_id))?.nombre || '-'}</td>
-          <td>{r.formato_impresion === '80MM' ? 'Ticket 80 mm' : 'Hoja A4'}{String(r.impresion_modo || 'NAVEGADOR').toUpperCase() === 'AGENTE' ? ` · Agente ${String(r.impresora_tipo || 'RED').toUpperCase() === 'SISTEMA' ? (r.impresora_nombre || 'sistema') : `${r.impresora_host || '?'}:${r.impresora_puerto || 9100}`}` : r.impresion_directa ? ' · Directa' : ''}</td>
+          <td>{r.formato_impresion === '80MM' ? 'Ticket 80 mm' : 'Hoja A4'}{String(r.impresion_modo || 'NAVEGADOR').toUpperCase() === 'AGENTE' ? ` · Agente ${String(r.agente_conexion || 'LOCAL').toUpperCase() === 'SERVIDOR' ? 'servidor' : (String(r.impresora_tipo || 'RED').toUpperCase() === 'SISTEMA' ? (r.impresora_nombre || 'sistema') : `${r.impresora_host || '?'}:${r.impresora_puerto || 9100}`)}` : r.impresion_directa ? ' · Directa' : ''}</td>
           <td>{r.logo ? <span className="pv-logo-cell">{r.logo.startsWith('data:image/') && <img src={r.logo} alt="logo" />}<button type="button" className="link-button" disabled={logoBusy} onClick={() => removeLogo(r)}>Quitar</button></span> : <button type="button" className="link-button" disabled={logoBusy} onClick={() => logoRefs.current[r.id]?.click()}><ImageUp size={14} /> Subir logo</button>}<input ref={el => { logoRefs.current[r.id] = el; }} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) uploadLogo(r, f); }} /></td>
           <td>{r.fiscal ? 'HABILITADO' : 'INTERNO'}</td>
           <td>{r.activo ? 'ACTIVO' : 'INACTIVO'}</td>
@@ -180,11 +204,14 @@ export function PointOfSalesPage() {
         <label className="toggle-row" title="Con Chrome en modo kiosco (--kiosk-printing) el comprobante sale directo a la impresora, sin abrir la vista previa. El ticket de 80 mm imprime directo siempre, tenga o no esta opción."><span>Impresión directa (sin vista previa)</span><input type="checkbox" checked={Boolean(editing.impresion_directa)} onChange={e => setEditing({ ...editing, impresion_directa: e.target.checked })} /></label>
         <label>Modo de impresión<select value={editing.impresion_modo || 'NAVEGADOR'} onChange={e => setEditing({ ...editing, impresion_modo: e.target.value })}><option value="NAVEGADOR">Navegador (ventana / Chrome kiosco)</option><option value="AGENTE">Agente local (ESC/POS, sin navegador)</option></select></label>
         {String(editing.impresion_modo || 'NAVEGADOR').toUpperCase() === 'AGENTE' && <>
+          <label>Conexión del agente<select value={editing.agente_conexion || 'LOCAL'} onChange={e => setEditing({ ...editing, agente_conexion: e.target.value })}><option value="LOCAL">Directa (esta PC, 127.0.0.1)</option><option value="SERVIDOR">A través del servidor (recomendado)</option></select></label>
           <label>Tipo de impresora<select value={editing.impresora_tipo || 'RED'} onChange={e => setEditing({ ...editing, impresora_tipo: e.target.value })}><option value="RED">De red (IP y puerto)</option><option value="SISTEMA">Instalada en Windows/Linux (USB)</option></select></label>
           {String(editing.impresora_tipo || 'RED').toUpperCase() === 'SISTEMA'
             ? <label>Nombre de la impresora instalada<input value={editing.impresora_nombre || ''} placeholder="Ej.: POS-80" onChange={e => setEditing({ ...editing, impresora_nombre: e.target.value })} /></label>
             : <><label>IP de la impresora<input value={editing.impresora_host || ''} placeholder="Ej.: 192.168.0.50" onChange={e => setEditing({ ...editing, impresora_host: e.target.value })} /></label><label>Puerto<input type="number" value={editing.impresora_puerto || 9100} onChange={e => setEditing({ ...editing, impresora_puerto: Number(e.target.value) || 9100 })} /></label></>}
-          <label>URL del agente<input value={editing.agente_url || 'http://127.0.0.1:17777'} onChange={e => setEditing({ ...editing, agente_url: e.target.value })} /></label>
+          {String(editing.agente_conexion || 'LOCAL').toUpperCase() === 'SERVIDOR'
+            ? <div className="full agent-status">El agente se conecta solo al ERP: abrí el icono de la bandeja en la PC del local y cargá la URL del ERP (ej. https://erp.pixesistemas.com.ar). No hace falta URL local ni permisos del navegador.</div>
+            : <label>URL del agente<input value={editing.agente_url || 'http://127.0.0.1:17777'} onChange={e => setEditing({ ...editing, agente_url: e.target.value })} /></label>}
           <label>Token del agente<input value={editing.agente_token || ''} placeholder="Lo muestra el agente al iniciar" onChange={e => setEditing({ ...editing, agente_token: e.target.value })} /></label>
           <div className="full">
             <button type="button" className="link-button" onClick={() => consultarAgente()}>Consultar agente</button>

@@ -137,19 +137,26 @@ export function AdvancedPosPage({ onSendToAssistant, pantallas = null, modulos =
     return Boolean(pvActualPos()?.impresion_directa);
   }
   /*
-   * Modo AGENTE: el ticket se imprime con el agente local (ESC/POS, sin
-   * navegador). Si no está configurado, apagado o falla, se sigue con la
-   * impresión del navegador como respaldo.
+   * Modo AGENTE: el ticket se imprime con el agente de la PC del local.
+   * - Conexión LOCAL: el navegador le manda el ticket a 127.0.0.1.
+   * - Conexión SERVIDOR: el ERP encola el ticket y el agente lo retira
+   *   (funciona con el ERP en internet, sin permisos del navegador).
+   * Si no está configurado, apagado o falla, se sigue con la impresión del
+   * navegador como respaldo.
    */
   async function imprimirConAgente(op:any):Promise<boolean>{
     const pv=pvActualPos();
     if(!pv||String(pv.impresion_modo||'').toUpperCase()!=='AGENTE')return false;
     try{
+      if(String(pv.agente_conexion||'LOCAL').toUpperCase()==='SERVIDOR'){
+        await erpApi.imprimirAgenteOperacion(Number(op.saleId));
+        return true;
+      }
       const t=await erpApi.getTicketEscpos(Number(op.saleId));
       await erpApi.imprimirEnAgente(pv,{datos_base64:t.base64,descripcion:`${op.type||'TICKET'} ${String(op.pointOfSale||'').padStart(4,'0')}-${String(op.number||'').padStart(8,'0')}`});
       return true;
     }catch(e:any){
-      setNotice(`No se pudo imprimir con el agente local (${e.message}). Se usa la impresión del navegador.`);
+      setNotice(`No se pudo imprimir con el agente (${e.message}). Se usa la impresión del navegador.`);
       return false;
     }
   }

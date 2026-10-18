@@ -473,6 +473,13 @@ export const erpApi = {
   getTicketEscpos: (saleId:number) => request<any>(`/erp/pos/operaciones/${saleId}/ticket-escpos`),
   getTicketPruebaEscpos: (puntoVentaId:number) => request<any>(`/erp/puntos-venta/${puntoVentaId}/ticket-prueba-escpos`),
   /*
+   * Modo relay: el servidor arma el ticket y lo deja en cola para que el
+   * agente conectado al ERP lo retire e imprima (no depende del navegador).
+   */
+  imprimirAgenteOperacion: (saleId:number) => request<any>(`/erp/pos/operaciones/${saleId}/imprimir-agente`,{method:'POST',body:JSON.stringify({})}),
+  imprimirTicketPruebaAgente: (puntoVentaId:number) => request<any>(`/erp/puntos-venta/${puntoVentaId}/ticket-prueba-agente`,{method:'POST',body:JSON.stringify({})}),
+  estadoAgente: (token:string) => request<any>(`/erp/agente/estado?token=${encodeURIComponent(token)}`),
+  /*
    * Envía el ticket al agente de impresión que corre en la PC del local
    * (127.0.0.1). Le pasa la configuración del punto de venta (tipo de
    * impresora, IP/puerto o nombre instalado) junto con el ticket ESC/POS.

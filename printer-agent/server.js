@@ -48,11 +48,12 @@ function log(...partes) {
 function cargarConfig() {
   if (fs.existsSync(CONFIG_PATH)) {
     try {
-      const cfg = JSON.parse(fs.readFileSync(CONFIG_PATH, "utf8"));
+      const cfg = JSON.parse(fs.readFileSync(CONFIG_PATH, "utf8").replace(/^\uFEFF/, ""));
       return {
         puerto: Number(cfg.puerto) || 17777,
         token: String(cfg.token || ""),
         espera_impresora_ms: Number(cfg.espera_impresora_ms) || 5000,
+        erp_url: String(cfg.erp_url || "").trim(),
       };
     } catch (error) {
       console.error("config.json inválido, se regenera:", error.message);
@@ -62,6 +63,7 @@ function cargarConfig() {
     puerto: 17777,
     token: crypto.randomBytes(16).toString("hex"),
     espera_impresora_ms: 5000,
+    erp_url: "",
   };
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2), "utf8");
   return cfg;
@@ -280,6 +282,76 @@ function crearServidor(cfg) {
   });
 }
 
+/* ------------------ conexión con el ERP (relay) ------------------ */
+
+async function informarResultadoErp(base, token, id, ok, error) {
+  await fetch(`${base}/api/v1/agente/resultado`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Token": token },
+    body: JSON.stringify({ id, ok, error: ok ? "" : String(error || "Error de impresión.") }),
+  });
+}
+
+/*
+ * Conecta el agente con el ERP: consulta cada pocos segundos si hay
+ * trabajos de impresión para este token y los imprime. Es el modo que
+ * funciona con el ERP en internet (el navegador no habla con localhost).
+ */
+function iniciarPollingErp(cfg) {
+  const base = String(cfg.erp_url || "").replace(/\/+$/, "");
+  if (!base) return () => {};
+  let detenido = false;
+  let ultimoError = "";
+  log(`Conectando con el ERP en ${base} ...`);
+
+  async function ciclo() {
+    if (detenido) return;
+    try {
+      const respuesta = await fetch(`${base}/api/v1/agente/trabajos`, {
+        headers: { "X-Token": cfg.token, "X-Plataforma": process.platform, "X-Version": VERSION },
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!respuesta.ok) throw new Error(`HTTP ${respuesta.status}`);
+      const datos = await respuesta.json();
+      for (const trabajo of datos.trabajos || []) {
+        try {
+          const buffer = Buffer.from(String(trabajo.datos_base64 || ""), "base64");
+          const impresora = trabajo.impresora || {};
+          if (String(impresora.tipo || "RED").toUpperCase() === "SISTEMA") {
+            await imprimirSistema(String(impresora.nombre || "").trim(), buffer);
+          } else {
+            await imprimirRed(
+              { host: String(impresora.host || "").trim(), puerto: Number(impresora.puerto || 9100) || 9100 },
+              buffer,
+              cfg.espera_impresora_ms,
+            );
+          }
+          await informarResultadoErp(base, cfg.token, trabajo.id, true, "");
+          log(`IMPRESO (ERP) ${buffer.length} bytes${trabajo.descripcion ? " (" + trabajo.descripcion + ")" : ""}`);
+        } catch (error) {
+          await informarResultadoErp(base, cfg.token, trabajo.id, false, error.message).catch(() => {});
+          log("ERROR imprimiendo trabajo del ERP:", error.message);
+        }
+      }
+      if (ultimoError) {
+        log("Conexión con el ERP restablecida.");
+        ultimoError = "";
+      }
+    } catch (error) {
+      const mensaje = String(error.message || error);
+      if (mensaje !== ultimoError) {
+        log("Sin conexión con el ERP (" + mensaje + "). Reintentando cada pocos segundos...");
+        ultimoError = mensaje;
+      }
+    }
+    setTimeout(ciclo, 2500);
+  }
+  ciclo();
+  return () => {
+    detenido = true;
+  };
+}
+
 if (require.main === module) {
   const cfg = cargarConfig();
   asegurarScriptWindows();
@@ -298,6 +370,7 @@ if (require.main === module) {
     console.log("  Escuchando en : http://127.0.0.1:" + cfg.puerto);
     console.log("  Token         : " + (cfg.token || "(sin token)"));
     console.log("  Plataforma    : " + process.platform);
+    console.log("  ERP           : " + (cfg.erp_url || "(sin configurar: modo local solamente)"));
     try {
       const impresoras = await listarImpresoras();
       console.log("  Impresoras    : " + (impresoras.length ? impresoras.join(" | ") : "(ninguna detectada)"));
@@ -305,10 +378,12 @@ if (require.main === module) {
       /* la lista es informativa */
     }
     console.log("");
-    console.log("  Dejá esta ventana abierta mientras usás el punto de venta.");
     console.log("  Copiá el Token y la IP/puerto en Puntos de venta del ERP.");
+    console.log("  Para imprimir con el ERP en internet, configurá la URL del ERP");
+    console.log("  desde el icono de la bandeja (iniciar-con-bandeja.vbs).");
     console.log("==============================================");
   });
+  iniciarPollingErp(cfg);
   server.on("error", (error) => {
     log("ERROR al iniciar:", error.message);
     console.error("No se pudo iniciar el agente:", error.message);
@@ -317,4 +392,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { crearServidor, cargarConfig, imprimirRed, listarImpresoras, VERSION };
+module.exports = { crearServidor, cargarConfig, imprimirRed, listarImpresoras, iniciarPollingErp, VERSION };

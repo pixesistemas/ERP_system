@@ -118,6 +118,14 @@ app.get("/api/v1/whatsapp/webhook", whatsappWebhookController.getWebhook);
 app.post("/api/v1/whatsapp/webhook", whatsappWebhookController.postWebhook);
 
 /*
+ * Relay del agente de impresión: el agente consulta por sus trabajos y
+ * avisa el resultado. Sin JWT, autenticado con el token del agente.
+ */
+const agenteController = require("./controllers/agente.controller");
+app.get("/api/v1/agente/trabajos", agenteController.tomarTrabajos);
+app.post("/api/v1/agente/resultado", agenteController.resultadoTrabajo);
+
+/*
  * Canal de PRUEBAS por Telegram (gratis): usa el mismo motor que los
  * pedidos de clientes por WhatsApp. El webhook se registra con
  * setWebhook de la Bot API (ver telegramWebhook.controller.js).

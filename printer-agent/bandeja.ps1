@@ -1,7 +1,7 @@
 # Bandeja del sistema para el agente de impresion (Windows).
 # Muestra un icono junto al reloj con el estado, los datos de conexion
-# (URL + token para copiar), el registro y las opciones de reiniciar/cerrar.
-# El agente corre oculto como hijo de este proceso.
+# (URL local + token + URL del ERP para el modo servidor) y las opciones de
+# reiniciar/cerrar. El agente corre oculto como hijo de este proceso.
 #
 # Se lanza con iniciar-con-bandeja.vbs (sin ventanas).
 
@@ -28,10 +28,16 @@ if (-not $mutex.WaitOne(0)) { exit }
 
 $script:proceso = $null
 $script:token = ""
+$script:erpUrl = ""
 
 function Leer-Token {
   if (-not (Test-Path $cfgPath)) { return "" }
   try { return [string](Get-Content $cfgPath -Raw | ConvertFrom-Json).token } catch { return "" }
+}
+
+function Leer-ErpUrl {
+  if (-not (Test-Path $cfgPath)) { return "" }
+  try { return [string](Get-Content $cfgPath -Raw | ConvertFrom-Json).erp_url } catch { return "" }
 }
 
 function Iniciar-Agente {
@@ -61,9 +67,10 @@ function Estado-Agente {
 
 function Mostrar-Datos {
   $script:token = Leer-Token
+  $script:erpUrl = Leer-ErpUrl
   $form = New-Object System.Windows.Forms.Form
   $form.Text = "PixeSistemas - Agente de impresion"
-  $form.Size = New-Object System.Drawing.Size(500, 250)
+  $form.Size = New-Object System.Drawing.Size(520, 390)
   $form.StartPosition = "CenterScreen"
   $form.FormBorderStyle = "FixedDialog"
   $form.MaximizeBox = $false
@@ -71,7 +78,7 @@ function Mostrar-Datos {
   $form.TopMost = $true
 
   $lblUrl = New-Object System.Windows.Forms.Label
-  $lblUrl.Text = "URL del agente (va en Puntos de venta):"
+  $lblUrl.Text = "URL local del agente (solo para modo local):"
   $lblUrl.Location = New-Object System.Drawing.Point(14, 12)
   $lblUrl.AutoSize = $true
   $form.Controls.Add($lblUrl)
@@ -80,7 +87,7 @@ function Mostrar-Datos {
   $txtUrl.Text = "http://127.0.0.1:$puerto"
   $txtUrl.ReadOnly = $true
   $txtUrl.Location = New-Object System.Drawing.Point(14, 32)
-  $txtUrl.Width = 455
+  $txtUrl.Width = 475
   $form.Controls.Add($txtUrl)
 
   $lblTok = New-Object System.Windows.Forms.Label
@@ -93,13 +100,13 @@ function Mostrar-Datos {
   $txtTok.Text = $(if ($script:token) { $script:token } else { "(el agente todavia esta generando el token...)" })
   $txtTok.ReadOnly = $true
   $txtTok.Location = New-Object System.Drawing.Point(14, 90)
-  $txtTok.Width = 455
+  $txtTok.Width = 475
   $form.Controls.Add($txtTok)
 
   $btnCopiar = New-Object System.Windows.Forms.Button
   $btnCopiar.Text = "Copiar token"
-  $btnCopiar.Location = New-Object System.Drawing.Point(14, 130)
-  $btnCopiar.Width = 120
+  $btnCopiar.Location = New-Object System.Drawing.Point(14, 122)
+  $btnCopiar.Width = 110
   $btnCopiar.Add_Click({
       $script:token = Leer-Token
       if (-not $script:token) {
@@ -112,18 +119,71 @@ function Mostrar-Datos {
   $form.Controls.Add($btnCopiar)
 
   $btnCopiarUrl = New-Object System.Windows.Forms.Button
-  $btnCopiarUrl.Text = "Copiar URL"
-  $btnCopiarUrl.Location = New-Object System.Drawing.Point(144, 130)
-  $btnCopiarUrl.Width = 100
+  $btnCopiarUrl.Text = "Copiar URL local"
+  $btnCopiarUrl.Location = New-Object System.Drawing.Point(134, 122)
+  $btnCopiarUrl.Width = 120
   $btnCopiarUrl.Add_Click({
       Set-Clipboard -Value "http://127.0.0.1:$puerto"
       [System.Windows.Forms.MessageBox]::Show("URL copiada al portapapeles.") | Out-Null
     })
   $form.Controls.Add($btnCopiarUrl)
 
+  $lblErp = New-Object System.Windows.Forms.Label
+  $lblErp.Text = "URL del ERP (para imprimir desde el servidor, ej. https://erp.pixesistemas.com.ar):"
+  $lblErp.Location = New-Object System.Drawing.Point(14, 164)
+  $lblErp.AutoSize = $true
+  $form.Controls.Add($lblErp)
+
+  $txtErp = New-Object System.Windows.Forms.TextBox
+  $txtErp.Text = $script:erpUrl
+  $txtErp.Location = New-Object System.Drawing.Point(14, 184)
+  $txtErp.Width = 475
+  $form.Controls.Add($txtErp)
+
+  $lblHint = New-Object System.Windows.Forms.Label
+  $lblHint.Text = "Con esta URL el agente se conecta al ERP y recibe los tickets sin"
+  $lblHint.Location = New-Object System.Drawing.Point(14, 208)
+  $lblHint.AutoSize = $true
+  $lblHint.ForeColor = [System.Drawing.Color]::DimGray
+  $form.Controls.Add($lblHint)
+  $lblHint2 = New-Object System.Windows.Forms.Label
+  $lblHint2.Text = "depender del navegador (recomendado en produccion)."
+  $lblHint2.Location = New-Object System.Drawing.Point(14, 224)
+  $lblHint2.AutoSize = $true
+  $lblHint2.ForeColor = [System.Drawing.Color]::DimGray
+  $form.Controls.Add($lblHint2)
+
+  $btnGuardarErp = New-Object System.Windows.Forms.Button
+  $btnGuardarErp.Text = "Guardar URL del ERP y reiniciar agente"
+  $btnGuardarErp.Location = New-Object System.Drawing.Point(14, 250)
+  $btnGuardarErp.Width = 250
+  $btnGuardarErp.Add_Click({
+      try {
+        $config = @{}
+        if (Test-Path $cfgPath) { $config = Get-Content $cfgPath -Raw | ConvertFrom-Json }
+        $erp = $txtErp.Text.Trim()
+        if ($erp -and $erp -notmatch '^https?://') { $erp = "https://" + $erp }
+        $config | Add-Member -NotePropertyName erp_url -NotePropertyValue $erp -Force
+        $json = $config | ConvertTo-Json -Depth 5
+        [System.IO.File]::WriteAllText($cfgPath, $json, (New-Object System.Text.UTF8Encoding($false)))
+        Detener-Agente
+        Start-Sleep -Milliseconds 700
+        Iniciar-Agente
+        $script:erpUrl = $erp
+        if ($erp) {
+          [System.Windows.Forms.MessageBox]::Show("URL guardada.`nEl agente se reinicio y va a conectarse a:`n$erp") | Out-Null
+        } else {
+          [System.Windows.Forms.MessageBox]::Show("URL vacia: el agente queda solo en modo local.") | Out-Null
+        }
+      } catch {
+        [System.Windows.Forms.MessageBox]::Show("No se pudo guardar: " + $_.Exception.Message) | Out-Null
+      }
+    })
+  $form.Controls.Add($btnGuardarErp)
+
   $btnCerrar = New-Object System.Windows.Forms.Button
   $btnCerrar.Text = "Cerrar"
-  $btnCerrar.Location = New-Object System.Drawing.Point(369, 130)
+  $btnCerrar.Location = New-Object System.Drawing.Point(389, 250)
   $btnCerrar.Width = 100
   $btnCerrar.Add_Click({ $form.Close() })
   $form.Controls.Add($btnCerrar)
@@ -147,6 +207,7 @@ Iniciar-Agente
 # Espera a que el agente cree config.json (token) la primera vez.
 for ($i = 0; $i -lt 20 -and -not (Test-Path $cfgPath); $i++) { Start-Sleep -Milliseconds 200 }
 $script:token = Leer-Token
+$script:erpUrl = Leer-ErpUrl
 
 $icono = New-Object System.Windows.Forms.NotifyIcon
 $icono.Icon = [System.Drawing.SystemIcons]::Information
@@ -164,7 +225,7 @@ $itemEstado.Enabled = $false
 $menu.Items.Add($itemEstado) | Out-Null
 
 $menu.Items.Add("-") | Out-Null
-$menu.Items.Add("Ver datos de conexion (token)", $null, { Mostrar-Datos }) | Out-Null
+$menu.Items.Add("Ver datos de conexion (token / ERP)", $null, { Mostrar-Datos }) | Out-Null
 $menu.Items.Add("Copiar token al portapapeles", $null, { Copiar-Token }) | Out-Null
 $menu.Items.Add("-") | Out-Null
 $menu.Items.Add("Ver registro (agente.log)", $null, {

@@ -21,6 +21,7 @@
     "test:reset-empresa": "node tests/reset-empresa.test.js",
     "test:offline": "node tests/offline-pos.test.js",
     "test:escpos": "node tests/escpos.test.js",
+    "test:agente-relay": "node tests/agente-relay.test.js",
     "audit:normalized": "node scripts/audit-normalized.js",
     "test:fiscal": "node tests/beta3-fiscal.test.js",
     "verificar:rg5616": "node scripts/verificar-rg5616.js",

@@ -101,14 +101,24 @@ Luego: `sudo systemctl enable --now pixe-print-agent`.
 En **Configuración → Puntos de venta**:
 
 - **Modo de impresión**: `Agente local`.
+- **Conexión del agente**:
+  - `A través del servidor (recomendado)`: el agente se conecta al ERP y
+    retira los tickets de la cola. **Funciona con el ERP en internet,
+    desde cualquier navegador y sin permisos especiales.** En la PC del
+    local: icono de la bandeja → "Ver datos de conexión" → cargá la
+    **URL del ERP** (ej. `https://erp.pixesistemas.com.ar`) → "Guardar URL
+    del ERP y reiniciar".
+  - `Directa (esta PC)`: el navegador le manda el ticket a `127.0.0.1`.
+    Solo conviene cuando el ERP se abre en la misma PC o red local
+    (Chrome bloquea este acceso desde webs de internet).
 - **Tipo de impresora**: `Red` (IP + puerto) o `Instalada en el sistema`
   (nombre exacto de la impresora, ej. `POS-80`).
-- **URL del agente**: `http://127.0.0.1:17777` (por defecto).
-- **Token del agente**: el que muestra el agente al iniciar.
+- **Token del agente**: el que muestra el agente (icono de la bandeja →
+  "Ver datos de conexión" → "Copiar token").
 
-El botón de **ticket de prueba** del punto de venta prueba toda la cadena.
-Si el agente está apagado o falla, el POS imprime igual por el navegador
-(respaldo automático) y avisa en pantalla.
+El botón de **ticket de prueba** del punto de venta prueba toda la cadena
+en el modo que esté configurado. Si el agente está apagado o falla, el POS
+imprime igual por el navegador (respaldo automático) y avisa en pantalla.
 
 ## Diagnóstico
 
