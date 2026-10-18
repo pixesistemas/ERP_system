@@ -2461,6 +2461,40 @@ function cashSessionDetail(req,res){
 module.exports.closeCashSession=closeCashSession;
 module.exports.cashSessionDetail=cashSessionDetail;
 
+/*
+ * Cambio de turno (supermercado): cierra la caja actual con su arqueo y
+ * abre una nueva para el cajero que recibe, en la misma sucursal y punto
+ * de venta, en una sola operación. Para el sistema común alcanza con
+ * abrir/cerrar la caja normalmente.
+ */
+function cambioTurno(req,res,next){
+  try{
+    const e=empresaId(req),uid=userId(req),id=Number(req.params.id),d=req.body||{};
+    const tx=db.transaction(()=>{
+      const s=db.prepare("SELECT * FROM caja_sesiones WHERE id=? AND empresa_id=? AND estado='ABIERTA'").get(id,e);
+      if(!s)throw Object.assign(new Error('La caja no existe o ya está cerrada.'),{status:404});
+      const cajeroNuevo=Number(d.cajero_id||0);
+      if(!cajeroNuevo)throw Object.assign(new Error('Elegí el cajero que recibe el turno.'),{status:400});
+      const cajero=db.prepare('SELECT id,nombre FROM cajeros WHERE id=? AND empresa_id=? AND activo=1').get(cajeroNuevo,e);
+      if(!cajero)throw Object.assign(new Error('El cajero que recibe no existe o está inactivo.'),{status:404});
+      if(cajeroNuevo===Number(s.cajero_id))throw Object.assign(new Error('El turno debe recibirlo otro cajero.'),{status:400});
+      const ya=db.prepare("SELECT id FROM caja_sesiones WHERE empresa_id=? AND cajero_id=? AND COALESCE(sucursal_id,0)=COALESCE(?,0) AND COALESCE(punto_venta,0)=COALESCE(?,0) AND estado='ABIERTA'").get(e,cajeroNuevo,s.sucursal_id,s.punto_venta);
+      if(ya)throw Object.assign(new Error('Ese cajero ya tiene una caja abierta en este punto de venta.'),{status:409});
+      const counted=Number(d.importe_contado??s.saldo_teorico);
+      db.prepare(`UPDATE caja_sesiones SET estado='CERRADA',fecha_cierre=?,importe_contado=?,diferencia=?-saldo_teorico,arqueo_json=?,observaciones_cierre=? WHERE id=?`).run(nowLocal(),counted,counted,JSON.stringify(d.arqueo||{}),d.observaciones||'',id);
+      const fondo=Number(d.fondo_inicial||0);
+      const info=db.prepare('INSERT INTO caja_sesiones(empresa_id,sucursal_id,cajero_id,usuario_id,fecha_apertura,importe_apertura,saldo_teorico,punto_venta) VALUES(?,?,?,?,?,?,?,?)').run(e,s.sucursal_id,cajeroNuevo,uid,nowLocal(),fondo,fondo,s.punto_venta);
+      if(fondo)db.prepare(`INSERT INTO caja_movimientos(empresa_id,tipo,concepto,importe,medios_json,caja_sesion_id,sucursal_id,cajero_id) VALUES(?,?,?,?,?,?,?,?)`).run(e,'APERTURA','FONDO INICIAL',fondo,JSON.stringify({EFECTIVO:fondo}),info.lastInsertRowid,s.sucursal_id,cajeroNuevo);
+      return {cerrada:id,abierta:Number(info.lastInsertRowid),cajero:cajero.nombre};
+    });
+    res.json({ok:true,...tx()});
+  }catch(error){
+    if(error.status)return res.status(error.status).json({ok:false,error:error.message});
+    next(error);
+  }
+}
+module.exports.cambioTurno=cambioTurno;
+
 function getAppState(req,res){
   const row=db.prepare('SELECT valor_json,updated_at FROM app_state WHERE empresa_id=? AND clave=?').get(empresaId(req),String(req.params.key||''));
   let value=null; try{value=row?JSON.parse(row.valor_json):null}catch{value=null}

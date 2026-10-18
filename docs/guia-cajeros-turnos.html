@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Guía de cajeros y turnos de caja - PixeSistemas</title>
+<style>
+  @page { size: A4; margin: 12mm; }
+  * { box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; font-size: 13px; color: #222; line-height: 1.5; max-width: 900px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 24px; margin: 0 0 2px; color: #1857A4; }
+  .sub { color: #666; font-size: 13px; margin-bottom: 16px; }
+  h2 { font-size: 17px; color: #1857A4; border-bottom: 2px solid #d6e4f5; padding-bottom: 3px; margin: 20px 0 10px; }
+  h3 { font-size: 14px; margin: 12px 0 4px; }
+  p, li { margin: 4px 0; }
+  ol, ul { padding-left: 22px; margin: 6px 0; }
+  .paso { background: #F7F9FD; border-left: 4px solid #2F6FCB; border-radius: 6px; padding: 8px 12px; margin: 8px 0; }
+  .nota { background: #FFF8E6; border: 1px solid #F0C36D; border-radius: 8px; padding: 8px 12px; margin: 8px 0; }
+  .clave { background: #EAF7EF; border: 1px solid #8FD3A8; border-radius: 8px; padding: 8px 12px; margin: 8px 0; }
+  .boton { display: inline-block; background: #2F6FCB; color: #fff; border-radius: 6px; padding: 1px 7px; font-weight: bold; font-size: 12px; }
+  .ruta { font-family: Consolas, monospace; background: #F0F1F5; border-radius: 4px; padding: 1px 6px; font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 12px; }
+  th, td { border: 1px solid #bbb; padding: 5px 7px; text-align: left; vertical-align: top; }
+  th { background: #2E3A59; color: #fff; }
+  footer { margin-top: 20px; color: #777; font-size: 11px; text-align: center; }
+  @media print { body { padding: 0; } h2 { break-after: avoid; } .paso, .nota, .clave, tr { break-inside: avoid; } }
+</style>
+</head>
+<body>
+
+<h1>Guía de cajeros y turnos de caja</h1>
+<div class="sub">Cómo abrir, vender, cerrar y cambiar turnos · sirve para un local con una caja o para un supermercado con varios cajeros · PixeSistemas</div>
+
+<p>El sistema separa dos cosas: el <strong>cajero</strong> (la persona o el puesto de caja) y el <strong>turno de caja</strong> (la sesión que se abre al empezar y se cierra al terminar, con el dinero contado). Cada venta queda asociada al turno del cajero que la hizo, así podés controlar sobrantes, faltantes y ventas por persona.</p>
+
+<h2>1. Crear los cajeros y vincular los usuarios</h2>
+<div class="paso">
+  <strong>1)</strong> Creá los usuarios en <span class="ruta">Configuración → Usuarios</span> (una cuenta por empleado que va a iniciar sesión en el POS).<br/>
+  <strong>2)</strong> Entrá a <span class="ruta">Configuración → Cajeros</span> y tocá <span class="boton">+ Nuevo</span>.<br/>
+  <strong>3)</strong> Completá <strong>Código</strong> (ej. CAJA1), <strong>Nombre</strong> (ej. "Caja 1 – Ana") y elegí el <strong>Usuario</strong> que la opera. Guardá.
+</div>
+<div class="clave"><strong>Recomendación:</strong> en un supermercado creá <strong>un cajero por empleado</strong> (o por caja física) y vinculalo a su usuario. Así, cuando Ana inicia sesión, el POS usa automáticamente "Mi caja" sin que tenga que elegir nada. En un local chico podés usar un solo cajero para todo el día.</div>
+
+<h2>2. Abrir la caja (turno)</h2>
+<p>Menú <span class="ruta">Finanzas → Caja</span>, botón <span class="boton">+ Abrir caja</span>. Elegí <strong>sucursal</strong>, <strong>punto de venta</strong>, <strong>cajero</strong> y el <strong>fondo inicial</strong> (el efectivo con el que arranca el turno).</p>
+<div class="nota"><strong>Si no abrís la caja a mano</strong>, el sistema la abre sola con fondo $0 la primera vez que ese cajero cobra una venta en ese punto de venta. Para un control prolijo conviene abrirla antes del primer cobro e ingresar el fondo real.</div>
+
+<h2>3. Vender</h2>
+<ul>
+  <li>En el POS, el selector <strong>CAJERO</strong> muestra <strong>"Mi caja (tu nombre)"</strong> cuando el usuario tiene un cajero vinculado. Si no elegís nada, la venta va a esa caja.</li>
+  <li>Si en el mismo puesto trabaja otra persona sin usuario propio, podés elegir el cajero manualmente en el selector.</li>
+  <li>Cada venta cobrada queda registrada en el turno abierto de ese cajero: movimientos de caja, medios de pago (efectivo, tarjeta, QR, transferencia, cheques) y totales.</li>
+  <li>Las ventas en <strong>cuenta corriente</strong> no mueven la caja; sí lo hacen los recibos de cobro cuando se cobran.</li>
+</ul>
+
+<h2>4. Cerrar el turno con arqueo (contar la plata)</h2>
+<div class="paso">
+  <strong>1)</strong> Menú <span class="ruta">Finanzas → Cierres de caja</span>.<br/>
+  <strong>2)</strong> En el turno abierto tocá <span class="boton">Cerrar</span>.<br/>
+  <strong>3)</strong> La pantalla muestra el <strong>saldo teórico</strong>, el <strong>efectivo esperado</strong> y los <strong>otros medios</strong> (tarjeta, transferencia, QR, cheques y movimientos).<br/>
+  <strong>4)</strong> Escribí el <strong>efectivo contado</strong> y, si querés, una observación (faltante, billetes, novedades).<br/>
+  <strong>5)</strong> Tocá <span class="boton">Cerrar caja</span>. Queda guardado el contado y la <strong>diferencia</strong> (sobrante o faltante) del turno.
+</div>
+<div class="clave"><strong>Diferencia:</strong> si contás exactamente lo esperado da $0. Si falta o sobra dinero, la diferencia queda registrada en el cierre para revisarla después. El detalle de cada movimiento se ve con el botón "Detalle".</div>
+
+<h2>5. Cambio de turno (para supermercado)</h2>
+<p>Cuando termina el turno de un cajero y entra otro, no hace falta cerrar y abrir por separado: en <span class="ruta">Finanzas → Caja</span>, en la fila de la caja abierta, tocá <span class="boton">Cambio de turno</span>.</p>
+<div class="paso">
+  <strong>1)</strong> Escribí el <strong>efectivo contado</strong> del cajero que se va (la pantalla muestra el esperado y la diferencia).<br/>
+  <strong>2)</strong> Elegí el <strong>cajero que recibe</strong> el turno.<br/>
+  <strong>3)</strong> Ingresá el <strong>fondo inicial</strong> del nuevo turno.<br/>
+  <strong>4)</strong> Tocá <span class="boton">Cerrar turno y abrir el siguiente</span>.
+</div>
+<ul>
+  <li>El turno saliente queda cerrado con su arqueo y el entrante se abre en la <strong>misma sucursal y punto de venta</strong>.</li>
+  <li>Debe recibirlo <strong>otro cajero</strong>, y ese cajero no puede tener ya una caja abierta en ese punto de venta.</li>
+  <li>Las ventas siguientes se imputan automáticamente al turno nuevo.</li>
+</ul>
+
+<h2>6. Consultar turnos, cobros y ventas por cajero</h2>
+<ul>
+  <li><span class="ruta">Finanzas → Cierres de caja</span>: filtro por <strong>fechas</strong> y punto de venta, resumen de <strong>todo lo cobrado por medio de pago</strong> en el período y detalle de cada turno (apertura, cierre, contado, diferencia, movimientos).</li>
+  <li><span class="ruta">Reportes → Reportes</span> (tipo <strong>Ventas por cajero</strong>): ventas y totales por cajero en un rango de fechas.</li>
+</ul>
+
+<h2>7. Cómo usarlo según el tipo de negocio</h2>
+<table>
+  <tr><th>Sistema común (local, una o dos cajas)</th><th>Supermercado (varios cajeros y turnos)</th></tr>
+  <tr>
+    <td>
+      <ul>
+        <li>Un cajero por caja (o uno solo para todo el local).</li>
+        <li>Abrir la caja al empezar el día con el fondo.</li>
+        <li>Vender normal durante el día.</li>
+        <li>Cerrar al final con el efectivo contado.</li>
+        <li>Si se corta el día en dos personas, usar "Cambio de turno" igual que en el supermercado.</li>
+      </ul>
+    </td>
+    <td>
+      <ul>
+        <li>Un cajero por empleado, vinculado a su usuario.</li>
+        <li>Al entrar cada empleado: abrir su caja con el fondo (o usar el cambio de turno).</li>
+        <li>En cada relevo: <strong>Cambio de turno</strong> con arqueo del que se va.</li>
+        <li>Al terminar el día: cerrar el último turno con arqueo.</li>
+        <li>Control por persona y por turno en Cierres de caja y Reportes.</li>
+      </ul>
+    </td>
+  </tr>
+</table>
+
+<h2>8. Preguntas frecuentes</h2>
+<p><strong>¿Qué pasa si vendo sin abrir la caja?</strong> El sistema abre el turno automáticamente con fondo $0. Después podés cerrarlo normalmente.</p>
+<p><strong>¿Se puede cambiar de turno a la misma persona?</strong> No: el turno debe recibirlo otro cajero. Si querés cortar el turno de la misma persona, cerrá la caja y abrila de nuevo.</p>
+<p><strong>¿Dónde veo la diferencia de un cierre?</strong> En Cierres de caja, turno cerrado → Detalle: contado al cierre, diferencia y observaciones.</p>
+<p><strong>¿Las tarjetas y transferencias se cuentan a mano?</strong> No: el sistema las toma de los cobros del turno. Solo se cuenta el efectivo; la pantalla muestra el resto y calcula la diferencia total.</p>
+<p><strong>¿Los cobros de cuenta corriente afectan la caja?</strong> La venta en cuenta corriente no; el recibo de cobro sí registra el ingreso en la caja del turno.</p>
+
+<footer>PixeSistemas · Guía de cajeros y turnos · Si tenés dudas, escribinos y te ayudamos a dejarlo configurado para tu negocio.</footer>
+
+</body>
+</html>
