@@ -188,7 +188,11 @@ export const api = {
 function imprimirHtmlDirecto(html: string) {
   const frame = document.createElement("iframe");
   frame.setAttribute("aria-hidden", "true");
-  frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden";
+  /*
+   * Fuera de pantalla con tamaño real: Chrome no imprime bien los iframes
+   * de 0x0 o con visibility:hidden.
+   */
+  frame.style.cssText = "position:fixed;left:-10000px;top:0;width:800px;height:1200px;border:0";
   document.body.appendChild(frame);
   const doc = frame.contentDocument || frame.contentWindow?.document;
   if (!doc) {
@@ -389,6 +393,13 @@ export const erpApi = {
     const html=await response.text();
     if(directo){imprimirHtmlDirecto(html);return}
     const win=window.open('','_blank');if(!win)throw new Error('El navegador bloqueó la ventana del vale.');win.document.open();win.document.write(html);win.document.close();
+  },
+  async printTestTicket(id:number,directo=true){
+    const token=getToken();const response=await fetch(`${API_URL}/erp/puntos-venta/${id}/ticket-prueba`,{headers:token?{Authorization:`Bearer ${token}`}:{}});
+    if(!response.ok)throw new Error('No se pudo preparar el ticket de prueba.');
+    const html=await response.text();
+    if(directo){imprimirHtmlDirecto(html);return}
+    const win=window.open('','_blank');if(!win)throw new Error('El navegador bloqueó la ventana de impresión.');win.document.open();win.document.write(html);win.document.close();
   },
   async printPaymentOrder(id:number){
     const token=getToken();const response=await fetch(`${API_URL}/erp/ordenes-pago/${id}/imprimir`,{headers:token?{Authorization:`Bearer ${token}`}:{}});

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Plus, Pencil, X, ImageUp } from "lucide-react";
+import { Plus, Pencil, X, ImageUp, Printer } from "lucide-react";
 import { erpApi } from "../../services/api";
 
 export function PointOfSalesPage() {
@@ -23,6 +23,16 @@ export function PointOfSalesPage() {
     }
   }
   useEffect(() => { load(); }, []);
+
+  /* Ticket de prueba: sale por la misma vía directa que usa el POS (iframe oculto). */
+  async function pruebaImpresion(pv: any) {
+    setError('');
+    try {
+      await erpApi.printTestTicket(Number(pv.id), true);
+    } catch (e: any) {
+      setError(e.message);
+    }
+  }
 
   async function uploadLogo(pv: any, file: File) {
     setError('');
@@ -105,7 +115,7 @@ export function PointOfSalesPage() {
           <td>{r.logo ? <span className="pv-logo-cell">{r.logo.startsWith('data:image/') && <img src={r.logo} alt="logo" />}<button type="button" className="link-button" disabled={logoBusy} onClick={() => removeLogo(r)}>Quitar</button></span> : <button type="button" className="link-button" disabled={logoBusy} onClick={() => logoRefs.current[r.id]?.click()}><ImageUp size={14} /> Subir logo</button>}<input ref={el => { logoRefs.current[r.id] = el; }} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) uploadLogo(r, f); }} /></td>
           <td>{r.fiscal ? 'HABILITADO' : 'INTERNO'}</td>
           <td>{r.activo ? 'ACTIVO' : 'INACTIVO'}</td>
-          <td><button onClick={() => setEditing({ ...r })}><Pencil size={16} /></button></td>
+          <td className="inline-actions"><button type="button" title="Imprimir ticket de prueba (usa la impresión directa de este punto)" onClick={() => pruebaImpresion(r)}><Printer size={16} /></button><button onClick={() => setEditing({ ...r })}><Pencil size={16} /></button></td>
         </tr>)}</tbody>
       </table>
       {!rows.length && <div className="empty-table">No hay puntos de venta cargados.</div>}
