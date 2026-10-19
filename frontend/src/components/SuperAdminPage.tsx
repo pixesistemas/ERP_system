@@ -40,7 +40,7 @@ const TEMAS: Record<string, { label: string; swatches: string[] }> = {
 };
 
 export function SuperAdminPage() {
-  const [tab, setTab] = useState<"EMPRESAS" | "USUARIOS" | "LICENCIAS" | "TEMAS" | "MODULOS" | "COMPROBANTES" | "REPORTES" | "FISCALES" | "CHANGELOG" | "ERRORES" | "ALTA">("EMPRESAS");
+  const [tab, setTab] = useState<"EMPRESAS" | "CONECTADAS" | "USUARIOS" | "LICENCIAS" | "TEMAS" | "MODULOS" | "COMPROBANTES" | "REPORTES" | "FISCALES" | "CHANGELOG" | "ERRORES" | "ALTA">("EMPRESAS");
   const [reportesUsuarios, setReportesUsuarios] = useState<any[]>([]);
   const [filtroReporte, setFiltroReporte] = useState("");
   const [comprobConfigs, setComprobConfigs] = useState<Record<number, any>>({});
@@ -85,6 +85,31 @@ export function SuperAdminPage() {
       setComprobConfigs(Object.fromEntries(entradas));
     } catch (e: any) { setError(e.message); }
   }
+
+  async function cargarConectadas() {
+    try {
+      const entradas = await Promise.all(empresas.map(async (e: any) => {
+        const r = await call<any>("GET", `/empresas/${e.id}/conectadas`);
+        return [e.id, r.conectadas || []];
+      }));
+      setConectadasMap(Object.fromEntries(entradas));
+    } catch (e: any) { setError(e.message); }
+  }
+
+  function abrirConectadas(empresa: any) {
+    setConectadasModal(empresa);
+    setConectadasSel((conectadasMap[empresa.id] || []).map((c: any) => Number(c.id)));
+  }
+
+  async function guardarConectadas() {
+    if (!conectadasModal) return;
+    try {
+      await call("PUT", `/empresas/${conectadasModal.id}/conectadas`, { ids: conectadasSel });
+      setOk("Conexiones actualizadas.");
+      setConectadasModal(null);
+      await cargarConectadas();
+    } catch (e: any) { setError(e.message); }
+  }
   const { loading, setLoading, error, setError, ok, setOk, call } = useSuperAdminApi();
   const [empresas, setEmpresas] = useState<any[]>([]);
   const [usuarios, setUsuarios] = useState<any[]>([]);
@@ -106,6 +131,9 @@ export function SuperAdminPage() {
   const [modulosModal, setModulosModal] = useState<any>(null);
   const [catalogoModulos, setCatalogoModulos] = useState<any[]>([]);
   const [borrarModal, setBorrarModal] = useState<any>(null);
+  const [conectadasMap, setConectadasMap] = useState<Record<number, any[]>>({});
+  const [conectadasModal, setConectadasModal] = useState<any>(null);
+  const [conectadasSel, setConectadasSel] = useState<number[]>([]);
 
   const nombreSa = sessionStorage.getItem("afip_superadmin_nombre") || "Administrador";
 
@@ -599,6 +627,7 @@ export function SuperAdminPage() {
     </header>
     <nav className="sa-tabs">
       <button className={tab === "EMPRESAS" ? "active" : ""} onClick={() => setTab("EMPRESAS")}><Building2 size={16}/> Empresas</button>
+      <button className={tab === "CONECTADAS" ? "active" : ""} onClick={() => { setTab("CONECTADAS"); cargarConectadas(); }}><RefreshCw size={16}/> Conectadas</button>
       <button className={tab === "USUARIOS" ? "active" : ""} onClick={() => setTab("USUARIOS")}><Users size={16}/> Usuarios</button>
       <button className={tab === "LICENCIAS" ? "active" : ""} onClick={() => setTab("LICENCIAS")}><KeyRound size={16}/> Licencias</button>
       <button className={tab === "TEMAS" ? "active" : ""} onClick={() => setTab("TEMAS")}><Palette size={16}/> Temas</button>
@@ -638,6 +667,24 @@ export function SuperAdminPage() {
             </div></td>
           </tr>)}</tbody></table>
           {!empresasVisibles.length && <div className="empty-table">No hay empresas.</div>}
+        </div>
+      </div>}
+
+      {tab === "CONECTADAS" && <div className="products-page">
+        <div className="products-toolbar">
+          <div><h3>Empresas conectadas</h3><p>Las empresas conectadas comparten automáticamente productos, precios, rubros, marcas y clientes.</p></div>
+          <button className="secondary-action" onClick={cargarConectadas}><RefreshCw size={15}/> Actualizar</button>
+        </div>
+        <div className="products-card"><table>
+          <thead><tr><th>ID</th><th>Empresa</th><th>CUIT</th><th>Conectada con</th><th></th></tr></thead>
+          <tbody>{empresas.map((e) => <tr key={e.id}>
+            <td>{e.id}</td>
+            <td><strong>{e.nombre}</strong></td>
+            <td>{e.cuit}</td>
+            <td>{(conectadasMap[e.id] || []).length ? (conectadasMap[e.id] || []).map((c: any) => c.nombre).join(", ") : <span className="sa-muted">Sin conexiones</span>}</td>
+            <td><button className="sa-icon-btn" title="Configurar conexiones" onClick={() => abrirConectadas(e)}><Pencil size={15}/></button></td>
+          </tr>)}</tbody></table>
+          {!empresas.length && <div className="empty-table">No hay empresas.</div>}
         </div>
       </div>}
 
@@ -1052,6 +1099,16 @@ export function SuperAdminPage() {
       </div>
       <div className="modal-actions"><button type="button" className="secondary" onClick={() => setChangelogModal(null)}>Cancelar</button><button className="primary-action" disabled={loading}>Guardar</button></div>
     </form></div>}
+    {conectadasModal && <div className="modal-backdrop"><div className="product-modal polished-modal">
+      <div className="modal-head"><div><h3>Conexiones de {conectadasModal.nombre}</h3><p>Seleccioná las empresas que deben recibir los mismos productos, precios, rubros, marcas y clientes.</p></div><button type="button" onClick={() => setConectadasModal(null)}><X/></button></div>
+      <div className="form-grid">
+        {empresas.filter((x: any) => x.id !== conectadasModal.id).map((x: any) => <label key={x.id} className="sa-check">
+          <input type="checkbox" checked={conectadasSel.includes(Number(x.id))} onChange={() => setConectadasSel((prev) => prev.includes(Number(x.id)) ? prev.filter((id) => id !== Number(x.id)) : [...prev, Number(x.id)])} /> {x.nombre} <em>{x.cuit || "sin CUIT"}</em>
+        </label>)}
+        {empresas.length <= 1 && <div className="info-note">No hay otras empresas para conectar.</div>}
+      </div>
+      <div className="modal-actions"><button type="button" className="secondary" onClick={() => setConectadasModal(null)}>Cancelar</button><button type="button" className="primary-action" onClick={guardarConectadas} disabled={loading}>Guardar conexiones</button></div>
+    </div></div>}
     {errorDetalle && <div className="modal-backdrop"><div className="product-modal polished-modal">
       <div className="modal-head"><h3>Error #{errorDetalle.id}</h3><button type="button" onClick={() => setErrorDetalle(null)}><X/></button></div>
       <div className="form-grid">

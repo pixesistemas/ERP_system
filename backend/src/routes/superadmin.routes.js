@@ -35,6 +35,8 @@ router.post("/empresas", controller.crearEmpresa);
 router.patch("/empresas/:id", controller.actualizarEmpresa);
 router.post("/empresas/:id/borrar-datos", controller.borrarDatosEmpresa);
 router.get("/catalogo-modulos", controller.catalogoModulos);
+router.get("/empresas/:id/conectadas", controller.listarEmpresasConectadas);
+router.put("/empresas/:id/conectadas", controller.setEmpresasConectadas);
 router.get("/empresas/:id/modulos", controller.listarModulosEmpresa);
 router.put("/empresas/:id/modulos", controller.setModuloEmpresa);
 router.get("/empresas/:id/tema", controller.getTemaEmpresa);

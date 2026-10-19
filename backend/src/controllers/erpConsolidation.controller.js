@@ -17,6 +17,8 @@ const { crearRecibo, confirmarRecibo } = require('../repositories/recibo.reposit
 const { empresaTieneModulo } = require('../utils/modulos');
 const { generarTicketEscpos, generarTicketPruebaEscpos } = require('../print/escpos.service');
 const agenteImpresion = require('./agente.controller');
+const companySettings = require('../repositories/companySettings.repository');
+const syncEmpresas = require('../services/syncEmpresas.service');
 
 function empresaId(req) { return Number(req.empresa?.id || req.usuario?.empresaId || req.user?.empresaId || 1); }
 function bool(v) { return v === true || v === 1 || v === '1'; }
@@ -1484,6 +1486,7 @@ function updatePrices(req,res){
     for(const id of rows){const p=db.prepare('SELECT precio FROM productos WHERE id=? AND empresa_id=?').get(id,e);if(!p)continue;let nuevo=Number(p.precio||0);nuevo=modalidad==='ABSOLUTO'?(direccion==='DISMINUYE'?nuevo-valor:nuevo+valor):(direccion==='DISMINUYE'?nuevo*(1-valor/100):nuevo*(1+valor/100));nuevo=Math.round(Math.max(0,nuevo)*100)/100;up.run(nuevo,id,e);}
   });
   chunk(productoIds);
+  try { syncEmpresas.propagarPrecios(e, productoIds); } catch (error) {}
   res.json({ok:true,actualizados:productoIds.length,productos:total,filtro,direccion,modalidad,valor,mensaje:`Se actualizaron ${productoIds.length} producto(s).`});
 }
 function createReserveFund(req,res){const e=empresaId(req),d=req.body,amount=Number(d.importe_original||d.importe||0);if(!d.cliente_id||amount<=0)return res.status(400).json({ok:false,error:'Cliente e importe son obligatorios.'});const count=db.prepare('SELECT COUNT(*) n FROM reservas_monto WHERE empresa_id=?').get(e).n;const number=`RM-${String(count+1).padStart(8,'0')}`;const products=db.prepare('SELECT id,codigo,precio FROM productos WHERE empresa_id=? AND activo=1').all(e);const snapshot=Object.fromEntries(products.map(p=>[String(p.id),{codigo:p.codigo,precio:Number(p.precio)}]));const info=db.prepare(`INSERT INTO reservas_monto(empresa_id,cliente_id,numero,fecha,importe_original,saldo,lista_precio_id,lista_precio_nombre,precios_snapshot,observaciones) VALUES(?,?,?,?,?,?,?,?,?,?)`).run(e,Number(d.cliente_id),number,d.fecha||nowLocal().slice(0,10),amount,amount,d.lista_precio_id||null,d.lista_precio_nombre||'GENERAL',JSON.stringify(snapshot),d.observaciones||'');res.status(201).json({ok:true,reservation:db.prepare('SELECT * FROM reservas_monto WHERE id=?').get(info.lastInsertRowid)})}
@@ -1971,6 +1974,9 @@ async function createPosOperation(req,res){const e=empresaId(req);limpiarNotasVe
       for(const [medio,importeRaw] of Object.entries(d.pagos||{})){const importe=Number(importeRaw||0);if(importe>0)pay.run(sale.lastInsertRowid,String(medio).toUpperCase(),importe,null)}
       const transferencia=Number((d.pagos||{}).TRANSFERENCIA||(d.pagos||{}).transferencia||0);
       if(transferencia>0)registrarTransferenciaBancaria(e,{bancoId:d.banco_id_transferencia,concepto:`VENTA ${type} ${String(pv).padStart(4,'0')}-${String(number).padStart(8,'0')} TRANSFERENCIA`,importe:transferencia,origenTipo:'VENTA_TRANSFERENCIA',origenId:sale.lastInsertRowid});
+      /* QR: se imputa al banco configurado para cobros con QR (si hay uno). */
+      const qrMonto=Number((d.pagos||{}).QR||(d.pagos||{}).qr||0);
+      if(qrMonto>0){const cfgMedios=companySettings.getSettings(e);if(cfgMedios.bancoQrId)registrarTransferenciaBancaria(e,{bancoId:cfgMedios.bancoQrId,concepto:`VENTA ${type} ${String(pv).padStart(4,'0')}-${String(number).padStart(8,'0')} QR`,importe:qrMonto,origenTipo:'VENTA_QR',origenId:sale.lastInsertRowid});}
       const importeCaja=esNota&&type==='NOTA_CREDITO'?-Math.abs(total):Math.abs(total);
       db.prepare('INSERT INTO caja_movimientos(empresa_id,tipo,concepto,importe,medios_json,cliente_nombre,caja_sesion_id,sucursal_id,cajero_id,venta_id) VALUES(?,?,?,?,?,?,?,?,?,?)').run(e,esNota?type:'VENTA',`${type} ${String(pv).padStart(4,'0')}-${String(number).padStart(8,'0')}`,importeCaja,JSON.stringify(d.pagos||{}),d.cliente_nombre||'CONSUMIDOR FINAL',session.id,d.sucursal_id||null,d.cajero_id||null,sale.lastInsertRowid);
       db.prepare('UPDATE caja_sesiones SET saldo_teorico=saldo_teorico+? WHERE id=?').run(importeCaja,session.id);
@@ -2218,6 +2224,8 @@ if(docOrigenPed){
     for(const [medio,importeRaw] of Object.entries(pagosObj)){const importe=Number(importeRaw||0);if(importe>0)pay.run(id,String(medio).toUpperCase(),importe,null)}
     const transferenciaPed=Number(pagosObj.TRANSFERENCIA||pagosObj.transferencia||0);
     if(transferenciaPed>0)registrarTransferenciaBancaria(e,{bancoId:req.body.banco_id_transferencia,concepto:`FACTURA ${String(pv).padStart(4,'0')}-${String(number).padStart(8,'0')} TRANSFERENCIA`,importe:transferenciaPed,origenTipo:'VENTA_TRANSFERENCIA',origenId:id});
+    const qrPed=Number(pagosObj.QR||pagosObj.qr||0);
+    if(qrPed>0){const cfgMedios=companySettings.getSettings(e);if(cfgMedios.bancoQrId)registrarTransferenciaBancaria(e,{bancoId:cfgMedios.bancoQrId,concepto:`FACTURA ${String(pv).padStart(4,'0')}-${String(number).padStart(8,'0')} QR`,importe:qrPed,origenTipo:'VENTA_QR',origenId:id});}
     if(!accountSale && cfgFactura.registra_caja){
       db.prepare('INSERT INTO caja_movimientos(empresa_id,tipo,concepto,importe,medios_json,cliente_nombre,caja_sesion_id,sucursal_id,cajero_id,venta_id) VALUES(?,?,?,?,?,?,?,?,?,?)').run(e,'VENTA',`FACTURA ${String(pv).padStart(4,'0')}-${String(number).padStart(8,'0')}`,total,JSON.stringify(pagosObj),client?.razon_social||'CONSUMIDOR FINAL',session.id,sale.sucursal_id||null,sale.cajero_id||null,id);
       db.prepare('UPDATE caja_sesiones SET saldo_teorico=saldo_teorico+? WHERE id=?').run(total,session.id);
@@ -2506,6 +2514,7 @@ function saveAppState(req,res){
   const value=req.body?.value ?? null;
   db.prepare(`INSERT INTO app_state(empresa_id,clave,valor_json,updated_at) VALUES(?,?,?,CURRENT_TIMESTAMP)
     ON CONFLICT(empresa_id,clave) DO UPDATE SET valor_json=excluded.valor_json,updated_at=CURRENT_TIMESTAMP`).run(empresaId(req),key,JSON.stringify(value));
+  if(key==='afip_catalogs_v34'){try{syncEmpresas.sincronizarCatalogos(empresaId(req),value)}catch(error){}}
   res.json({ok:true,key,value});
 }
 function deleteAppState(req,res){

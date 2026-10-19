@@ -5,6 +5,7 @@ const {
   updateCliente,
   deleteCliente,
 } = require("../repositories/cliente.repository");
+const syncEmpresas = require("../services/syncEmpresas.service");
 
 /* Lista clientes de la empresa autenticada. */
 function listar(req, res, next) {
@@ -36,6 +37,10 @@ function crear(req, res, next) {
       razonSocial,
     });
 
+    try {
+      if (cliente?.id) syncEmpresas.propagarCliente(req.empresa.id, cliente.id);
+    } catch (e) {}
+
     res.status(201).json({ ok: true, cliente });
   } catch (error) {
     next(error);
@@ -58,12 +63,18 @@ function obtener(req, res, next) {
 function actualizar(req, res, next) {
   try {
     const cliente = updateCliente(Number(req.params.id), req.empresa.id, req.body || {});
+    try {
+      if (cliente?.id) syncEmpresas.propagarCliente(req.empresa.id, cliente.id);
+    } catch (e) {}
     res.json({ ok: true, cliente });
   } catch (error) { next(error); }
 }
 
 function eliminar(req, res, next) {
   try {
+    try {
+      syncEmpresas.propagarCliente(req.empresa.id, Number(req.params.id), "DELETE");
+    } catch (e) {}
     deleteCliente(Number(req.params.id), req.empresa.id);
     res.json({ ok: true });
   } catch (error) { next(error); }

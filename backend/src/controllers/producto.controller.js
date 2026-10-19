@@ -1,5 +1,6 @@
 const repo = require('../repositories/producto.repository');
 const db = require('../db/database');
+const syncEmpresas = require('../services/syncEmpresas.service');
 
 function empresaId(req) { return Number(req.empresa?.id || req.usuario?.empresaId || req.user?.empresaId || 1); }
 
@@ -16,6 +17,7 @@ function get(req, res) {
 
 function create(req, res) {
   const product = repo.crearProducto({ empresaId: empresaId(req), data: req.body });
+  try { syncEmpresas.propagarProducto(empresaId(req), product.id); } catch (error) {}
   res.status(201).json({ ok: true, product });
 }
 
@@ -23,12 +25,14 @@ function update(req, res) {
   const previous = repo.obtenerProducto({ id: Number(req.params.id), empresaId: empresaId(req) });
   if (!previous) return res.status(404).json({ ok: false, error: 'Producto no encontrado.' });
   const product = repo.actualizarProducto({ id: Number(req.params.id), empresaId: empresaId(req), data: req.body });
+  try { syncEmpresas.propagarProducto(empresaId(req), Number(req.params.id)); } catch (error) {}
   res.json({ ok: true, product, priceChange: Number(previous.precio) !== Number(product.precio) ? { previous: previous.precio, current: product.precio } : null });
 }
 
 function remove(req, res) {
   const product = repo.desactivarProducto({ id: Number(req.params.id), empresaId: empresaId(req) });
   if (!product) return res.status(404).json({ ok: false, error: 'Producto no encontrado.' });
+  try { syncEmpresas.propagarProducto(empresaId(req), Number(req.params.id), 'DELETE'); } catch (error) {}
   res.json({ ok: true, product });
 }
 
@@ -78,6 +82,7 @@ function importar(req, res) {
     }
   });
   tx();
+  try { for (const producto of [...creados, ...actualizados]) syncEmpresas.propagarProducto(e, producto.id); } catch (error) {}
   res.json({ ok: true, modo, creados, actualizados, errores, resumen: { creados: creados.length, actualizados: actualizados.length, errores: errores.length } });
 }
 

@@ -23,6 +23,7 @@
     "test:escpos": "node tests/escpos.test.js",
     "test:agente-relay": "node tests/agente-relay.test.js",
     "test:caja-turnos": "node tests/caja-turnos.test.js",
+    "test:empresas-conectadas": "node tests/empresas-conectadas.test.js",
     "docs:guia-cajeros": "node scripts/generar-guia-cajeros.js",
     "audit:normalized": "node scripts/audit-normalized.js",
     "test:fiscal": "node tests/beta3-fiscal.test.js",

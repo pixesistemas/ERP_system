@@ -1069,6 +1069,58 @@ function setComprobantesConfigEmpresa(req, res, next) {
   }
 }
 
+function listarEmpresasConectadas(req, res, next) {
+  try {
+    const db = require("../db/database");
+    const empresaId = Number(req.params.id);
+    const empresa = db.prepare("SELECT id,nombre FROM empresas WHERE id=?").get(empresaId);
+    if (!empresa) return res.status(404).json({ ok: false, error: "Empresa no encontrada." });
+    const conectadas = db
+      .prepare(
+        `SELECT e.id,e.nombre,e.cuit FROM empresas_conectadas ec
+         JOIN empresas e ON e.id=ec.conectada_id
+         WHERE ec.empresa_id=? ORDER BY e.nombre`,
+      )
+      .all(empresaId);
+    res.json({ ok: true, empresa, conectadas });
+  } catch (e) {
+    next(e);
+  }
+}
+
+function setEmpresasConectadas(req, res, next) {
+  try {
+    const db = require("../db/database");
+    const empresaId = Number(req.params.id);
+    const empresa = db.prepare("SELECT id FROM empresas WHERE id=?").get(empresaId);
+    if (!empresa) return res.status(404).json({ ok: false, error: "Empresa no encontrada." });
+    const ids = [
+      ...new Set(
+        (Array.isArray(req.body?.ids) ? req.body.ids : [])
+          .map(Number)
+          .filter((id) => Number.isInteger(id) && id > 0 && id !== empresaId),
+      ),
+    ];
+    const existe = db.prepare("SELECT id FROM empresas WHERE id=?");
+    const validas = ids.filter((id) => existe.get(id));
+    const tx = db.transaction(() => {
+      db.prepare("DELETE FROM empresas_conectadas WHERE empresa_id=?").run(empresaId);
+      for (const id of validas) {
+        db.prepare(
+          "INSERT OR IGNORE INTO empresas_conectadas(empresa_id,conectada_id,created_at) VALUES(?,?,CURRENT_TIMESTAMP)",
+        ).run(empresaId, id);
+        db.prepare(
+          "INSERT OR IGNORE INTO empresas_conectadas(empresa_id,conectada_id,created_at) VALUES(?,?,CURRENT_TIMESTAMP)",
+        ).run(id, empresaId);
+      }
+    });
+    tx();
+    res.json({ ok: true, ids: validas });
+  } catch (e) {
+    next(e);
+  }
+}
+
 module.exports = {
   loginSuperAdmin,
   recuperarSuperadmin,
@@ -1110,4 +1162,6 @@ module.exports = {
   actualizarReporteUsuario,
   getComprobantesConfigEmpresa,
   setComprobantesConfigEmpresa,
+  listarEmpresasConectadas,
+  setEmpresasConectadas,
 };
