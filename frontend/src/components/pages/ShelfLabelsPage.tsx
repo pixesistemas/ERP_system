@@ -57,7 +57,7 @@ const LABEL_CSS = `
 .shelf-labels-page .shelf-page-a4_6 .shelf-code{font-size:20px}
 .shelf-labels-page .shelf-page-a4_6 .shelf-foot{font-size:14px}
 .shelf-labels-page .shelf-page-a4_1 .shelf-label{padding:12mm;border-width:1mm;border-radius:4mm;flex:1}
-.shelf-labels-page .shelf-page-a4_1 .shelf-desc{font-size:44px;line-height:1.15;-webkit-line-clamp:6}
+.shelf-labels-page .shelf-page-a4_1 .shelf-desc{font-size:64px;line-height:1.12;-webkit-line-clamp:5}
 .shelf-labels-page .shelf-page-a4_1 .shelf-price{font-size:110px}
 .shelf-labels-page .shelf-page-a4_1 .shelf-code{font-size:38px}
 .shelf-labels-page .shelf-page-a4_1 .shelf-foot{font-size:20px}

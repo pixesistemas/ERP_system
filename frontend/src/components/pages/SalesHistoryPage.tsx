@@ -78,7 +78,7 @@ export function SalesHistoryPage() {
   const numeroFiscal = (s:any) =>
     s.cae
       ? `${s.comprobante_letra || s.tipo || ""} ${String(s.punto_venta||'').padStart(5,"0")}-${String(s.numero||'').padStart(8,"0")}`
-      : `${s.tipo === "REMITO" ? `REMITO ${s.subtipo || "X"}` : s.tipo || "FACTURA"} ${String(s.punto_venta || s.pv || "").padStart(4,"0")}-${s.numero || ""}`;
+      : `${String(s.tipo || "").startsWith("REMITO") ? `REMITO ${s.subtipo || (s.tipo === "REMITO_X" ? "X" : "R")}` : s.tipo || "FACTURA"} ${String(s.punto_venta || s.pv || "").padStart(4,"0")}-${s.numero || ""}`;
 
   return <div className="products-page">
     <div className="products-toolbar"><div><h3>Historial de ventas</h3><p>Ventas del POS con estado fiscal ARCA.</p></div><button className="primary-action" onClick={load}>Actualizar</button></div>

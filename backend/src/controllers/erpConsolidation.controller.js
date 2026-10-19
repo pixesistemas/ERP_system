@@ -429,7 +429,7 @@ function descartarCompraPendiente(req,res){
  * Quita los ítems del pedido, guarda la fecha de devolución, genera el
  * PDF de devolución y libera las reservas de stock si correspondía.
  */
-const TIPOS_PEDIDO_ACTIVO = ['NOTA_PEDIDO', 'PRESUPUESTO', 'NOTA_X', 'REMITO', 'RESERVA'];
+const TIPOS_PEDIDO_ACTIVO = ['NOTA_PEDIDO', 'PRESUPUESTO', 'NOTA_X', 'REMITO', 'REMITO_X', 'REMITO_R', 'RESERVA'];
 function listPedidosClientes(req,res){
   const e=empresaId(req),q=String(req.query.q||'').trim(),vendedorId=Number(req.query.vendedor_id||0);
   let sql=`SELECT v.cliente_id,c.razon_social cliente,c.cuit,c.telefono,COUNT(*) pedidos,ROUND(SUM(v.total),2) total
@@ -1866,6 +1866,8 @@ async function createPosOperation(req,res){const e=empresaId(req);limpiarNotasVe
   const pv=Number(d.punto_venta||db.prepare('SELECT numero FROM puntos_venta WHERE empresa_id=? AND activo=1 ORDER BY numero LIMIT 1').get(e)?.numero||1);
   const type=reserveWithdrawal?'REMITO':mode==='NORMAL'?(d.document_kind==='NOTA_X'?'NOTA_X':'FACTURA'):mode==='PEDIDO'?'NOTA_PEDIDO':(mode==='REMITO_X'||mode==='REMITO_R')?'REMITO':mode;
   const remitoSub=mode==='REMITO_R'?'R':(mode==='REMITO_X'?'X':null);
+  /* Remitos X y R se guardan con tipo propio para tener numeración independiente. */
+  const saleTipo=type==='REMITO'?(remitoSub==='R'?'REMITO_R':'REMITO_X'):type;
   const accountSale=!reserveWithdrawal&&['CTA_CTE','CUENTA_CORRIENTE','CUENTA CORRIENTE'].includes(String(d.condicion_pago||'').toUpperCase());
   const operationCondition=reserveWithdrawal?'RESERVA_MONTO':d.condicion_pago||'CONTADO';
   if(accountSale&&!d.cliente_id)return res.status(400).json({ok:false,error:'La cuenta corriente exige seleccionar un cliente del sistema.'});
@@ -1909,10 +1911,11 @@ async function createPosOperation(req,res){const e=empresaId(req);limpiarNotasVe
   const cfg=comprobanteConfig(e,type);
   /*
    * Numeración independiente por tipo y punto de venta. Los remitos X y R
-   * comparten el numerador "REMITO" porque ventas_pos los guarda con el
-   * mismo tipo y tiene una restricción única por empresa/PV/tipo/número.
+   * usan numeradores separados y se guardan con tipo propio (REMITO_X /
+   * REMITO_R), así pueden repetir número entre sí sin chocar con la
+   * restricción única de ventas_pos.
    */
-  const numeradorTipo=cfg.numerador_tipo||type;
+  const numeradorTipo=type==='REMITO'?saleTipo:(cfg.numerador_tipo||type);
   if(cfg.requiere_cliente&&!d.cliente_id&&!(type==='REMITO'&&mode==='REMITO_X'))return res.status(400).json({ok:false,error:'Este comprobante requiere un cliente del sistema.'});
   if(cfg.requiere_vendedor&&!d.vendedor_id)return res.status(400).json({ok:false,error:'Este comprobante requiere seleccionar un vendedor.'});
   let number;
@@ -1947,10 +1950,10 @@ async function createPosOperation(req,res){const e=empresaId(req);limpiarNotasVe
       importeIva=fiscal.importeIva;
       total=fiscal.importeTotal;
     }else{
-      number=nextNumberLibre(e,pv,numeradorTipo,type==='REMITO'?'REMITO':undefined);
+      number=nextNumberLibre(e,pv,numeradorTipo,saleTipo);
     }
   }else{
-    number=nextNumberLibre(e,pv,numeradorTipo,type==='REMITO'?'REMITO':undefined);
+    number=nextNumberLibre(e,pv,numeradorTipo,saleTipo);
   }
 
   const chequeMonto=Number((d.pagos||{}).CHEQUE||(d.pagos||{}).cheque||0);
@@ -1983,7 +1986,7 @@ async function createPosOperation(req,res){const e=empresaId(req);limpiarNotasVe
   const session=mueveCaja?openOrGetCashSession(e,d,uid):null;
     const pvPrint=db.prepare('SELECT formato_impresion FROM puntos_venta WHERE empresa_id=? AND numero=?').get(e,pv)?.formato_impresion||'A4';
     const printFormat=cfg.formato_impresion!=='PUNTO_VENTA'?cfg.formato_impresion:pvPrint;
-    const sale=db.prepare(`INSERT INTO ventas_pos(empresa_id,sucursal_id,cajero_id,caja_sesion_id,cliente_id,vendedor_id,punto_venta,numero,tipo,estado,fecha,condicion_pago,observaciones,subtotal,descuento_general,recargo_general,descuento_promociones,total,vuelto,documento_id,reserva_monto_id,formato_impresion,uuid) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(e,d.sucursal_id||null,d.cajero_id||null,session?.id||null,d.cliente_id||null,d.vendedor_id||null,pv,number,type,['RESERVA','PEDIDO','PRESUPUESTO','REMITO_R'].includes(mode)||type==='NOTA_X'?'PENDIENTE':'CONFIRMADA',fechaOperacion,operationCondition,d.observaciones||'',subtotal,Number(d.descuento_general||0),Number(d.recargo_general||0),Number(d.descuento_promociones||0),total,Number(d.vuelto||0),doc.lastInsertRowid,d.reserva_monto_id||null,printFormat,uuid);
+    const sale=db.prepare(`INSERT INTO ventas_pos(empresa_id,sucursal_id,cajero_id,caja_sesion_id,cliente_id,vendedor_id,punto_venta,numero,tipo,estado,fecha,condicion_pago,observaciones,subtotal,descuento_general,recargo_general,descuento_promociones,total,vuelto,documento_id,reserva_monto_id,formato_impresion,uuid) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(e,d.sucursal_id||null,d.cajero_id||null,session?.id||null,d.cliente_id||null,d.vendedor_id||null,pv,number,saleTipo,['RESERVA','PEDIDO','PRESUPUESTO','REMITO_R'].includes(mode)||type==='NOTA_X'?'PENDIENTE':'CONFIRMADA',fechaOperacion,operationCondition,d.observaciones||'',subtotal,Number(d.descuento_general||0),Number(d.recargo_general||0),Number(d.descuento_promociones||0),total,Number(d.vuelto||0),doc.lastInsertRowid,d.reserva_monto_id||null,printFormat,uuid);
     if(type==='FACTURA'&&d.vendedor_id){const vendedor=db.prepare('SELECT comision_porcentaje FROM vendedores WHERE id=? AND empresa_id=?').get(d.vendedor_id,e);if(vendedor&&Number(vendedor.comision_porcentaje||0)>0){const clienteDoc=db.prepare('SELECT cuit,dni FROM clientes WHERE id=? AND empresa_id=?').get(d.cliente_id||0,e)||{};registrarComision({empresaId:e,vendedorId:d.vendedor_id,origenTipo:'FACTURA',origenId:sale.lastInsertRowid,clienteDoc:clienteDoc.cuit||clienteDoc.dni||'0',clienteNombre:d.cliente_nombre||clientQuery,baseCalculo:total,porcentaje:Number(vendedor.comision_porcentaje),observaciones:`Comisión por FACTURA ${String(pv).padStart(4,'0')}-${String(number).padStart(8,'0')} POS`})}}
     if(fiscal?.intentoId||fiscalPendiente?.intentoId){
       db.prepare('UPDATE fiscal_intentos SET venta_id=?,documento_id=? WHERE id=?').run(sale.lastInsertRowid,doc.lastInsertRowid,Number(fiscal?.intentoId||fiscalPendiente?.intentoId));
@@ -2049,7 +2052,7 @@ async function createPosOperation(req,res){const e=empresaId(req);limpiarNotasVe
       db.prepare('INSERT OR IGNORE INTO documento_relaciones(empresa_id,documento_origen_id,documento_destino_id,tipo,observaciones) VALUES(?,?,?,?,?)').run(e,docOrigen.id,doc.lastInsertRowid,'FACTURA',`Facturado como ${type} ${String(pv).padStart(4,'0')}-${String(number).padStart(8,'0')} desde el POS`);
     }
     if(type==='FACTURA'&&fiscal&&Array.isArray(d.origen_ids)){
-      const anularVenta=db.prepare("UPDATE ventas_pos SET estado='ANULADO' WHERE id=? AND empresa_id=? AND estado='PENDIENTE' AND tipo IN ('NOTA_PEDIDO','PRESUPUESTO','NOTA_X','REMITO')");
+      const anularVenta=db.prepare("UPDATE ventas_pos SET estado='ANULADO' WHERE id=? AND empresa_id=? AND estado='PENDIENTE' AND tipo IN ('NOTA_PEDIDO','PRESUPUESTO','NOTA_X','REMITO','REMITO_X','REMITO_R')");
       const facturarDoc=db.prepare("UPDATE documentos_comerciales SET estado='FACTURADO',updated_at=CURRENT_TIMESTAMP WHERE id=? AND empresa_id=? AND estado IN ('BORRADOR','CONFIRMADO','ACEPTADO','REMITIDO','ENVIADO')");
       for(const oidRaw of d.origen_ids){const oid=Number(oidRaw);if(!oid)continue;const origen=db.prepare('SELECT documento_id FROM ventas_pos WHERE id=? AND empresa_id=?').get(oid,e);const r=anularVenta.run(oid,e);if(r.changes&&origen?.documento_id){facturarDoc.run(origen.documento_id,e);notifWhatsappDoc(origen.documento_id,'FACTURADO');consumirReservasStock(origen.documento_id,e);db.prepare('INSERT OR IGNORE INTO documento_relaciones(empresa_id,documento_origen_id,documento_destino_id,tipo,observaciones) VALUES(?,?,?,?,?)').run(e,origen.documento_id,doc.lastInsertRowid,'FACTURA',`Facturado como ${type} ${String(pv).padStart(4,'0')}-${String(number).padStart(8,'0')} desde el POS`)}origenesAnulados+=r.changes}
     }

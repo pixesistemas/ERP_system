@@ -132,7 +132,7 @@ export function OrderReturnsPage() {
       <table><thead><tr><th>Fecha</th><th>Pedido</th><th>Vendedor</th><th>Total</th><th></th></tr></thead><tbody>
         {pedidos.map((p: any) => <tr key={p.id} className={pedido?.id === p.id ? "selected-row" : ""}>
           <td>{fmtFecha(p.fecha)}</td>
-          <td><strong>{p.tipo === "NOTA_PEDIDO" ? "Nota de pedido" : p.tipo === "PRESUPUESTO" ? "Presupuesto" : p.tipo === "RESERVA" ? "Reserva" : p.tipo === "REMITO" ? `Remito ${p.subtipo || "X"}` : p.tipo}</strong> {String(p.punto_venta || "").padStart(4, "0")}-{String(p.numero || "").padStart(8, "0")}</td>
+          <td><strong>{p.tipo === "NOTA_PEDIDO" ? "Nota de pedido" : p.tipo === "PRESUPUESTO" ? "Presupuesto" : p.tipo === "RESERVA" ? "Reserva" : p.tipo === "REMITO" || String(p.tipo || "").startsWith("REMITO_") ? `Remito ${p.subtipo || (p.tipo === "REMITO_X" ? "X" : "R")}` : p.tipo}</strong> {String(p.punto_venta || "").padStart(4, "0")}-{String(p.numero || "").padStart(8, "0")}</td>
           <td>{p.vendedor || "-"}</td>
           <td className="price">$ {Number(p.total || 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}</td>
           <td><button className="secondary-action" onClick={() => abrirPedido(p)}>Quitar productos</button></td>

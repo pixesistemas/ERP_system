@@ -266,9 +266,9 @@ const sesion = (id) => db.prepare("SELECT * FROM caja_sesiones WHERE id=?").get(
     if (r.status !== 201 || !r.payload?.ok) throw new Error(`No se pudo emitir el remito ${nombre}: ${JSON.stringify(r.payload)}`);
   }
   const numerosRemito = [remitoX, remitoR1, remitoR2].map((r) => Number(r.payload.operation.number));
-  if (new Set(numerosRemito).size !== 3) {
-    throw new Error(`Los remitos repitieron número (${numerosRemito.join(", ")}).`);
+  if (numerosRemito.join(",") !== "1,1,2") {
+    throw new Error(`Los remitos X y R no llevan numeración independiente (${numerosRemito.join(", ")}).`);
   }
 
-  console.log("caja-turnos: OK — apertura automática por cajero, cambio de turno con arqueo y fondo, ventas en el turno correcto, bancos de transferencia/QR, descuento general y numeración de remitos.");
+  console.log("caja-turnos: OK — apertura automática por cajero, cambio de turno con arqueo y fondo, ventas en el turno correcto, bancos de transferencia/QR, descuento general y numeración independiente de remitos X/R.");
 })();

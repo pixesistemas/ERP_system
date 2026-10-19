@@ -152,7 +152,7 @@ class TicketDocumentEngine {
       "{{FOOTER_TEXT}}": ver("mostrarPie") ? this.escape(pieTexto) : "",
     };
 
-    if (sale.tipo === "REMITO") {
+    if (String(sale.tipo || "").startsWith("REMITO")) {
       replacements["{{TOTAL_BLOCK}}"] =
         `<div class="declared-value">Valor declarado: $ ${this.money(sale.total)}</div>`;
       replacements["{{NO_FISCAL_LEGEND}}"] = sale.reserva_monto_id
@@ -232,7 +232,7 @@ class TicketDocumentEngine {
 
     const maxItems = this.getMaxItemsPorHoja(empresa.id, plantilla);
     const paginar =
-      !esTicket80 && maxItems > 0 && items.length > maxItems && sale.tipo !== "REMITO";
+      !esTicket80 && maxItems > 0 && items.length > maxItems && !String(sale.tipo || "").startsWith("REMITO");
 
     if (paginar) {
       const chunks = [];
@@ -479,7 +479,7 @@ class TicketDocumentEngine {
   }
 
   renderItemsHeader(tipo, sale) {
-    if (tipo === "REMITO") {
+    if (String(tipo || "").startsWith("REMITO")) {
       return "<th>Cant.</th><th>Código</th><th>Producto</th>";
     }
 
@@ -491,7 +491,7 @@ class TicketDocumentEngine {
   }
 
   renderItems(items, tipo, sale) {
-    const esRemito = tipo === "REMITO";
+    const esRemito = String(tipo || "").startsWith("REMITO");
     const esFacturaA = [1, 2, 3].includes(Number(sale?.comprobante_tipo_afip || 0));
 
     return items
@@ -568,7 +568,7 @@ class TicketDocumentEngine {
       RESERVA: "RESERVA",
     };
 
-    return nombres[tipo] || tipo || "COMPROBANTE";
+    return nombres[tipo] || (String(tipo || "").startsWith("REMITO") ? `REMITO ${sale?.subtipo || (tipo === "REMITO_X" ? "X" : "R")}` : tipo) || "COMPROBANTE";
   }
 
   getLetra(sale) {
@@ -585,7 +585,7 @@ class TicketDocumentEngine {
       NOTA_PEDIDO: "N",
     };
 
-    return letters[sale.tipo] || "";
+    return letters[sale.tipo] || (String(sale.tipo || "").startsWith("REMITO") ? sale?.subtipo || (sale.tipo === "REMITO_X" ? "X" : "R") : "");
   }
 
   getCodigo(sale) {

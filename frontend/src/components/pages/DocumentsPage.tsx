@@ -1,5 +1,5 @@
 import { useState, useEffect, Fragment } from "react";
-import { FileText, RefreshCw, LayoutGrid, List } from "lucide-react";
+import { FileText, RefreshCw, LayoutGrid, List, Download, Printer } from "lucide-react";
 import { api, normalizarUrlArchivo } from "../../services/api";
 import { DocumentDetail } from "../shared/DocumentDetail";
 import { DynamicGroupingReport } from "../shared/DynamicGroupingReport";
@@ -60,6 +60,68 @@ export function DocumentsPage({ tipo = "" }: { tipo?: string }) {
   });
 
   const estadoAfip = (d: any) => d.afip_estado || (d.cae ? "AUTORIZADO" : "—");
+
+  const CABECERAS_EXPORT = ["Fecha", "Tipo", "Número", "Cliente", "Vendedor", "Cond. pago", "Estado", "Estado AFIP", "CAE", "Total", "Canal"];
+
+  function filasExportacion() {
+    return visible.map((d: any) => [
+      new Date(d.created_at).toLocaleString("es-AR"),
+      d.tipo || "",
+      `${String(d.punto_venta || 1).padStart(4, "0")}-${String(d.numero || 0).padStart(8, "0")}`,
+      d.cliente_nombre || d.cliente || "CONSUMIDOR FINAL",
+      d.vendedor_nombre || "—",
+      String(d.condicion_venta || "CONTADO").replaceAll("_", " "),
+      d.estado || "",
+      estadoAfip(d),
+      d.cae || "—",
+      Number(d.total || d.importe_total || 0),
+      d.canal || "WEB",
+    ]);
+  }
+
+  function descargarArchivo(nombre: string, contenido: string, mime: string) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([contenido], { type: mime }));
+    a.download = nombre;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function exportarExcel() {
+    const filas = filasExportacion();
+    const total = filas.reduce((n, f) => n + Number(f[9] || 0), 0);
+    const esc = (v: any) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const html = `<html><head><meta charset="utf-8"></head><body><table border="1"><tr>${CABECERAS_EXPORT.map((h) => `<th>${h}</th>`).join("")}</tr>${filas.map((f) => `<tr>${f.map((c) => `<td>${esc(c)}</td>`).join("")}</tr>`).join("")}<tr><td colspan="9"><strong>TOTAL</strong></td><td>${total.toFixed(2)}</td><td></td></tr></table></body></html>`;
+    descargarArchivo(`comprobantes-${from}-${to}.xls`, html, "application/vnd.ms-excel");
+  }
+
+  function exportarPdf() {
+    const filas = filasExportacion();
+    const total = filas.reduce((n, f) => n + Number(f[9] || 0), 0);
+    const esc = (v: any) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const w = window.open("", "_blank");
+    if (!w) return;
+    const cuerpo = filas.map((f) => `<tr>${f.map((c, i) => `<td class="${i === 9 ? "num" : ""}">${esc(c)}</td>`).join("")}</tr>`).join("");
+    w.document.write(`<html><head><meta charset="utf-8"><title>Comprobantes comerciales</title><style>
+      @page{size:A4 landscape;margin:8mm}
+      body{font-family:Arial;font-size:9px;color:#111}
+      h1{font-size:15px;margin:0 0 3px}
+      .sub{font-size:10px;color:#444;margin-bottom:8px}
+      table{width:100%;border-collapse:collapse}
+      th,td{border:1px solid #b9b9c9;padding:3px 5px;text-align:left;line-height:1.25}
+      th{background:#2E3A59;color:#fff;text-transform:uppercase;font-size:8px}
+      td.num{text-align:right}
+      tr:last-child td{font-weight:700;background:#DCE7F7}
+      thead{display:table-header-group}
+    </style></head><body>
+      <h1>${tipo === "PRESUPUESTO" ? "Presupuestos" : "Comprobantes comerciales"}</h1>
+      <div class="sub">Desde ${from} hasta ${to} · ${filas.length} comprobante(s)</div>
+      <table><thead><tr>${CABECERAS_EXPORT.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${cuerpo}<tr><td colspan="9">TOTAL</td><td class="num">$ ${total.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td></td></tr></tbody></table>
+    </body></html>`);
+    w.document.close();
+    setTimeout(() => w.print(), 300);
+  }
+
   const estadoAfipClass = (d: any) => d.afip_estado === "AUTORIZADO" ? "fiscal-ok" : d.afip_estado === "PENDIENTE" ? "fiscal-warn" : d.afip_estado === "RECHAZADO" ? "fiscal-bad" : "";
   const obsArca = (obs: any): any[] => {
     if (!obs) return [];
@@ -82,6 +144,8 @@ export function DocumentsPage({ tipo = "" }: { tipo?: string }) {
         <h3>{tipo === 'PRESUPUESTO' ? 'Presupuestos' : 'Comprobantes comerciales'}</h3>
         <p>Detalle de ítems, PDF y filtros por fecha, tipo, estado, canal y cliente.</p>
       </div>
+      <button className="secondary-action" onClick={exportarExcel}><Download size={16} /> Excel</button>
+      <button className="secondary-action" onClick={exportarPdf}><Printer size={16} /> PDF</button>
       <button className="primary-action" onClick={load}><RefreshCw size={18} /> Actualizar</button>
       <button className="secondary-action" onClick={() => setVista(v => v === 'agrupado' ? 'lista' : 'agrupado')}>{vista === 'agrupado' ? <><List size={16} /> Vista lista</> : <><LayoutGrid size={16} /> Vista agrupada</>}</button>
     </div>
