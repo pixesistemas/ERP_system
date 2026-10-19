@@ -390,6 +390,13 @@ class TicketDocumentEngine {
       recargoImporte = bruto * recargoPct / 100;
     }
 
+    if (recargoImporte <= 0 && recargoPct > 0) {
+      const totalReferencia = Number(sale.totalFiscal ?? sale.total ?? 0);
+      if (totalReferencia > 0) {
+        recargoImporte = totalReferencia * recargoPct / (100 + recargoPct);
+      }
+    }
+
     const lineasAjuste =
       (descuentoImporte > 0
         ? `

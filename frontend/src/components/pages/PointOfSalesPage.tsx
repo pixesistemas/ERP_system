@@ -218,7 +218,7 @@ export function PointOfSalesPage() {
             {agenteEstado && <div className="agent-status">{agenteEstado}</div>}
           </div>
         </>}
-        <label className="toggle-row"><span>Habilitado para ARCA</span><input type="checkbox" checked={Boolean(editing.fiscal)} onChange={e => setEditing({ ...editing, fiscal: e.target.checked })} /></label>
+        <label className="toggle-row"><span>Habilitado para producción (ARCA) <em>En homologación dejalo sin tildar: el webservice de prueba funciona igual.</em></span><input type="checkbox" checked={Boolean(editing.fiscal)} onChange={e => setEditing({ ...editing, fiscal: e.target.checked })} /></label>
       </div>
       <div className="modal-actions"><button type="button" onClick={() => setEditing(null)}>Cancelar</button><button className="save">Guardar</button></div>
     </form></div>}

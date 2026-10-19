@@ -1654,10 +1654,10 @@ function nextNumber(e,pv,type){
  * Número libre para la venta: si el numerador quedó atrás de ventas ya
  * existentes (bases migradas), avanza hasta encontrar uno sin usar.
  */
-function nextNumberLibre(e,pv,type){
+function nextNumberLibre(e,pv,type,tipoVenta){
   for(let intento=0;intento<100;intento++){
     const n=nextNumber(e,pv,type);
-    const usado=db.prepare('SELECT 1 FROM ventas_pos WHERE empresa_id=? AND punto_venta=? AND tipo=? AND numero=? LIMIT 1').get(e,pv,type,n);
+    const usado=db.prepare('SELECT 1 FROM ventas_pos WHERE empresa_id=? AND punto_venta=? AND tipo=? AND numero=? LIMIT 1').get(e,pv,tipoVenta||type,n);
     if(!usado)return n;
   }
   return nextNumber(e,pv,type);
@@ -1886,6 +1886,20 @@ async function createPosOperation(req,res){const e=empresaId(req);limpiarNotasVe
   let total=reserveWithdrawal?calculatedSubtotal:Number(d.total||subtotal);
   let importeIva=total-subtotal;
 
+  /*
+   * El descuento/recargo general del POS llega aplicado en d.total. Para
+   * que ARCA emita el comprobante por el mismo importe que se cobra, se
+   * traslada ese ajuste a los precios unitarios que se envían al WSFE.
+   */
+  const factorDescuento=1-Math.max(0,Number(d.descuento_general||0))/100;
+  const factorRecargo=1+Math.max(0,Number(d.recargo_general||0))/100;
+  const promocionesMonto=Math.max(0,Number(d.descuento_promociones||0));
+  const factorPromociones=promocionesMonto>0&&subtotal>0?Math.max(0,1-promocionesMonto/subtotal):1;
+  const factorAjusteGeneral=reserveWithdrawal?1:factorDescuento*factorRecargo*factorPromociones;
+  const itemsFiscales=Math.abs(factorAjusteGeneral-1)>0.000001
+    ? items.map(x=>({...x,precio_unitario:Number(x.precio_unitario||x.precio||0)*factorAjusteGeneral}))
+    : items;
+
   // La factura electrónica requiere autorización de AFIP (CAE) ANTES de
   // persistir nada: es una llamada de red, no puede ir dentro de la
   // transacción sincrónica de SQLite. Si AFIP rechaza el comprobante, la
@@ -1894,11 +1908,11 @@ async function createPosOperation(req,res){const e=empresaId(req);limpiarNotasVe
   // PENDIENTE de CAE para no perder la operación y poder reintentarla.
   const cfg=comprobanteConfig(e,type);
   /*
-   * Numeración independiente por tipo y punto de venta: los remitos X y R
-   * no comparten números, y cada comprobante no fiscal tiene la suya.
-   * (Las facturas electrónicas usan la numeración de ARCA.)
+   * Numeración independiente por tipo y punto de venta. Los remitos X y R
+   * comparten el numerador "REMITO" porque ventas_pos los guarda con el
+   * mismo tipo y tiene una restricción única por empresa/PV/tipo/número.
    */
-  const numeradorTipo=type==='REMITO'?(remitoSub==='R'?'REMITO_R':'REMITO_X'):(cfg.numerador_tipo||type);
+  const numeradorTipo=cfg.numerador_tipo||type;
   if(cfg.requiere_cliente&&!d.cliente_id&&!(type==='REMITO'&&mode==='REMITO_X'))return res.status(400).json({ok:false,error:'Este comprobante requiere un cliente del sistema.'});
   if(cfg.requiere_vendedor&&!d.vendedor_id)return res.status(400).json({ok:false,error:'Este comprobante requiere seleccionar un vendedor.'});
   let number;
@@ -1907,7 +1921,7 @@ async function createPosOperation(req,res){const e=empresaId(req);limpiarNotasVe
   const esFiscal=type==='FACTURA'||type==='NOTA_CREDITO'||type==='NOTA_DEBITO';
   if(esFiscal){
     try{
-      fiscal=await emitirFacturaAfip({empresaId:e,puntoVenta:pv,clienteId:d.cliente_id||null,clienteNombre:d.cliente_nombre,items,operacion:type,cbteAsoc:type==='FACTURA'?null:[{tipo:asociada.tipo_afip_original,puntoVenta:asociada.pv_original,numero:asociada.numero_original}]});
+      fiscal=await emitirFacturaAfip({empresaId:e,puntoVenta:pv,clienteId:d.cliente_id||null,clienteNombre:d.cliente_nombre,items:itemsFiscales,operacion:type,cbteAsoc:type==='FACTURA'?null:[{tipo:asociada.tipo_afip_original,puntoVenta:asociada.pv_original,numero:asociada.numero_original}]});
     }catch(error){
       if(error instanceof FiscalNetworkError){
         fiscalPendiente={error:error.message,intentoId:error.intentoId};
@@ -1933,10 +1947,10 @@ async function createPosOperation(req,res){const e=empresaId(req);limpiarNotasVe
       importeIva=fiscal.importeIva;
       total=fiscal.importeTotal;
     }else{
-      number=nextNumberLibre(e,pv,numeradorTipo);
+      number=nextNumberLibre(e,pv,numeradorTipo,type==='REMITO'?'REMITO':undefined);
     }
   }else{
-    number=nextNumberLibre(e,pv,numeradorTipo);
+    number=nextNumberLibre(e,pv,numeradorTipo,type==='REMITO'?'REMITO':undefined);
   }
 
   const chequeMonto=Number((d.pagos||{}).CHEQUE||(d.pagos||{}).cheque||0);
@@ -1947,12 +1961,19 @@ async function createPosOperation(req,res){const e=empresaId(req);limpiarNotasVe
     return res.status(400).json({ok:false,error:'Ingresá al menos un cheque (número e importe) para pagar con CHEQUE.'});
   }
 
+  const ajusteDoc=esFiscal
+    ? brutoYDescuento(subtotal,d.descuento_general)
+    : {
+        bruto:Number(d.subtotal||subtotal),
+        descuento:Math.round(Number(d.subtotal||subtotal)*Number(d.descuento_general||0))/100,
+      };
+
   const tx=db.transaction(()=>{
     if(fiscal){
       db.prepare('INSERT INTO pos_numeradores(empresa_id,punto_venta,tipo,ultimo_numero) VALUES(?,?,?,?) ON CONFLICT(empresa_id,punto_venta,tipo) DO UPDATE SET ultimo_numero=excluded.ultimo_numero WHERE excluded.ultimo_numero>ultimo_numero').run(e,pv,type,number);
     }
     const docOrigen = type==='FACTURA'&&d.documentoOrigenId?db.prepare('SELECT id,tipo,punto_venta,numero,estado,cliente_id FROM documentos_comerciales WHERE id=? AND empresa_id=?').get(Number(d.documentoOrigenId),e):null;
-    const doc=db.prepare(`INSERT INTO documentos_comerciales(empresa_id,cliente_id,vendedor_id,tipo,estado,punto_venta,numero,fecha,condicion_venta,observaciones,importe_neto,importe_iva,importe_total,importe_bruto,descuento_general,descuento_importe,canal,subtipo,cae,cae_vencimiento,comprobante_tipo_afip,comprobante_letra,afip_resultado,afip_observaciones,afip_estado,documento_origen_id,documento_origen_tipo,documento_origen_punto_venta,documento_origen_numero) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(e,d.cliente_id||null,d.vendedor_id||null,type,['RESERVA','PEDIDO','PRESUPUESTO','REMITO_R'].includes(mode)||type==='NOTA_X'?'BORRADOR':'CONFIRMADO',pv,number,fechaOperacion,operationCondition,d.observaciones||'',subtotal,importeIva,total,brutoYDescuento(subtotal,d.descuento_general).bruto,Number(d.descuento_general||0),brutoYDescuento(subtotal,d.descuento_general).descuento,'POS',type==='REMITO'?(remitoSub||'X'):null,fiscal?.cae||null,fiscal?.vencimiento||null,fiscal?.tipoComprobante||null,fiscal?.letra||null,fiscal?.resultado||(fiscalPendiente?'PENDIENTE':null),afipObservacionesDe(fiscal,fiscalPendiente),afipEstadoDe(fiscal,fiscalPendiente),docOrigen?.id||null,docOrigen?.tipo||null,docOrigen?.punto_venta||null,docOrigen?.numero||null);
+    const doc=db.prepare(`INSERT INTO documentos_comerciales(empresa_id,cliente_id,vendedor_id,tipo,estado,punto_venta,numero,fecha,condicion_venta,observaciones,importe_neto,importe_iva,importe_total,importe_bruto,descuento_general,descuento_importe,canal,subtipo,cae,cae_vencimiento,comprobante_tipo_afip,comprobante_letra,afip_resultado,afip_observaciones,afip_estado,documento_origen_id,documento_origen_tipo,documento_origen_punto_venta,documento_origen_numero) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(e,d.cliente_id||null,d.vendedor_id||null,type,['RESERVA','PEDIDO','PRESUPUESTO','REMITO_R'].includes(mode)||type==='NOTA_X'?'BORRADOR':'CONFIRMADO',pv,number,fechaOperacion,operationCondition,d.observaciones||'',subtotal,importeIva,total,ajusteDoc.bruto,Number(d.descuento_general||0),ajusteDoc.descuento,'POS',type==='REMITO'?(remitoSub||'X'):null,fiscal?.cae||null,fiscal?.vencimiento||null,fiscal?.tipoComprobante||null,fiscal?.letra||null,fiscal?.resultado||(fiscalPendiente?'PENDIENTE':null),afipObservacionesDe(fiscal,fiscalPendiente),afipEstadoDe(fiscal,fiscalPendiente),docOrigen?.id||null,docOrigen?.tipo||null,docOrigen?.punto_venta||null,docOrigen?.numero||null);
     const insDoc=db.prepare('INSERT INTO documento_items(documento_id,producto_id,codigo,descripcion,unidad,cantidad,precio_unitario,descuento,iva,subtotal,iva_importe,total,rubro_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)');
     const empresaFiscal=db.prepare('SELECT condicion_iva FROM empresas WHERE id=?').get(e);
     const discriminaIva=String(empresaFiscal?.condicion_iva||'').toUpperCase()==='RESPONSABLE INSCRIPTO';
@@ -2180,9 +2201,17 @@ async function facturarPedido(req,res){
   const accountSale=['CTA_CTE','CUENTA_CORRIENTE','CUENTA CORRIENTE'].includes(condicion);
   const pv=Number(sale.punto_venta);
   let subtotal=Number(sale.subtotal),total=Number(sale.total),importeIva=Math.max(0,total-subtotal);
+  const factorDescuentoPedido=1-Math.max(0,Number(sale.descuento_general||0))/100;
+  const factorRecargoPedido=1+Math.max(0,Number(sale.recargo_general||0))/100;
+  const promocionesPedido=Math.max(0,Number(sale.descuento_promociones||0));
+  const factorPromocionesPedido=promocionesPedido>0&&subtotal>0?Math.max(0,1-promocionesPedido/subtotal):1;
+  const factorAjustePedido=factorDescuentoPedido*factorRecargoPedido*factorPromocionesPedido;
+  const itemsFiscalesPedido=Math.abs(factorAjustePedido-1)>0.000001
+    ? items.map(x=>({...x,precio_unitario:Number(x.precio_unitario||0)*factorAjustePedido}))
+    : items;
   let fiscal=null,fiscalPendiente=null,number;
   try{
-    fiscal=await emitirFacturaAfip({empresaId:e,puntoVenta:pv,clienteId:sale.cliente_id,clienteNombre:client?.razon_social||sale.cliente||'CONSUMIDOR FINAL',items,ventaId:id});
+    fiscal=await emitirFacturaAfip({empresaId:e,puntoVenta:pv,clienteId:sale.cliente_id,clienteNombre:client?.razon_social||sale.cliente||'CONSUMIDOR FINAL',items:itemsFiscalesPedido,ventaId:id});
   }catch(error){
     if(error instanceof FiscalNetworkError){fiscalPendiente={error:error.message,intentoId:error.intentoId};}
     else return res.status(422).json({ok:false,error:error.message||'No se pudo emitir la factura electrónica.'});

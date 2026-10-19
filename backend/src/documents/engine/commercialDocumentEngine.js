@@ -87,6 +87,10 @@ class CommercialDocumentEngine {
       documento,
     });
 
+    const destacarInfo = ["NOTA_PEDIDO", "REMITO", "REMITO_X", "REMITO_R"].includes(tipo);
+    const vendedorHtml = this.escape(vendedor?.nombre || "SIN VENDEDOR");
+    const domicilioHtml = this.escape(cliente?.domicilio || cliente?.direccion || "");
+
     const replacements = {
       "{{LOGO}}": ver("mostrarLogo") ? assets.logoHtml || "" : "",
 
@@ -166,7 +170,13 @@ class CommercialDocumentEngine {
         this.formatProvincia(cliente),
       ),
 
-      "{{VENDEDOR}}": ver("mostrarVendedor") ? this.escape(vendedor?.nombre || "SIN VENDEDOR") : "",
+      "{{VENDEDOR}}": ver("mostrarVendedor") ? this.escape(vendedor?.nombre || "") : "",
+
+      "{{VENDEDOR_ROW}}": destacarInfo && ver("mostrarVendedor")
+        ? `<div class="info-highlight"><strong>Vendedor:</strong> ${vendedorHtml}</div>`
+        : "",
+
+      "{{DOMICILIO_ROW}}": `<div${destacarInfo ? ' class="info-highlight"' : ""}><strong>Domicilio:</strong> ${domicilioHtml}</div>`,
 
       "{{COMMERCIAL_INFO}}": commercialInfoHtml,
 
@@ -416,6 +426,23 @@ class CommercialDocumentEngine {
 
     const descuentoImporte = Number(documento.descuento_importe || 0);
 
+    const recargoGeneral = Number(documento.recargo_general || 0);
+
+    const recargoImporte =
+      recargoGeneral > 0
+        ? Math.round(((total * recargoGeneral) / (100 + recargoGeneral)) * 100) / 100
+        : 0;
+
+    const recargoRow =
+      recargoGeneral > 0
+        ? `
+          <div class="total-row recargo-row">
+            <span>Recargo ${this.number(recargoGeneral, 2)}%</span>
+            <strong class="right">+ $ ${this.money(recargoImporte)}</strong>
+          </div>
+        `
+        : "";
+
     /*
      * El presupuesto no muestra neto ni IVA.
      *
@@ -450,6 +477,7 @@ class CommercialDocumentEngine {
       return `
         <div class="totals">
           ${discountRows}
+          ${recargoRow}
 
           <div class="total-row grand-total">
             <span>IMPORTE TOTAL:</span>
@@ -493,6 +521,8 @@ class CommercialDocumentEngine {
             `
             : ""
         }
+
+        ${recargoRow}
 
         <div class="total-row grand-total">
           <span>IMPORTE TOTAL:</span>

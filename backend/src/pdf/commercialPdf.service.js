@@ -35,11 +35,33 @@ class CommercialPDFService {
 
     const esFiscal = TIPOS_FISCALES.includes(tipo);
 
+    let datosDocumento = documento;
+    if (!esFiscal && documento.id) {
+      try {
+        const venta = db
+          .prepare(
+            `SELECT descuento_general,recargo_general,descuento_promociones,total
+             FROM ventas_pos WHERE documento_id=? ORDER BY id DESC LIMIT 1`,
+          )
+          .get(documento.id);
+        if (venta) {
+          datosDocumento = {
+            ...documento,
+            recargo_general: Number(venta.recargo_general || 0),
+            descuento_general: Number(documento.descuento_general ?? venta.descuento_general ?? 0),
+            descuento_promociones: Number(venta.descuento_promociones || 0),
+          };
+        }
+      } catch (error) {
+        datosDocumento = documento;
+      }
+    }
+
     const html = esFiscal
       ? await this.renderFiscalHtml({ empresa, documento, cliente, vendedor })
       : CommercialDocumentEngine.render({
           empresa,
-          documento,
+          documento: datosDocumento,
           cliente,
           vendedor,
         });
@@ -142,7 +164,7 @@ class CommercialPDFService {
   }
 
   async writePdf(html, filePath) {
-    const es80 = /80mm/i.test(html);
+    const es80 = /class="page page-ticket80"/.test(html);
     /*
      * Para el PDF se quitan dos cosas del HTML del ticket:
      * - @page: Chrome falla con "Page.printToPDF: Printing failed" cuando

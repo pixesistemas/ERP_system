@@ -105,6 +105,15 @@
         line-height: 1.45;
       }
 
+      .info-highlight {
+        background: #e5e5e5;
+        font-weight: bold;
+        font-size: 1.15em;
+        padding: 3px 6px;
+        border-radius: 2px;
+        align-self: start;
+      }
+
       .detail {
         flex: 1;
         border-left: 1px solid #000;
@@ -294,15 +303,14 @@
         {{CLIENTE_NOMBRE}}
       </div>
 
+      {{VENDEDOR_ROW}}
+
       <div>
         <strong>Condición Frente al IVA:</strong>
         {{CLIENTE_IVA}}
       </div>
 
-      <div>
-        <strong>Domicilio:</strong>
-        {{CLIENTE_DOMICILIO}}
-      </div>
+      {{DOMICILIO_ROW}}
 
       <div>
         <strong>Condición de Venta:</strong>

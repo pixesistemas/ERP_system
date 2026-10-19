@@ -4,6 +4,7 @@ import { api } from "../../services/api";
 import { useServerRows } from "../../hooks/useServerStorage";
 
 type Formato = "ACTUAL" | "A4_1" | "A4_8" | "A4_6" | "OFERTA";
+type Orientacion = "VERTICAL" | "HORIZONTAL";
 type ProductoEtiqueta = any;
 
 const FORMATOS: { id: Formato; nombre: string; detalle: string }[] = [
@@ -29,8 +30,13 @@ const LABEL_CSS = `
 .shelf-labels-page .shelf-print-area{display:flex;flex-direction:column;gap:16px;align-items:center}
 .shelf-labels-page .shelf-page{width:210mm;height:297mm;background:#fff;color:#111;padding:6mm;box-sizing:border-box;box-shadow:0 2px 10px rgba(15,23,42,.18);display:grid;gap:2.5mm;overflow:hidden}
 .shelf-labels-page .shelf-page-actual{grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(8,1fr)}
+.shelf-labels-page .shelf-page.shelf-horizontal{width:297mm;height:210mm}
+.shelf-labels-page .shelf-page-actual.shelf-horizontal{grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(6,1fr)}
+.shelf-labels-page .shelf-page-a4_8.shelf-horizontal{grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(2,1fr)}
+.shelf-labels-page .shelf-page-a4_6.shelf-horizontal{grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr)}
+.shelf-labels-page .shelf-page-oferta.shelf-horizontal{grid-template-columns:repeat(2,1fr);grid-template-rows:1fr}
 .shelf-labels-page .shelf-page-actual .shelf-desc{font-size:11px;-webkit-line-clamp:2}
-.shelf-labels-page .shelf-page-actual .shelf-price{font-size:18px}
+.shelf-labels-page .shelf-page-actual .shelf-price{font-size:28px}
 .shelf-labels-page .shelf-page-a4_8{grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(4,1fr);gap:4mm}
 .shelf-labels-page .shelf-page-a4_6{grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(3,1fr);gap:4mm}
 .shelf-labels-page .shelf-page-a4_1{display:flex;align-items:stretch;justify-content:stretch;padding:10mm}
@@ -41,7 +47,7 @@ const LABEL_CSS = `
 .shelf-labels-page .shelf-code{font-family:ui-monospace,Consolas,monospace;font-weight:700;letter-spacing:.06em;text-align:center;white-space:nowrap;overflow:hidden;font-size:11px}
 .shelf-labels-page .shelf-no-code{font-size:10px;color:#64748b;text-align:center;border-top:1px dashed #cbd5e1;border-bottom:1px dashed #cbd5e1;padding:3px 0}
 .shelf-labels-page .shelf-foot{display:flex;justify-content:space-between;gap:4px;font-size:10px;color:#475569;line-height:1.15}
-.shelf-labels-page .shelf-foot span:last-child{white-space:nowrap}
+.shelf-labels-page .shelf-foot span:last-child{white-space:nowrap;font-size:1.1em;font-weight:600}
 .shelf-labels-page .shelf-page-a4_8 .shelf-desc{font-size:17px;-webkit-line-clamp:3}
 .shelf-labels-page .shelf-page-a4_8 .shelf-price{font-size:34px}
 .shelf-labels-page .shelf-page-a4_8 .shelf-code{font-size:16px}
@@ -105,8 +111,8 @@ function Etiqueta({ producto, formato }: { producto: ProductoEtiqueta; formato: 
   </div>;
 }
 
-function Hoja({ productos, formato }: { productos: ProductoEtiqueta[]; formato: Formato }) {
-  return <div className={`shelf-page shelf-page-${formato.toLowerCase()}`}>
+function Hoja({ productos, formato, orientacion }: { productos: ProductoEtiqueta[]; formato: Formato; orientacion: Orientacion }) {
+  return <div className={`shelf-page shelf-page-${formato.toLowerCase()}${orientacion === "HORIZONTAL" ? " shelf-horizontal" : ""}`}>
     {productos.map((producto) => <Etiqueta key={producto.id || producto.codigo} producto={producto} formato={formato} />)}
   </div>;
 }
@@ -129,6 +135,7 @@ export function ShelfLabelsPage() {
   const [precioMax, setPrecioMax] = useState("");
   const [orden, setOrden] = useState("DESCRIPCION");
   const [formato, setFormato] = useState<Formato>("ACTUAL");
+  const [orientacion, setOrientacion] = useState<Orientacion>("VERTICAL");
   const [notice, setNotice] = useState("");
   const [catalogs] = useServerRows("afip_catalogs_v34", [{ id: 1, tipo: "RUBRO", nombre: "Ferretería" }, { id: 2, tipo: "SUBRUBRO", nombre: "Tornillos", rubroId: 1 }]);
   const rubros = catalogs.filter((c: any) => c.tipo === "RUBRO");
@@ -175,7 +182,7 @@ export function ShelfLabelsPage() {
       return;
     }
     setNotice("");
-    const css = LABEL_CSS + "\n@page{size:A4;margin:0}body{margin:0;background:#fff}.shelf-page{box-shadow:none!important}";
+    const css = LABEL_CSS + `\n@page{size:A4${orientacion === "HORIZONTAL" ? " landscape" : ""};margin:0}body{margin:0;background:#fff}.shelf-page{box-shadow:none!important}`;
     const contenido = document.querySelector(".shelf-print-area")?.innerHTML || "";
     const iframe = document.createElement("iframe");
     iframe.style.position = "fixed";
@@ -221,10 +228,11 @@ export function ShelfLabelsPage() {
       <button type="button" onClick={seleccionarVisibles}>Seleccionar visibles</button>
       <button type="button" onClick={() => setSelected({})}>Quitar selección</button>
       <label>Formato <select value={formato} onChange={(e) => setFormato(e.target.value as Formato)}>{FORMATOS.map((f) => <option key={f.id} value={f.id}>{f.nombre}</option>)}</select></label>
+      <label>Hoja <select value={orientacion} onChange={(e) => setOrientacion(e.target.value as Orientacion)}><option value="VERTICAL">Vertical</option><option value="HORIZONTAL">Horizontal</option></select></label>
       <button type="button" className="primary-action" onClick={imprimir}><Printer size={16} /> Imprimir</button>
     </div>
     <div className="shelf-preview">
-      {elegidos.length ? <div className="shelf-print-area">{paginas.map((pagina, index) => <Hoja key={index} productos={pagina} formato={formato} />)}</div> : <div className="empty-table">Seleccioná productos para ver la vista previa. {FORMATOS.find((f) => f.id === formato)?.detalle}</div>}
+      {elegidos.length ? <div className="shelf-print-area">{paginas.map((pagina, index) => <Hoja key={index} productos={pagina} formato={formato} orientacion={orientacion} />)}</div> : <div className="empty-table">Seleccioná productos para ver la vista previa. {FORMATOS.find((f) => f.id === formato)?.detalle}</div>}
     </div>
     <div className="products-card">
       <table>

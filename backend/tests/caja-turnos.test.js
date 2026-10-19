@@ -9,6 +9,7 @@ for (const suffix of ["", "-wal", "-shm"]) fs.rmSync(testDb + suffix, { force: t
 const fiscalPath = require.resolve("../src/afip/fiscalEmission.service");
 class FiscalNetworkError extends Error {}
 let numeroFactura = 600000;
+let ultimaEmision = null;
 require.cache[fiscalPath] = {
   id: fiscalPath,
   filename: fiscalPath,
@@ -16,6 +17,7 @@ require.cache[fiscalPath] = {
   exports: {
     FiscalNetworkError,
     emitirComprobanteAfip: async ({ items = [] }) => {
+      ultimaEmision = { items };
       const neto = items.reduce((n, x) => n + Number(x.precio_unitario || 0) * Number(x.cantidad || 0), 0);
       const importeNeto = Math.round(neto * 100) / 100;
       numeroFactura++;
@@ -196,5 +198,77 @@ const sesion = (id) => db.prepare("SELECT * FROM caja_sesiones WHERE id=?").get(
   const movTr2 = db.prepare("SELECT * FROM banco_movimientos WHERE origen_tipo='VENTA_TRANSFERENCIA' AND origen_id=?").get(ventaTr2.saleId);
   if (Number(movTr2?.banco_id) !== bancoQr) throw new Error("La transferencia no respetó el banco elegido en la venta.");
 
-  console.log("caja-turnos: OK — apertura automática por cajero, cambio de turno con arqueo y fondo, ventas en el turno correcto, bancos de transferencia/QR y validaciones.");
+  /* 7) Descuento general: ARCA recibe el ajuste y la venta queda por lo cobrado. */
+  const conDescuento = await conRespuesta(erp.createPosOperation, {
+    mode: "NORMAL",
+    document_kind: "FACTURA_ELECTRONICA",
+    cliente_nombre: "CONSUMIDOR FINAL",
+    sucursal_id: branch.id,
+    cajero_id: cajero2,
+    punto_venta: pv,
+    condicion_pago: "CONTADO",
+    subtotal: 1000,
+    descuento_general: 10,
+    total: 900,
+    pagos: { EFECTIVO: 900 },
+    items: [{
+      producto_id: producto.id,
+      codigo: producto.codigo,
+      descripcion: producto.descripcion,
+      unidad: "UN",
+      cantidad: 1,
+      precio_unitario: 1000,
+      iva: 21,
+      costo: 0,
+    }],
+  });
+  if (conDescuento.status !== 201 || !conDescuento.payload?.ok) {
+    throw new Error(`No se pudo vender con descuento: ${JSON.stringify(conDescuento.payload)}`);
+  }
+  if (Number(conDescuento.payload.operation.total) !== 900) {
+    throw new Error(`La venta con descuento no quedó en 900: ${conDescuento.payload.operation.total}`);
+  }
+  if (Math.abs(Number(ultimaEmision.items[0].precio_unitario) - 900) > 0.01) {
+    throw new Error("ARCA no recibió el precio ajustado por el descuento general.");
+  }
+
+  /* 8) Remitos X y R: comparten el numerador y no chocan con la restricción única. */
+  db.prepare("INSERT OR REPLACE INTO modulos_empresa(empresa_id,modulo,activo) VALUES(?,?,1)").run(empresa.id, "REMITOS");
+  const clienteRemito = Number(
+    db.prepare(
+      "INSERT INTO clientes(empresa_id,razon_social,cuit,condicion_iva,cliente_pedidos,descuento_porcentaje) VALUES(?,?,?,?,0,0)",
+    ).run(empresa.id, "Cliente Remito", "20222222223", "CONSUMIDOR FINAL").lastInsertRowid,
+  );
+  const remitoPayload = (mode, clienteId) => ({
+    mode,
+    cliente_id: clienteId,
+    cliente_nombre: clienteId ? "Cliente Remito" : "CONSUMIDOR FINAL",
+    punto_venta: pv,
+    condicion_pago: "CONTADO",
+    subtotal: 100,
+    total: 100,
+    pagos: {},
+    items: [{
+      producto_id: producto.id,
+      codigo: producto.codigo,
+      descripcion: producto.descripcion,
+      unidad: "UN",
+      cantidad: 1,
+      precio_unitario: 100,
+      iva: 21,
+      costo: 0,
+    }],
+  });
+  const remitoX = await conRespuesta(erp.createPosOperation, remitoPayload("REMITO_X", null));
+  const remitoR1 = await conRespuesta(erp.createPosOperation, remitoPayload("REMITO_R", clienteRemito));
+  const remitoR2 = await conRespuesta(erp.createPosOperation, remitoPayload("REMITO_R", clienteRemito));
+  for (const [nombre, r] of [["X", remitoX], ["R1", remitoR1], ["R2", remitoR2]]) {
+    if (r.status !== 201 || !r.payload?.ok) throw new Error(`No se pudo emitir el remito ${nombre}: ${JSON.stringify(r.payload)}`);
+  }
+  const numerosRemito = [remitoX, remitoR1, remitoR2].map((r) => Number(r.payload.operation.number));
+  if (new Set(numerosRemito).size !== 3) {
+    throw new Error(`Los remitos repitieron número (${numerosRemito.join(", ")}).`);
+  }
+
+  console.log("caja-turnos: OK — apertura automática por cajero, cambio de turno con arqueo y fondo, ventas en el turno correcto, bancos de transferencia/QR, descuento general y numeración de remitos.");
 })();

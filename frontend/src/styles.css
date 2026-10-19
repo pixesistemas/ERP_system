@@ -1270,6 +1270,8 @@ button {
   border-radius:18px;
   padding:22px;
   box-shadow:0 24px 70px #0003;
+  max-height:90vh;
+  overflow-y:auto;
 }
 .modal {
   background:#fff;
