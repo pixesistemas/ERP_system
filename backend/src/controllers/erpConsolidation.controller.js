@@ -1973,10 +1973,13 @@ async function createPosOperation(req,res){const e=empresaId(req);limpiarNotasVe
       const pay=db.prepare('INSERT INTO venta_pos_pagos(venta_id,medio,importe,detalle_json) VALUES(?,?,?,?)');
       for(const [medio,importeRaw] of Object.entries(d.pagos||{})){const importe=Number(importeRaw||0);if(importe>0)pay.run(sale.lastInsertRowid,String(medio).toUpperCase(),importe,null)}
       const transferencia=Number((d.pagos||{}).TRANSFERENCIA||(d.pagos||{}).transferencia||0);
-      if(transferencia>0)registrarTransferenciaBancaria(e,{bancoId:d.banco_id_transferencia,concepto:`VENTA ${type} ${String(pv).padStart(4,'0')}-${String(number).padStart(8,'0')} TRANSFERENCIA`,importe:transferencia,origenTipo:'VENTA_TRANSFERENCIA',origenId:sale.lastInsertRowid});
-      /* QR: se imputa al banco configurado para cobros con QR (si hay uno). */
+      const cfgMedios=companySettings.getSettings(e);
+      const bancoTransferencia=Number(d.banco_id_transferencia)||cfgMedios.bancoBilleteraId;
+      if(transferencia>0&&bancoTransferencia)registrarTransferenciaBancaria(e,{bancoId:bancoTransferencia,concepto:`VENTA ${type} ${String(pv).padStart(4,'0')}-${String(number).padStart(8,'0')} TRANSFERENCIA`,importe:transferencia,origenTipo:'VENTA_TRANSFERENCIA',origenId:sale.lastInsertRowid});
+      /* QR: se imputa al banco elegido en la venta o al configurado para cobros con QR. */
       const qrMonto=Number((d.pagos||{}).QR||(d.pagos||{}).qr||0);
-      if(qrMonto>0){const cfgMedios=companySettings.getSettings(e);if(cfgMedios.bancoQrId)registrarTransferenciaBancaria(e,{bancoId:cfgMedios.bancoQrId,concepto:`VENTA ${type} ${String(pv).padStart(4,'0')}-${String(number).padStart(8,'0')} QR`,importe:qrMonto,origenTipo:'VENTA_QR',origenId:sale.lastInsertRowid});}
+      const bancoQr=Number(d.banco_id_qr)||cfgMedios.bancoQrId;
+      if(qrMonto>0&&bancoQr)registrarTransferenciaBancaria(e,{bancoId:bancoQr,concepto:`VENTA ${type} ${String(pv).padStart(4,'0')}-${String(number).padStart(8,'0')} QR`,importe:qrMonto,origenTipo:'VENTA_QR',origenId:sale.lastInsertRowid});
       const importeCaja=esNota&&type==='NOTA_CREDITO'?-Math.abs(total):Math.abs(total);
       db.prepare('INSERT INTO caja_movimientos(empresa_id,tipo,concepto,importe,medios_json,cliente_nombre,caja_sesion_id,sucursal_id,cajero_id,venta_id) VALUES(?,?,?,?,?,?,?,?,?,?)').run(e,esNota?type:'VENTA',`${type} ${String(pv).padStart(4,'0')}-${String(number).padStart(8,'0')}`,importeCaja,JSON.stringify(d.pagos||{}),d.cliente_nombre||'CONSUMIDOR FINAL',session.id,d.sucursal_id||null,d.cajero_id||null,sale.lastInsertRowid);
       db.prepare('UPDATE caja_sesiones SET saldo_teorico=saldo_teorico+? WHERE id=?').run(importeCaja,session.id);
@@ -2223,9 +2226,12 @@ if(docOrigenPed){
     const pay=db.prepare('INSERT INTO venta_pos_pagos(venta_id,medio,importe,detalle_json) VALUES(?,?,?,?)');
     for(const [medio,importeRaw] of Object.entries(pagosObj)){const importe=Number(importeRaw||0);if(importe>0)pay.run(id,String(medio).toUpperCase(),importe,null)}
     const transferenciaPed=Number(pagosObj.TRANSFERENCIA||pagosObj.transferencia||0);
-    if(transferenciaPed>0)registrarTransferenciaBancaria(e,{bancoId:req.body.banco_id_transferencia,concepto:`FACTURA ${String(pv).padStart(4,'0')}-${String(number).padStart(8,'0')} TRANSFERENCIA`,importe:transferenciaPed,origenTipo:'VENTA_TRANSFERENCIA',origenId:id});
+    const cfgMediosPed=companySettings.getSettings(e);
+    const bancoTransferenciaPed=Number(req.body.banco_id_transferencia)||cfgMediosPed.bancoBilleteraId;
+    if(transferenciaPed>0&&bancoTransferenciaPed)registrarTransferenciaBancaria(e,{bancoId:bancoTransferenciaPed,concepto:`FACTURA ${String(pv).padStart(4,'0')}-${String(number).padStart(8,'0')} TRANSFERENCIA`,importe:transferenciaPed,origenTipo:'VENTA_TRANSFERENCIA',origenId:id});
     const qrPed=Number(pagosObj.QR||pagosObj.qr||0);
-    if(qrPed>0){const cfgMedios=companySettings.getSettings(e);if(cfgMedios.bancoQrId)registrarTransferenciaBancaria(e,{bancoId:cfgMedios.bancoQrId,concepto:`FACTURA ${String(pv).padStart(4,'0')}-${String(number).padStart(8,'0')} QR`,importe:qrPed,origenTipo:'VENTA_QR',origenId:id});}
+    const bancoQrPed=Number(req.body.banco_id_qr)||cfgMediosPed.bancoQrId;
+    if(qrPed>0&&bancoQrPed)registrarTransferenciaBancaria(e,{bancoId:bancoQrPed,concepto:`FACTURA ${String(pv).padStart(4,'0')}-${String(number).padStart(8,'0')} QR`,importe:qrPed,origenTipo:'VENTA_QR',origenId:id});
     if(!accountSale && cfgFactura.registra_caja){
       db.prepare('INSERT INTO caja_movimientos(empresa_id,tipo,concepto,importe,medios_json,cliente_nombre,caja_sesion_id,sucursal_id,cajero_id,venta_id) VALUES(?,?,?,?,?,?,?,?,?,?)').run(e,'VENTA',`FACTURA ${String(pv).padStart(4,'0')}-${String(number).padStart(8,'0')}`,total,JSON.stringify(pagosObj),client?.razon_social||'CONSUMIDOR FINAL',session.id,sale.sucursal_id||null,sale.cajero_id||null,id);
       db.prepare('UPDATE caja_sesiones SET saldo_teorico=saldo_teorico+? WHERE id=?').run(total,session.id);

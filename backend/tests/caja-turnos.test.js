@@ -83,7 +83,7 @@ function conRespuesta(fn, body = {}, params = {}, query = {}) {
   return Promise.resolve(fn(req, res, () => {})).then(() => ({ status, payload }));
 }
 
-async function vender(cajeroId, total) {
+async function vender(cajeroId, total, pagos = null, extra = {}) {
   idAuto++;
   const r = await conRespuesta(erp.createPosOperation, {
     mode: "NORMAL",
@@ -95,7 +95,8 @@ async function vender(cajeroId, total) {
     condicion_pago: "CONTADO",
     subtotal: total,
     total,
-    pagos: { EFECTIVO: total },
+    pagos: pagos || { EFECTIVO: total },
+    ...extra,
     items: [
       {
         producto_id: producto.id,
@@ -173,5 +174,27 @@ const sesion = (id) => db.prepare("SELECT * FROM caja_sesiones WHERE id=?").get(
   const cerrada2 = sesion(nueva.id);
   if (cerrada2.estado !== "CERRADA" || Number(cerrada2.diferencia) !== -100) throw new Error(`Diferencia de cierre incorrecta: ${cerrada2.diferencia}`);
 
-  console.log("caja-turnos: OK — apertura automática por cajero, cambio de turno con arqueo y fondo, ventas en el turno correcto y validaciones.");
+  /* 6) Cobros por transferencia y QR: quedan imputados al banco elegido o al configurado. */
+  const companySettings = require("../src/repositories/companySettings.repository");
+  const bancoQr = Number(db.prepare("INSERT INTO bancos(empresa_id,nombre,saldo_inicial,activo) VALUES(?,?,0,1)").run(empresa.id, "Banco QR Test").lastInsertRowid);
+  const bancoBilletera = Number(db.prepare("INSERT INTO bancos(empresa_id,nombre,saldo_inicial,activo) VALUES(?,?,0,1)").run(empresa.id, "Banco Billetera Test").lastInsertRowid);
+  companySettings.saveSettings(empresa.id, { bancoQrId: bancoQr, bancoBilleteraId: bancoBilletera });
+
+  const ventaQr = await vender(cajero2, 800, { QR: 800 });
+  const movQr = db.prepare("SELECT * FROM banco_movimientos WHERE origen_tipo='VENTA_QR' AND origen_id=?").get(ventaQr.saleId);
+  if (!movQr || Number(movQr.banco_id) !== bancoQr || Number(movQr.importe) !== 800) {
+    throw new Error("El cobro QR no se imputó al banco configurado.");
+  }
+  const ventaQr2 = await vender(cajero2, 300, { QR: 300 }, { banco_id_qr: bancoBilletera });
+  const movQr2 = db.prepare("SELECT * FROM banco_movimientos WHERE origen_tipo='VENTA_QR' AND origen_id=?").get(ventaQr2.saleId);
+  if (Number(movQr2?.banco_id) !== bancoBilletera) throw new Error("El cobro QR no respetó el banco elegido en la venta.");
+
+  const ventaTr = await vender(cajero2, 500, { TRANSFERENCIA: 500 });
+  const movTr = db.prepare("SELECT * FROM banco_movimientos WHERE origen_tipo='VENTA_TRANSFERENCIA' AND origen_id=?").get(ventaTr.saleId);
+  if (Number(movTr?.banco_id) !== bancoBilletera) throw new Error("La transferencia no se imputó al banco de billetera configurado.");
+  const ventaTr2 = await vender(cajero2, 400, { TRANSFERENCIA: 400 }, { banco_id_transferencia: bancoQr });
+  const movTr2 = db.prepare("SELECT * FROM banco_movimientos WHERE origen_tipo='VENTA_TRANSFERENCIA' AND origen_id=?").get(ventaTr2.saleId);
+  if (Number(movTr2?.banco_id) !== bancoQr) throw new Error("La transferencia no respetó el banco elegido en la venta.");
+
+  console.log("caja-turnos: OK — apertura automática por cajero, cambio de turno con arqueo y fondo, ventas en el turno correcto, bancos de transferencia/QR y validaciones.");
 })();

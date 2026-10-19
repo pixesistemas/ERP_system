@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Printer } from "lucide-react";
-import JsBarcode from "jsbarcode";
 import { api } from "../../services/api";
 import { useServerRows } from "../../hooks/useServerStorage";
 
@@ -39,25 +38,29 @@ const LABEL_CSS = `
 .shelf-labels-page .shelf-label{border:0.35mm solid #94a3b8;border-radius:2mm;padding:2.5mm;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;break-inside:avoid;background:#fff;min-height:0}
 .shelf-labels-page .shelf-desc{font-weight:800;line-height:1.12;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;font-size:12px}
 .shelf-labels-page .shelf-price{font-weight:900;letter-spacing:-.02em;line-height:1;font-size:20px;white-space:nowrap}
-.shelf-labels-page .shelf-barcode{width:100%;max-width:100%;height:auto;display:block}
-.shelf-labels-page .shelf-no-barcode{font-size:9px;color:#64748b;text-align:center;border-top:1px dashed #cbd5e1;border-bottom:1px dashed #cbd5e1;padding:4px 0}
-.shelf-labels-page .shelf-foot{display:flex;justify-content:space-between;gap:4px;font-size:8px;color:#475569;line-height:1.1}
+.shelf-labels-page .shelf-code{font-family:ui-monospace,Consolas,monospace;font-weight:700;letter-spacing:.06em;text-align:center;white-space:nowrap;overflow:hidden;font-size:11px}
+.shelf-labels-page .shelf-no-code{font-size:10px;color:#64748b;text-align:center;border-top:1px dashed #cbd5e1;border-bottom:1px dashed #cbd5e1;padding:3px 0}
+.shelf-labels-page .shelf-foot{display:flex;justify-content:space-between;gap:4px;font-size:10px;color:#475569;line-height:1.15}
 .shelf-labels-page .shelf-foot span:last-child{white-space:nowrap}
 .shelf-labels-page .shelf-page-a4_8 .shelf-desc{font-size:17px;-webkit-line-clamp:3}
 .shelf-labels-page .shelf-page-a4_8 .shelf-price{font-size:34px}
-.shelf-labels-page .shelf-page-a4_8 .shelf-foot{font-size:10px}
+.shelf-labels-page .shelf-page-a4_8 .shelf-code{font-size:16px}
+.shelf-labels-page .shelf-page-a4_8 .shelf-foot{font-size:12px}
 .shelf-labels-page .shelf-page-a4_6 .shelf-desc{font-size:22px;-webkit-line-clamp:4}
 .shelf-labels-page .shelf-page-a4_6 .shelf-price{font-size:46px}
-.shelf-labels-page .shelf-page-a4_6 .shelf-foot{font-size:12px}
+.shelf-labels-page .shelf-page-a4_6 .shelf-code{font-size:20px}
+.shelf-labels-page .shelf-page-a4_6 .shelf-foot{font-size:14px}
 .shelf-labels-page .shelf-page-a4_1 .shelf-label{padding:12mm;border-width:1mm;border-radius:4mm;flex:1}
 .shelf-labels-page .shelf-page-a4_1 .shelf-desc{font-size:44px;line-height:1.15;-webkit-line-clamp:6}
 .shelf-labels-page .shelf-page-a4_1 .shelf-price{font-size:110px}
-.shelf-labels-page .shelf-page-a4_1 .shelf-foot{font-size:18px}
+.shelf-labels-page .shelf-page-a4_1 .shelf-code{font-size:38px}
+.shelf-labels-page .shelf-page-a4_1 .shelf-foot{font-size:20px}
 .shelf-labels-page .shelf-page-oferta .shelf-label{padding:8mm;border:1.5mm solid #dc2626;border-radius:4mm;position:relative}
 .shelf-labels-page .shelf-oferta-banner{background:#dc2626;color:#fff;font-weight:900;text-align:center;letter-spacing:.18em;padding:3mm;border-radius:2mm;font-size:30px}
 .shelf-labels-page .shelf-oferta-desc{font-size:34px;font-weight:800;line-height:1.15;text-align:center;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3}
 .shelf-labels-page .shelf-oferta-price{font-size:92px;font-weight:900;line-height:1;text-align:center;color:#dc2626}
-.shelf-labels-page .shelf-page-oferta .shelf-foot{font-size:16px;color:#334155}
+.shelf-labels-page .shelf-page-oferta .shelf-code{font-size:26px}
+.shelf-labels-page .shelf-page-oferta .shelf-foot{font-size:18px;color:#334155}
 @media print{
   .shelf-labels-page .shelf-page{box-shadow:none;margin:0;break-after:page;page-break-after:always}
   .shelf-labels-page .shelf-page:last-child{break-after:auto;page-break-after:auto}
@@ -75,37 +78,21 @@ function precioFmt(valor: any) {
   return Number(valor || 0).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function Barcode({ valor, alto }: { valor: string; alto: number }) {
-  const ref = useRef<SVGSVGElement>(null);
-  useEffect(() => {
-    if (!ref.current || !valor) return;
-    try {
-      JsBarcode(ref.current, valor, {
-        format: "CODE128",
-        displayValue: true,
-        fontSize: alto >= 60 ? 18 : alto >= 38 ? 12 : 9,
-        textMargin: 1,
-        height: alto,
-        width: alto >= 60 ? 2.2 : alto >= 38 ? 1.6 : 1.2,
-        margin: 0,
-      });
-    } catch (error) {}
-  }, [valor, alto]);
-  if (!valor) return <div className="shelf-no-barcode">SIN CÓDIGO DE BARRAS</div>;
-  return <svg ref={ref} className="shelf-barcode" />;
+function CodigoBarras({ valor }: { valor: string }) {
+  if (!valor) return <div className="shelf-no-code">SIN CÓDIGO DE BARRAS</div>;
+  return <div className="shelf-code">{valor}</div>;
 }
 
 function Etiqueta({ producto, formato }: { producto: ProductoEtiqueta; formato: Formato }) {
   const codigoBarras = String(producto.codigoBarra || producto.codigo_barra || "").trim() || String(producto.codigo || "").trim();
   const actualizado = fechaCorta(producto.updatedAt || producto.updated_at);
-  const alto = formato === "A4_1" ? 90 : formato === "A4_6" ? 52 : formato === "A4_8" ? 40 : 26;
 
   if (formato === "OFERTA") {
     return <div className="shelf-label">
       <div className="shelf-oferta-banner">OFERTA</div>
       <div className="shelf-oferta-desc" title={producto.descripcion}>{producto.descripcion}</div>
       <div className="shelf-oferta-price">$ {precioFmt(producto.precio)}</div>
-      <Barcode valor={codigoBarras} alto={74} />
+      <CodigoBarras valor={codigoBarras} />
       <div className="shelf-foot"><span>Cód. {producto.codigo || codigoBarras || "—"}</span><span>Act. {actualizado}</span></div>
     </div>;
   }
@@ -113,7 +100,7 @@ function Etiqueta({ producto, formato }: { producto: ProductoEtiqueta; formato: 
   return <div className="shelf-label">
     <div className="shelf-desc" title={producto.descripcion}>{producto.descripcion}</div>
     <div className="shelf-price">$ {precioFmt(producto.precio)}</div>
-    <Barcode valor={codigoBarras} alto={alto} />
+    <CodigoBarras valor={codigoBarras} />
     <div className="shelf-foot"><span>{producto.codigo || codigoBarras || "—"}</span><span>Act. {actualizado}</span></div>
   </div>;
 }

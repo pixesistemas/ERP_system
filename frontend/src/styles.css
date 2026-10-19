@@ -4133,6 +4133,9 @@ padding:0 12px;
 .autocomplete-menu button:hover {
   background:#EFEAFB!important;
 }
+.autocomplete-menu button.selected {
+  background:#E5DEF8!important;
+}
 @media(max-width:1100px) {
   .compact-customer {
     grid-template-columns:1fr 1fr!important;
