@@ -93,7 +93,8 @@ export function AdvancedPosPage({ onSendToAssistant, pantallas = null, modulos =
     }).catch(()=>{});
     return()=>{activo=false};
   },[settingsPos,miCajeroId,pvAperturaNumero,cashiers,banks]);
-  useEffect(()=>{if(fondoModal)setTimeout(()=>{fondoInputRef.current?.focus();fondoInputRef.current?.select()},60)},[fondoModal]);
+  const fondoAbierto=Boolean(fondoModal);
+  useEffect(()=>{if(!fondoAbierto)return;const t=setTimeout(()=>{fondoInputRef.current?.focus();fondoInputRef.current?.select()},60);return()=>clearTimeout(t)},[fondoAbierto]);
   async function abrirCajaConFondo(){
     if(!fondoModal)return;
     const pv=pvAperturaNumero;
