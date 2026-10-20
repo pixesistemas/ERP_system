@@ -26,6 +26,7 @@
     "test:empresas-conectadas": "node tests/empresas-conectadas.test.js",
     "test:documentos-pdf": "node tests/documentos-pdf.test.js",
     "test:configuracion": "node tests/configuracion-empresa.test.js",
+    "test:bancos-saldo": "node tests/bancos-saldo.test.js",
     "docs:guia-cajeros": "node scripts/generar-guia-cajeros.js",
     "audit:normalized": "node scripts/audit-normalized.js",
     "test:fiscal": "node tests/beta3-fiscal.test.js",

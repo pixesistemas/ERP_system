@@ -1273,6 +1273,10 @@ button {
   max-height:90vh;
   overflow-y:auto;
 }
+.cash-bank-opening{margin:12px 0;padding:10px 12px;border:1px solid var(--line,#d7dbe7);border-radius:10px;display:grid;gap:8px;max-height:220px;overflow-y:auto}
+.cash-bank-opening strong{font-size:13px}
+.cash-bank-opening small{color:var(--muted,#64748b);font-size:11px}
+.cash-bank-row{display:grid;grid-template-columns:1fr 150px;align-items:center;gap:10px;font-size:13px;font-weight:600}
 .modal {
   background:#fff;
   border-radius:16px;

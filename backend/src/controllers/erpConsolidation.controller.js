@@ -64,6 +64,20 @@ function listBanks(req, res) {
   const rows = db.prepare(`SELECT b.*,(b.saldo_inicial+COALESCE((SELECT SUM(CASE WHEN m.tipo='CREDITO' THEN m.importe ELSE -m.importe END) FROM banco_movimientos m WHERE m.banco_id=b.id),0)+COALESCE((SELECT SUM(t.total) FROM cheque_depositos t WHERE t.banco_id=b.id AND t.estado='PENDIENTE_CONCILIACION'),0)) saldo FROM bancos b WHERE b.empresa_id=? AND b.activo=1 ORDER BY b.nombre`).all(empresaId(req));
   res.json({ ok: true, banks: rows });
 }
+function setBankBalance(req,res){
+  const e=empresaId(req),id=Number(req.params.id);
+  const target=Number(req.body?.saldo);
+  if(!Number.isFinite(target)||target<0)return res.status(400).json({ok:false,error:'El saldo debe ser un número mayor o igual a cero.'});
+  const row=db.prepare(`SELECT b.id,(b.saldo_inicial+COALESCE((SELECT SUM(CASE WHEN m.tipo='CREDITO' THEN m.importe ELSE -m.importe END) FROM banco_movimientos m WHERE m.banco_id=b.id),0)+COALESCE((SELECT SUM(t.total) FROM cheque_depositos t WHERE t.banco_id=b.id AND t.estado='PENDIENTE_CONCILIACION'),0)) saldo FROM bancos b WHERE b.id=? AND b.empresa_id=? AND b.activo=1`).get(id,e);
+  if(!row)return res.status(404).json({ok:false,error:'Banco no encontrado.'});
+  const actual=Math.round(Number(row.saldo||0)*100)/100;
+  const objetivo=Math.round(target*100)/100;
+  const ajuste=Math.round((objetivo-actual)*100)/100;
+  if(ajuste!==0){
+    db.prepare('INSERT INTO banco_movimientos(empresa_id,banco_id,fecha,tipo,concepto,importe,origen_tipo,origen_id,conciliado) VALUES(?,?,?,?,?,?,?,?,0)').run(e,id,nowLocal().slice(0,10),ajuste>0?'CREDITO':'DEBITO','AJUSTE DE SALDO (APERTURA DE CAJA)',Math.abs(ajuste),'AJUSTE_APERTURA',Number(req.body?.caja_sesion_id)||null);
+  }
+  res.json({ok:true,saldo:objetivo,ajuste});
+}
 function saveBank(req, res) {
   const e = empresaId(req); const d = req.body;
   if (!d.nombre?.trim()) return res.status(400).json({ ok:false, error:'El nombre del banco es obligatorio.' });
@@ -1600,7 +1614,7 @@ module.exports.estadoAgente=estadoAgente;
 module.exports.ticketEscposOperacion=ticketEscposOperacion;
 module.exports.ticketPruebaEscpos=ticketPruebaEscpos;
 
-module.exports={listBanks,saveBank,listPos,savePos,listChecks,createCheck,deleteCajero,depositChecks,listWhatsapp,saveWhatsapp,uploadFiscal,fiscalFiles,listPurchases,savePurchase,deletePurchase,importarComprasExcel,ocrCompraFoto,listComprasPendientes,confirmarCompraPendiente,descartarCompraPendiente,listPedidosClientes,listPedidosActivos,listDevoluciones,devolverItemsPedido,listVendedorClientes,guardarVendedorClientes,crearVisita,listVisitas,movilBootstrap,crearPedidoMovil,listPedidosMovil,listBandejaPedidos,detallePedidoMovil,revisarPedidoMovil,cambiarEstadoPedidoMovil,confirmarCobroPedido,confirmarCobrosPedido,reciboProvisorioMovil,pdfPedidosPendientes,rentabilidadRubros,listPedidosParaRuta,crearRutaReparto,listRutasReparto,detalleRutaReparto,reordenarRutaReparto,marcarEntregaRuta,cerrarRutaReparto,reabrirRutaReparto,asignarRepartidorRuta,miRutaReparto,listRepartoDevoluciones,confirmarDevolucion,reporteVendedoresDetalle,crearReporteUsuario,listFiscalIntentos,vatBook,borradorIva,saveBorradorIvaAjuste,renameBorradorIvaRubro,updatePrices,listReserveFunds,createReserveFund,consumeReserveFund,printTestTicket,ticketEscposOperacion,ticketPruebaEscpos,imprimirAgenteOperacion,ticketPruebaAgente,estadoAgente};
+module.exports={listBanks,setBankBalance,saveBank,listPos,savePos,listChecks,createCheck,deleteCajero,depositChecks,listWhatsapp,saveWhatsapp,uploadFiscal,fiscalFiles,listPurchases,savePurchase,deletePurchase,importarComprasExcel,ocrCompraFoto,listComprasPendientes,confirmarCompraPendiente,descartarCompraPendiente,listPedidosClientes,listPedidosActivos,listDevoluciones,devolverItemsPedido,listVendedorClientes,guardarVendedorClientes,crearVisita,listVisitas,movilBootstrap,crearPedidoMovil,listPedidosMovil,listBandejaPedidos,detallePedidoMovil,revisarPedidoMovil,cambiarEstadoPedidoMovil,confirmarCobroPedido,confirmarCobrosPedido,reciboProvisorioMovil,pdfPedidosPendientes,rentabilidadRubros,listPedidosParaRuta,crearRutaReparto,listRutasReparto,detalleRutaReparto,reordenarRutaReparto,marcarEntregaRuta,cerrarRutaReparto,reabrirRutaReparto,asignarRepartidorRuta,miRutaReparto,listRepartoDevoluciones,confirmarDevolucion,reporteVendedoresDetalle,crearReporteUsuario,listFiscalIntentos,vatBook,borradorIva,saveBorradorIvaAjuste,renameBorradorIvaRubro,updatePrices,listReserveFunds,createReserveFund,consumeReserveFund,printTestTicket,ticketEscposOperacion,ticketPruebaEscpos,imprimirAgenteOperacion,ticketPruebaAgente,estadoAgente};
 
 function userId(req){ return Number(req.usuario?.id || req.user?.id || req.user?.userId || 1); }
 function listPosCatalogs(req,res){

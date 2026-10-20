@@ -284,6 +284,7 @@ export const erpApi = {
   bankReconciliation: () => request<any>('/erp/bancos/reconciliacion'),
   createBank: (data:any) => request<any>('/erp/bancos',{method:'POST',body:JSON.stringify(data)}),
   updateBank: (id:number,data:any) => request<any>(`/erp/bancos/${id}`,{method:'PUT',body:JSON.stringify(data)}),
+  setBankBalance: (id:number,data:any) => request<any>(`/erp/bancos/${id}/saldo`,{method:'POST',body:JSON.stringify(data)}),
   listPointsOfSale: () => request<any>('/erp/puntos-venta'),
   createPointOfSale: (data:any) => request<any>('/erp/puntos-venta',{method:'POST',body:JSON.stringify(data)}),
   updatePointOfSale: (id:number,data:any) => request<any>(`/erp/puntos-venta/${id}`,{method:'PUT',body:JSON.stringify(data)}),
