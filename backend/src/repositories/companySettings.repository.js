@@ -28,6 +28,7 @@ function defaults() {
     autoEscalarHumano: false,
     autoEscalarTelefono: "",
     preguntarFondoInicial: false,
+    requireCashierOnStart: false,
     bancoBilleteraId: null,
     bancoQrId: null,
   };
@@ -70,6 +71,7 @@ function getSettings(empresaId) {
     autoEscalarHumano: Boolean(row.auto_escalar_humano),
     autoEscalarTelefono: row.auto_escalar_telefono || "",
     preguntarFondoInicial: Boolean(row.preguntar_fondo_inicial),
+    requireCashierOnStart: Boolean(row.require_cashier_on_start),
     bancoBilleteraId: row.banco_billetera_id != null ? Number(row.banco_billetera_id) : null,
     bancoQrId: row.banco_qr_id != null ? Number(row.banco_qr_id) : null,
   };
@@ -104,6 +106,7 @@ function saveSettings(empresaId, input) {
     autoEscalarHumano: input.autoEscalarHumano ?? current.autoEscalarHumano,
     autoEscalarTelefono: input.autoEscalarTelefono ?? current.autoEscalarTelefono,
     preguntarFondoInicial: input.preguntarFondoInicial ?? current.preguntarFondoInicial,
+    requireCashierOnStart: input.requireCashierOnStart ?? current.requireCashierOnStart,
     bancoBilleteraId: "bancoBilleteraId" in input ? Number(input.bancoBilleteraId) || null : current.bancoBilleteraId,
     bancoQrId: "bancoQrId" in input ? Number(input.bancoQrId) || null : current.bancoQrId,
   };
@@ -113,8 +116,8 @@ function saveSettings(empresaId, input) {
   db.prepare(`
     INSERT INTO empresa_configuraciones (empresa_id, stock_policy, stock_alerts_enabled, stock_alert_dashboard, logo_url, recibo_doble_copia, pos_agrupar_por_codigo, remito_requiere_nota_pedido, tipo_inicial_venta, manual_en_venta, aplicar_reglas_en, auto_eliminar_notax_dias,
       auto_reporte_diario, auto_reporte_hora, auto_reporte_email, auto_stock_minimo, auto_stock_telefono, auto_reintento_cae,
-      auto_cobranzas, auto_cobranzas_dias, auto_cobranzas_hora, auto_backup, auto_backup_hora, auto_avisar_reparto, auto_escalar_humano, auto_escalar_telefono, preguntar_fondo_inicial, banco_billetera_id, banco_qr_id, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      auto_cobranzas, auto_cobranzas_dias, auto_cobranzas_hora, auto_backup, auto_backup_hora, auto_avisar_reparto, auto_escalar_humano, auto_escalar_telefono, preguntar_fondo_inicial, require_cashier_on_start, banco_billetera_id, banco_qr_id, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     ON CONFLICT(empresa_id) DO UPDATE SET
       stock_policy = excluded.stock_policy,
       stock_alerts_enabled = excluded.stock_alerts_enabled,
@@ -142,6 +145,7 @@ function saveSettings(empresaId, input) {
       auto_escalar_humano = excluded.auto_escalar_humano,
       auto_escalar_telefono = excluded.auto_escalar_telefono,
       preguntar_fondo_inicial = excluded.preguntar_fondo_inicial,
+      require_cashier_on_start = excluded.require_cashier_on_start,
       banco_billetera_id = excluded.banco_billetera_id,
       banco_qr_id = excluded.banco_qr_id,
       updated_at = CURRENT_TIMESTAMP
@@ -154,7 +158,7 @@ function saveSettings(empresaId, input) {
     next.autoCobranzas ? 1 : 0, next.autoCobranzasDias, next.autoCobranzasHora || null,
     next.autoBackup ? 1 : 0, next.autoBackupHora || null, next.autoAvisarReparto ? 1 : 0,
     next.autoEscalarHumano ? 1 : 0, next.autoEscalarTelefono || null,
-    next.preguntarFondoInicial ? 1 : 0, next.bancoBilleteraId || null, next.bancoQrId || null,
+    next.preguntarFondoInicial ? 1 : 0, next.requireCashierOnStart ? 1 : 0, next.bancoBilleteraId || null, next.bancoQrId || null,
   );
   return getSettings(empresaId);
 }

@@ -66,7 +66,7 @@ export function DocumentsPage({ tipo = "" }: { tipo?: string }) {
   function filasExportacion() {
     return visible.map((d: any) => [
       new Date(d.created_at).toLocaleString("es-AR"),
-      d.tipo || "",
+      d.tipo === "REMITO" ? `REMITO ${d.subtipo || "X"}` : d.tipo || "",
       `${String(d.punto_venta || 1).padStart(4, "0")}-${String(d.numero || 0).padStart(8, "0")}`,
       d.cliente_nombre || d.cliente || "CONSUMIDOR FINAL",
       d.vendedor_nombre || "—",
@@ -152,7 +152,7 @@ export function DocumentsPage({ tipo = "" }: { tipo?: string }) {
     <div className="report-filters">
       <label>Desde<input type="date" value={from} onChange={e => setFrom(e.target.value)} /></label>
       <label>Hasta<input type="date" value={to} onChange={e => setTo(e.target.value)} /></label>
-      {tipos.length > 1 && <label>Tipo<select value={filterTipo} onChange={e => setFilterTipo(e.target.value)}><option value="">Todos</option>{tipos.map(t => <option key={t} value={t}>{t}</option>)}</select></label>}
+      {tipos.length > 1 && <label>Tipo<select value={filterTipo} onChange={e => setFilterTipo(e.target.value)}><option value="">Todos</option>{tipos.map(t => <option key={t} value={t}>{t === "REMITO" ? "Remito (X y R)" : t}</option>)}</select></label>}
       {estados.length > 1 && <label>Estado<select value={filterEstado} onChange={e => setFilterEstado(e.target.value)}><option value="">Todos</option>{estados.map(s => <option key={s} value={s}>{s}</option>)}</select></label>}
       {canales.length > 1 && <label>Canal<select value={filterCanal} onChange={e => setFilterCanal(e.target.value)}><option value="">Todos</option>{canales.map(c => <option key={c} value={c}>{c}</option>)}</select></label>}
       {pvs.length > 1 && <label>Punto de venta<select value={filterPv} onChange={e => setFilterPv(e.target.value)}><option value="">Todos</option>{pvs.map(p => <option key={p} value={p}>PV {String(p).padStart(4, '0')}</option>)}</select></label>}
@@ -195,7 +195,7 @@ export function DocumentsPage({ tipo = "" }: { tipo?: string }) {
             <tr>
               <td><button onClick={() => setExpanded(expanded === d.id ? null : d.id)}>{expanded === d.id ? '−' : '+'}</button></td>
               <td>{new Date(d.created_at).toLocaleString('es-AR')}</td>
-              <td><strong>{d.tipo}</strong>{d.comprobante_letra && <small style={{ display: "block", color: "#555" }}>{d.comprobante_letra} {d.comprobante_tipo_afip ? `Cod.${d.comprobante_tipo_afip}` : ''}</small>}</td>
+              <td><strong>{d.tipo === "REMITO" ? `REMITO ${d.subtipo || "X"}` : d.tipo}</strong>{d.comprobante_letra && <small style={{ display: "block", color: "#555" }}>{d.comprobante_letra} {d.comprobante_tipo_afip ? `Cod.${d.comprobante_tipo_afip}` : ''}</small>}</td>
               <td>{String(d.punto_venta || 1).padStart(4, '0')}-{String(d.numero || 0).padStart(8, '0')}{d.documento_origen_tipo && <small className="doc-relacionado">Relacionado: {d.documento_origen_tipo} {String(d.documento_origen_punto_venta || 1).padStart(4, '0')}-{String(d.documento_origen_numero || 0).padStart(8, '0')}</small>}</td>
               <td>{d.cliente_nombre || d.cliente || 'CONSUMIDOR FINAL'}</td>
               <td>{d.vendedor_nombre || '—'}</td>
