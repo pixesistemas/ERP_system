@@ -1,16 +1,17 @@
 const fs = require("fs");
 const path = require("path");
-const crypto = require("crypto");
 
 const testDb = path.join(__dirname, "../data/vendedor-movil-test.db");
 process.env.DB_PATH = testDb;
+process.env.JWT_SECRET = process.env.JWT_SECRET || "test-secret-vendedor";
 for (const suffix of ["", "-wal", "-shm"]) fs.rmSync(testDb + suffix, { force: true });
 
 const bootstrap = require("../src/db/bootstrap");
 bootstrap();
 const db = require("../src/db/database");
 const controller = require("../src/controllers/vendedorMovil.controller");
-const vendedorAuth = require("../src/middleware/vendedorAuth.middleware");
+const requireVendedor = require("../src/middleware/vendedorAuth.middleware");
+const { revocarDispositivos } = require("../src/repositories/refreshToken.repository");
 
 function assert(condicion, mensaje) {
   if (!condicion) throw new Error(mensaje);
@@ -29,45 +30,56 @@ db.prepare(
 const vendedor = db.prepare("SELECT * FROM vendedores WHERE empresa_id=? AND usuario_id=? AND activo=1").get(empresa.id, usuario.id);
 assert(vendedor, "No se pudo vincular el usuario al vendedor.");
 
-const codigo = "12345678";
-const expira = new Date(Date.now() + 86400000).toISOString();
-db.prepare(
-  "INSERT INTO vendedor_codigos(empresa_id,usuario_id,codigo_hash,creado_en,expira_en) VALUES(?,?,?,?,?)",
-).run(empresa.id, usuario.id, crypto.createHash("sha256").update(codigo).digest("hex"), new Date().toISOString(), expira);
-
-function respuesta(fn, req) {
+function ejecutar(fn, req) {
   let status = 200;
   let payload = null;
+  const cookies = {};
   const res = {
     status(v) { status = v; return this; },
     json(v) { payload = v; return v; },
-    cookie() { return this; },
-    clearCookie() { return this; },
+    cookie(nombre, valor) { cookies[nombre] = valor; return this; },
+    clearCookie(nombre) { delete cookies[nombre]; return this; },
   };
-  fn(req, res);
-  return { status, payload };
+  const resultado = fn(req, res);
+  return { status, payload, cookies, resultado };
 }
 
-const acceso = respuesta(controller.acceso, { ip: "127.0.0.1", body: { codigo } });
-assert(acceso.status === 200 && acceso.payload?.token, `No se pudo canjear el código: ${JSON.stringify(acceso.payload)}`);
-const segundo = respuesta(controller.acceso, { ip: "127.0.0.1", body: { codigo } });
-assert(segundo.status === 401, "El código se pudo reutilizar.");
+const loginMal = ejecutar(controller.login, {
+  headers: {},
+  body: { usuario: "admin@empresa.com", password: "incorrecta" },
+});
+assert(loginMal.status === 401, "Aceptó una contraseña incorrecta.");
 
+const login = ejecutar(controller.login, {
+  headers: {},
+  body: { usuario: "admin@empresa.com", password: "admin123" },
+});
+assert(login.status === 200 && login.payload?.token, `No se pudo iniciar sesión: ${JSON.stringify(login.payload)}`);
+const refreshToken = login.cookies["pixe_vendedor_refresh"];
+assert(refreshToken, "No se guardó el refresh token en cookie.");
+assert(login.payload.vendedor?.id === vendedor.id, "El login no devolvió el vendedor.");
+
+const cookieHeader = `pixe_vendedor_refresh=${refreshToken}`;
 const reqBase = {
   body: {},
   params: {},
   query: {},
+  headers: { cookie: cookieHeader },
   empresa: { id: empresa.id, nombre: empresa.nombre },
   usuario: { id: usuario.id, nombre: usuario.nombre },
   vendedor,
 };
 
-const bootstrapResp = respuesta(controller.bootstrap, reqBase);
+let autorizado = false;
+requireVendedor(reqBase, { status() { return this; }, json() { return this; } }, () => { autorizado = true; });
+assert(autorizado, "El middleware de vendedor rechazó una sesión válida.");
+
+const bootstrapResp = ejecutar(controller.bootstrap, reqBase);
 assert(bootstrapResp.status === 200, "No se pudo obtener el bootstrap.");
 assert(bootstrapResp.payload.productos.length > 0, "El bootstrap no trae productos.");
 assert(bootstrapResp.payload.clientes.some((c) => Number(c.id) === Number(cliente.id)), "La cartera no trae el cliente asignado.");
 
-const crear = respuesta(controller.crearPresupuesto, {
+const crear = ejecutar(controller.crearPresupuesto, {
   ...reqBase,
   body: {
     cliente_id: cliente.id,
@@ -82,17 +94,19 @@ assert(Number(documento.vendedor_id) === Number(vendedor.id), "El presupuesto no
 const esperado = Number(producto.precio) * 2;
 assert(Math.abs(Number(documento.importe_total) - esperado) < 0.06, `Total inesperado: ${documento.importe_total} vs ${esperado}`);
 
-const lista = respuesta(controller.listarPresupuestos, reqBase);
+const lista = ejecutar(controller.listarPresupuestos, reqBase);
 assert(lista.status === 200 && lista.payload.presupuestos.length === 1, "El presupuesto no aparece en el historial.");
-const detalle = respuesta(controller.detallePresupuesto, { ...reqBase, params: { id: String(documento.id) } });
+const detalle = ejecutar(controller.detallePresupuesto, { ...reqBase, params: { id: String(documento.id) } });
 assert(detalle.status === 200 && detalle.payload.documento.items.length === 1, "El detalle del presupuesto no trae ítems.");
 
-let authOk = false;
-vendedorAuth(
-  { get: (k) => (k.toLowerCase() === "authorization" ? `Bearer ${acceso.payload.token}` : "") },
-  { status() { return this; }, json() { return this; } },
-  () => { authOk = true; },
-);
-assert(authOk, "El token emitido no pasa por el middleware de vendedor.");
+const refresco = ejecutar(controller.refresh, { headers: { cookie: cookieHeader } });
+assert(refresco.status === 200 && refresco.payload?.token, "No se pudo refrescar la sesión.");
 
-console.log("OK vendedor ERP: código de un solo uso, token, bootstrap, presupuesto, historial y autenticación.");
+revocarDispositivos(usuario.id);
+const revocado = ejecutar(controller.refresh, { headers: { cookie: cookieHeader } });
+assert(revocado.status === 401, "La sesión revocada todavía se puede refrescar.");
+let rechazado = false;
+requireVendedor(reqBase, { status() { return this; }, json() { return this; } }, () => { rechazado = true; });
+assert(!rechazado, "El middleware aceptó una sesión revocada.");
+
+console.log("OK vendedor ERP: login, refresh token persistente, revocación por administrador, bootstrap, presupuesto e historial.");

@@ -36,7 +36,7 @@ function empresasDeUsuario(usuarioId) {
     .all(usuarioId);
 }
 
-function login({ email, password, empresaNombre, empresaId }) {
+function login({ email, password, empresaNombre, empresaId, refreshDays = 30 }) {
   const usuario = getUsuarioByEmail(email);
 
   if (!usuario) {
@@ -108,6 +108,7 @@ function login({ email, password, empresaNombre, empresaId }) {
   const refreshToken = createRefreshToken({
     usuarioId: usuario.id,
     empresaId: empresa.id,
+    days: refreshDays,
   });
 
   return {
@@ -126,7 +127,7 @@ function login({ email, password, empresaNombre, empresaId }) {
     refreshToken,
   };
 }
-function refresh({ refreshToken }) {
+function refresh({ refreshToken, refreshDays = 30 }) {
   const stored = getRefreshToken(refreshToken);
 
   if (!stored) {
@@ -185,7 +186,7 @@ function refresh({ refreshToken }) {
   );
 
   /* Mientras el dispositivo se use, se corre el vencimiento 30 días. */
-  touchRefreshToken(stored.id);
+  touchRefreshToken(stored.id, refreshDays);
 
   return {
     token,

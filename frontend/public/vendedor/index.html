@@ -17,11 +17,17 @@
         <span class="marca-icono">VE</span>
         <div><strong>Vendedor ERP</strong><small>Precios y presupuestos</small></div>
       </div>
-      <h1>Ingresá con tu código</h1>
-      <p>El administrador te entrega un código de un solo uso. Después la sesión queda abierta en este celular.</p>
+      <h1>Ingresá a tu cuenta</h1>
+      <p>Usá el mismo usuario y clave del ERP. La sesión queda abierta en este celular hasta que el administrador la revoque desde <b>Usuarios → Dispositivos</b>.</p>
       <form id="form-acceso">
-        <label>Código de acceso
-          <input id="codigo" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="00000000" required>
+        <label>Usuario o email
+          <input id="usuario" autocomplete="username" placeholder="vendedor1" required>
+        </label>
+        <label>Clave
+          <input id="password" type="password" autocomplete="current-password" placeholder="********" required>
+        </label>
+        <label id="empresa-wrap" hidden>Empresa
+          <select id="empresa"></select>
         </label>
         <button class="principal" type="submit" id="btn-ingresar">Ingresar</button>
       </form>

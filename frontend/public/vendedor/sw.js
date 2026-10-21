@@ -1,4 +1,4 @@
-const CACHE = "vendedor-erp-v1";
+const CACHE = "vendedor-erp-v2";
 const BASE = "/vendedor";
 const SHELL = [BASE + "/", BASE + "/styles.css", BASE + "/app.js", BASE + "/manifest.webmanifest", BASE + "/icon.svg", BASE + "/icon-192.png", BASE + "/icon-512.png"];
 

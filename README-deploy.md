@@ -135,17 +135,15 @@ El ERP incluye una app móvil independiente para consultar precios y generar pre
 `https://erp.tudominio.com.ar/vendedor/`
 
 1. El usuario vendedor debe estar vinculado a un vendedor en **Vendedores y comisiones** y tener clientes asignados en su cartera.
-2. Generar un código de un solo uso dentro del contenedor:
-   ```bash
-   docker exec -it afip-conversacional-erp node scripts/crear-codigo-vendedor.js --usuario "vendedor1"
-   ```
-   Si el usuario tiene varias empresas, agregar `--empresa "Nombre o ID"`.
-3. El vendedor abre `/vendedor/`, ingresa el código una vez y queda logueado en ese celular.
+2. El vendedor abre `/vendedor/` e ingresa con el **mismo usuario/email y clave del ERP**. Si tiene varias empresas, la app le pide elegir una.
+3. La sesión queda recordada en ese celular mediante el refresh token del ERP. No se cierra al cerrar la app; el administrador la puede revocar desde **Usuarios → Dispositivos**, o desactivando el usuario.
 4. Los presupuestos se guardan como **PRESUPUESTO / BORRADOR** en el ERP, visibles desde **Presupuestos** y **Comprobantes**; desde ahí se puede generar el PDF.
 
-El token del celular dura 365 días por defecto (`VENDEDOR_TOKEN_DIAS`). Al cerrar sesión se borra la cookie y hace falta un código nuevo. No requiere activar PREVENTA_MOVIL.
+La sesión se renueva sola mientras se usa. No requiere activar PREVENTA_MOVIL. El tiempo de recordado se puede ajustar con `VENDEDOR_SESION_DIAS` (3650 días por defecto).
 
-## 7. Exponer la app a internet (reverso proxy + HTTPS)Para que los **webhooks de WhatsApp** y **MercadoPago** funcionen, el servidor tiene que ser alcanzable desde internet con HTTPS. Opciones:
+## 7. Exponer la app a internet (reverso proxy + HTTPS)
+
+Para que los **webhooks de WhatsApp** y **MercadoPago** funcionen, el servidor tiene que ser alcanzable desde internet con HTTPS. Opciones:
 
 - **NGINX (instalado en el server)** como reverse proxy de `localhost:3000`, con certificado (Let's Encrypt).
 - O un dominio + túnel (Cloudflare Tunnel / ngrok) para pruebas.

@@ -1,13 +1,17 @@
 const express = require("express");
 const controller = require("../controllers/vendedorMovil.controller");
-const vendedorAuth = require("../middleware/vendedorAuth.middleware");
+const jwtMiddleware = require("../middleware/jwt.middleware");
+const requireVendedor = require("../middleware/vendedorAuth.middleware");
 
 const router = express.Router();
 
-router.post("/acceso", controller.acceso);
+router.post("/login", controller.login);
+router.post("/refresh", controller.refresh);
 router.post("/salir", controller.salir);
 
-router.use(vendedorAuth);
+router.use(jwtMiddleware);
+router.use(requireVendedor);
+
 router.get("/bootstrap", controller.bootstrap);
 router.get("/presupuestos", controller.listarPresupuestos);
 router.get("/presupuestos/:id", controller.detallePresupuesto);

@@ -1,4 +1,5 @@
 const estado = {
+  token: "",
   vendedor: "",
   empresa: "",
   productos: [],
@@ -42,15 +43,35 @@ function avisar(mensaje) {
   avisoTimer = setTimeout(() => { caja.hidden = true; }, 2800);
 }
 
-async function api(ruta, opciones = {}) {
+async function refrescarSesion() {
+  try {
+    const respuesta = await fetch("/api/v1/vendedor/refresh", { method: "POST" });
+    const datos = await respuesta.json().catch(() => ({}));
+    if (!respuesta.ok) return { ok: false, error: datos.error || "" };
+    estado.token = datos.token || "";
+    estado.vendedor = datos.vendedor?.nombre || "Vendedor";
+    estado.empresa = datos.empresa?.nombre || "";
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "No se pudo conectar con el servidor." };
+  }
+}
+
+async function api(ruta, opciones = {}, reintentar = true) {
   const headers = { "Content-Type": "application/json", ...(opciones.headers || {}) };
+  if (estado.token) headers.Authorization = "Bearer " + estado.token;
   const respuesta = await fetch(ruta, { ...opciones, headers });
   let datos = null;
   try { datos = await respuesta.json(); } catch { datos = {}; }
   if (respuesta.status === 401) {
-    const mensaje = /Falta el token/.test(String(datos.error || "")) ? "" : (datos.error || "Sesión vencida. Pedí un código nuevo.");
-    mostrarAcceso(mensaje);
-    throw new Error(datos.error || "Sesión vencida. Pedí un código nuevo.");
+    if (reintentar) {
+      const sesion = await refrescarSesion();
+      if (sesion.ok) return api(ruta, opciones, false);
+      mostrarAcceso(/No hay una sesión/.test(String(sesion.error)) ? "" : sesion.error);
+      throw new Error(sesion.error || "Sesión vencida.");
+    }
+    mostrarAcceso(datos.error || "Sesión vencida. Iniciá sesión de nuevo.");
+    throw new Error(datos.error || "Sesión vencida. Iniciá sesión de nuevo.");
   }
   if (!respuesta.ok) throw new Error(datos.error || "No se pudo completar la operación.");
   return datos;
@@ -59,10 +80,11 @@ async function api(ruta, opciones = {}) {
 function mostrarAcceso(mensaje = "") {
   $("#app").hidden = true;
   $("#pantalla-acceso").hidden = false;
+  estado.token = "";
   const error = $("#error-acceso");
   error.hidden = !mensaje;
   error.textContent = mensaje;
-  setTimeout(() => $("#codigo")?.focus(), 100);
+  setTimeout(() => $("#usuario")?.focus(), 100);
 }
 
 function mostrarApp() {
@@ -77,6 +99,7 @@ function mostrarApp() {
 
 function cerrarSesion() {
   fetch("/api/v1/vendedor/salir", { method: "POST" }).catch(() => {});
+  estado.token = "";
   estado.vendedor = "";
   estado.empresa = "";
   estado.productos = [];
@@ -98,31 +121,53 @@ async function cargarBootstrap() {
 }
 
 async function iniciar() {
+  const sesion = await refrescarSesion();
+  if (!sesion.ok) {
+    mostrarAcceso(/No hay una sesión/.test(String(sesion.error)) ? "" : sesion.error);
+    return;
+  }
   try {
     await cargarBootstrap();
     mostrarApp();
   } catch (error) {
-    mostrarAcceso(/Falta el token/.test(String(error.message)) ? "" : error.message);
+    mostrarAcceso(error.message);
   }
 }
 
 async function ingresar(evento) {
   evento.preventDefault();
   const boton = $("#btn-ingresar");
-  const codigo = $("#codigo").value.trim();
-  if (!/^\d{6,10}$/.test(codigo)) return mostrarAcceso("Ingresá el código de 8 dígitos.");
+  const usuario = $("#usuario").value.trim();
+  const password = $("#password").value;
+  const empresaId = Number($("#empresa").value) || undefined;
+  if (!usuario || !password) return mostrarAcceso("Ingresá usuario/email y contraseña.");
+
   boton.disabled = true;
   boton.textContent = "Ingresando...";
   try {
-    const respuesta = await fetch("/api/v1/vendedor/acceso", {
+    const respuesta = await fetch("/api/v1/vendedor/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ codigo }),
+      body: JSON.stringify({ usuario, password, empresaId }),
     });
     const datos = await respuesta.json().catch(() => ({}));
     if (!respuesta.ok) throw new Error(datos.error || "No se pudo ingresar.");
+
+    if (datos.requiereEmpresa) {
+      const select = $("#empresa");
+      select.innerHTML = datos.empresas.map((e) => `<option value="${e.id}">${esc(e.nombre)}</option>`).join("");
+      $("#empresa-wrap").hidden = false;
+      $("#error-acceso").hidden = false;
+      $("#error-acceso").textContent = "Elegí la empresa y volvé a tocar Ingresar.";
+      setTimeout(() => select.focus(), 80);
+      return;
+    }
+
+    estado.token = datos.token || "";
     estado.vendedor = datos.vendedor?.nombre || "Vendedor";
     estado.empresa = datos.empresa?.nombre || "";
+    $("#empresa-wrap").hidden = true;
+    $("#password").value = "";
     await cargarBootstrap();
     mostrarApp();
   } catch (error) {

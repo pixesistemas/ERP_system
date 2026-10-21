@@ -1,107 +1,115 @@
-const crypto = require("crypto");
 const db = require("../db/database");
+const AuthService = require("../services/auth.service");
 const { saveDocumento } = require("../repositories/documentoComercial.repository");
+const { COOKIE_VENDEDOR, leerRefreshToken } = require("../utils/vendedorCookie");
 
-function hash(valor) {
-  return crypto.createHash("sha256").update(String(valor || "")).digest("hex");
-}
-
-function tokenAleatorio() {
-  return crypto.randomBytes(32).toString("base64url");
-}
-
-function sumarDias(dias) {
-  return new Date(Date.now() + Math.max(1, Number(dias) || 365) * 86400000).toISOString();
-}
-
-const intentos = new Map();
-function permitirIntento(ip) {
-  const clave = String(ip || "sin-ip");
-  const actual = intentos.get(clave);
-  const ahora = Date.now();
-  if (!actual || actual.reset < ahora) {
-    intentos.set(clave, { cantidad: 1, reset: ahora + 15 * 60 * 1000 });
-    return true;
-  }
-  actual.cantidad += 1;
-  return actual.cantidad <= 20;
-}
+const DIAS_SESION = Math.max(1, Number(process.env.VENDEDOR_SESION_DIAS || 3650));
 
 function esHttps(req) {
   return Boolean(req.secure || String(req.headers?.["x-forwarded-proto"] || "").split(",")[0].trim() === "https");
 }
 
-function acceso(req, res) {
-  if (!permitirIntento(req.ip)) {
-    return res.status(429).json({ ok: false, error: "Demasiados intentos. Esperá unos minutos." });
-  }
-  const codigo = String(req.body?.codigo || "").trim();
-  if (!/^\d{6,10}$/.test(codigo)) {
-    return res.status(400).json({ ok: false, error: "Ingresá el código de acceso." });
-  }
-
-  const fila = db
-    .prepare(
-      `SELECT c.*,u.nombre usuario_nombre,u.email,u.usuario,u.activo usuario_activo,
-              e.nombre empresa_nombre,e.activa empresa_activa
-       FROM vendedor_codigos c
-       JOIN usuarios u ON u.id=c.usuario_id
-       JOIN empresas e ON e.id=c.empresa_id
-       WHERE c.codigo_hash=? AND c.usado_en IS NULL AND c.expira_en > ?`,
-    )
-    .get(hash(codigo), new Date().toISOString());
-
-  if (!fila) {
-    return res.status(401).json({ ok: false, error: "El código no es válido, ya fue usado o venció." });
-  }
-  if (!fila.usuario_activo || !fila.empresa_activa) {
-    return res.status(401).json({ ok: false, error: "Usuario o empresa inactivos." });
-  }
-  const pertenece = db
-    .prepare("SELECT 1 FROM usuario_empresas WHERE usuario_id=? AND empresa_id=? AND activo=1")
-    .get(fila.usuario_id, fila.empresa_id);
-  if (!pertenece) {
-    return res.status(403).json({ ok: false, error: "El usuario ya no pertenece a la empresa." });
-  }
-
-  const vendedor = db
-    .prepare("SELECT id,nombre FROM vendedores WHERE empresa_id=? AND usuario_id=? AND activo=1")
-    .get(fila.empresa_id, fila.usuario_id);
-  if (!vendedor) {
-    return res.status(403).json({ ok: false, error: "El usuario no está vinculado a un vendedor activo." });
-  }
-
-  const token = tokenAleatorio();
-  const dias = Number(process.env.VENDEDOR_TOKEN_DIAS || 365);
-  const expiraEn = sumarDias(dias);
-  const guardar = db.transaction(() => {
-    db.prepare("UPDATE vendedor_codigos SET usado_en=? WHERE id=?").run(new Date().toISOString(), fila.id);
-    db.prepare(
-      "INSERT INTO vendedor_tokens(empresa_id,usuario_id,token_hash,creado_en,expira_en) VALUES(?,?,?,?,?)",
-    ).run(fila.empresa_id, fila.usuario_id, hash(token), new Date().toISOString(), expiraEn);
-  });
-  guardar();
-
-  res.cookie("pixe_vendedor", token, {
+function ponerCookieSesion(req, res, refreshToken) {
+  res.cookie(COOKIE_VENDEDOR, refreshToken, {
     httpOnly: true,
     sameSite: "lax",
     secure: esHttps(req),
-    maxAge: Math.max(1, dias) * 86400000,
+    maxAge: DIAS_SESION * 86400000,
     path: "/api/v1/vendedor",
   });
+}
 
+function borrarCookieSesion(res) {
+  res.clearCookie(COOKIE_VENDEDOR, { path: "/api/v1/vendedor" });
+}
+
+function vendedorDe(empresaId, usuarioId) {
+  return db
+    .prepare("SELECT id,nombre FROM vendedores WHERE empresa_id=? AND usuario_id=? AND activo=1")
+    .get(empresaId, usuarioId);
+}
+
+function login(req, res) {
+  const usuario = String(req.body?.usuario || req.body?.email || "").trim();
+  const password = String(req.body?.password || "");
+  if (!usuario || !password) {
+    return res.status(400).json({ ok: false, error: "Ingresá usuario/email y contraseña." });
+  }
+
+  let resultado;
+  try {
+    resultado = AuthService.login({
+      email: usuario,
+      password,
+      empresaId: req.body?.empresaId || undefined,
+      empresaNombre: req.body?.empresa || undefined,
+      refreshDays: DIAS_SESION,
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 401).json({ ok: false, error: error.message });
+  }
+
+  if (resultado.requiereEmpresa) {
+    return res.json({ ok: true, requiereEmpresa: true, empresas: resultado.empresas });
+  }
+
+  const vendedor = vendedorDe(resultado.empresa.id, resultado.usuario.id);
+  if (!vendedor) {
+    try {
+      AuthService.logout({ refreshToken: resultado.refreshToken });
+    } catch {}
+    return res.status(403).json({ ok: false, error: "Tu usuario no está vinculado a un vendedor activo. Pedile al administrador que lo asocie." });
+  }
+
+  ponerCookieSesion(req, res, resultado.refreshToken);
   res.json({
     ok: true,
-    token,
-    expiraEn,
-    usuario: { id: fila.usuario_id, nombre: fila.usuario_nombre, email: fila.email || fila.usuario || null },
-    empresa: { id: fila.empresa_id, nombre: fila.empresa_nombre },
+    token: resultado.token,
+    usuario: resultado.usuario,
+    empresa: resultado.empresa,
+    vendedor,
+  });
+}
+
+function refresh(req, res) {
+  const refreshToken = leerRefreshToken(req);
+  if (!refreshToken) {
+    borrarCookieSesion(res);
+    return res.status(401).json({ ok: false, error: "No hay una sesión guardada." });
+  }
+
+  let resultado;
+  try {
+    resultado = AuthService.refresh({ refreshToken, refreshDays: DIAS_SESION });
+  } catch (error) {
+    borrarCookieSesion(res);
+    return res.status(401).json({ ok: false, error: "Sesión revocada o vencida. Iniciá sesión de nuevo." });
+  }
+
+  const vendedor = vendedorDe(resultado.empresa.id, resultado.usuario.id);
+  if (!vendedor) {
+    borrarCookieSesion(res);
+    return res.status(403).json({ ok: false, error: "Tu usuario ya no está vinculado a un vendedor activo." });
+  }
+
+  ponerCookieSesion(req, res, refreshToken);
+  res.json({
+    ok: true,
+    token: resultado.token,
+    usuario: resultado.usuario,
+    empresa: resultado.empresa,
     vendedor,
   });
 }
 
 function salir(req, res) {
-  res.clearCookie("pixe_vendedor", { path: "/api/v1/vendedor" });
+  const refreshToken = leerRefreshToken(req);
+  if (refreshToken) {
+    try {
+      AuthService.logout({ refreshToken });
+    } catch {}
+  }
+  borrarCookieSesion(res);
   res.json({ ok: true });
 }
 
@@ -278,7 +286,8 @@ function detallePresupuesto(req, res) {
 }
 
 module.exports = {
-  acceso,
+  login,
+  refresh,
   salir,
   bootstrap,
   crearPresupuesto,
