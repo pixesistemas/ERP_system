@@ -1,0 +1,17 @@
+{
+  "name": "fox-vendedor-server",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "codigo": "node scripts/crear-codigo.js",
+    "test": "node tests/api.test.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.4.1",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2"
+  }
+}

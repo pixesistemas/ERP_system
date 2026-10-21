@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f766e">
+  <meta name="description" content="Consulta de precios y presupuestos para vendedores">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+  <title>Fox Vendedor</title>
+</head>
+<body>
+  <section id="pantalla-acceso" class="acceso">
+    <div class="acceso-card">
+      <div class="marca">
+        <span class="marca-icono">FV</span>
+        <div><strong>Fox Vendedor</strong><small>Precios y presupuestos</small></div>
+      </div>
+      <h1>Ingresá con tu código</h1>
+      <p>El administrador te entrega un código de un solo uso. Después la sesión queda abierta en este celular.</p>
+      <form id="form-acceso">
+        <label>Código de acceso
+          <input id="codigo" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="00000000" required>
+        </label>
+        <button class="principal" type="submit" id="btn-ingresar">Ingresar</button>
+      </form>
+      <div id="error-acceso" class="error" hidden></div>
+    </div>
+  </section>
+
+  <div id="app" hidden>
+    <header class="cabecera">
+      <div>
+        <small>Fox Vendedor</small>
+        <strong id="nombre-vendedor">Vendedor</strong>
+      </div>
+      <button class="icono" id="btn-salir" title="Cerrar sesión">Salir</button>
+    </header>
+
+    <main id="contenido">
+      <section id="vista-precios" class="vista">
+        <div class="buscador">
+          <input id="buscar" type="search" autocomplete="off" enterkeyhint="search" placeholder="Código, código de barras o descripción">
+          <button class="icono" id="btn-buscar" type="button">Buscar</button>
+        </div>
+        <div class="fila-filtros">
+          <label>Lista de precios
+            <select id="lista-precio">
+              <option value="1">Lista 1</option>
+              <option value="2">Lista 2</option>
+              <option value="3">Lista 3</option>
+              <option value="4">Lista 4</option>
+            </select>
+          </label>
+          <span id="estado-busqueda" class="ayuda"></span>
+        </div>
+        <div id="resultados" class="lista-articulos"></div>
+      </section>
+
+      <section id="vista-presupuesto" class="vista" hidden>
+        <h2>Nuevo presupuesto</h2>
+        <div id="carrito" class="carrito"></div>
+        <div class="total-caja">
+          <span>Total</span>
+          <strong id="total-carrito">$ 0,00</strong>
+        </div>
+        <label>Cliente
+          <input id="cliente" maxlength="150" placeholder="CONSUMIDOR FINAL">
+        </label>
+        <label>Observaciones
+          <textarea id="observaciones" maxlength="500" rows="2" placeholder="Opcional"></textarea>
+        </label>
+        <button class="principal" id="btn-enviar" type="button">Enviar presupuesto</button>
+      </section>
+
+      <section id="vista-historial" class="vista" hidden>
+        <h2>Mis presupuestos</h2>
+        <div id="historial" class="historial"></div>
+      </section>
+    </main>
+
+    <nav class="barra-inferior">
+      <button data-vista="precios" class="activo">Precios</button>
+      <button data-vista="presupuesto">Presupuesto <span id="badge-carrito" class="badge" hidden>0</span></button>
+      <button data-vista="historial">Historial</button>
+    </nav>
+  </div>
+
+  <dialog id="dialogo-detalle" class="dialogo">
+    <div class="dialogo-cabecera">
+      <strong id="detalle-titulo">Presupuesto</strong>
+      <button class="icono" id="cerrar-detalle" type="button">Cerrar</button>
+    </div>
+    <div id="detalle-contenido"></div>
+  </dialog>
+
+  <div id="aviso" class="aviso" hidden></div>
+  <script src="/app.js"></script>
+</body>
+</html>

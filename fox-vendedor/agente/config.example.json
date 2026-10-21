@@ -1,0 +1,20 @@
+{
+  "app": {
+    "url": "https://vendedor.tudominio.com",
+    "sync_key": "LA-MISMA-CLAVE-QUE-SYNC_KEY-DEL-SERVIDOR"
+  },
+  "fox": {
+    "host": "149.50.142.131",
+    "port": 3306,
+    "user": "USUARIO_MYSQL",
+    "password": "CLAVE_MYSQL",
+    "database": "base5"
+  },
+  "presupuesto": {
+    "pv": 1,
+    "letra": "P",
+    "tipo": "PRESUPUESTO",
+    "tipodoc": "99",
+    "idvendedor": 0
+  }
+}
