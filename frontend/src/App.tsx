@@ -106,12 +106,14 @@ export function App() {
   const [history, setHistory] = useState<Conversation[]>([]);
   const [activeResponse, setActiveResponse] = useState<any>(null);
   const [phone, setPhone] = useState(() => `WEB-${Date.now()}`);
+  const modoPos = String((import.meta as any).env?.VITE_MODO_POS || "").toLowerCase() === "true";
   /*
    * Si la app se abre desde los subdominios de vendedor/repartidor,
    * arranca directo en su pantalla móvil.
    */
   const [page, setPage] = useState<string>(() => {
     const host = typeof window !== "undefined" ? window.location.hostname : "";
+    if (modoPos) return "pos";
     if (host.startsWith("vendedor.")) return "mobile-vendor";
     if (host.startsWith("repartidor.")) return "mobile-driver";
     return "dashboard";
@@ -306,6 +308,14 @@ export function App() {
     const modulo = MODULO_DE_PANTALLA[key];
     if (modulo && session.modulos?.[modulo] === false) return false;
     return canSeeScreen(pantallas, key);
+  }
+
+  if (modoPos) {
+    return <div className="app-shell menu-hidden pos-standalone">
+      <section className="workspace">
+        <AdvancedPosPage pantallas={session.pantallas ?? null} modulos={session.modulos ?? null} onSendToAssistant={() => {}}/>
+      </section>
+    </div>;
   }
 
   if (hostApp) {

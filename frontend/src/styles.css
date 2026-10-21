@@ -310,6 +310,7 @@ button {
 .app-shell.menu-hidden {
   grid-template-columns:1fr;
 }
+.pos-standalone .workspace{height:100vh;overflow:auto}
 .app-shell.menu-hidden .sidebar {
   display:none;
 }

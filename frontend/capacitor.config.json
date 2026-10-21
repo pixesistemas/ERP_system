@@ -1,0 +1,11 @@
+﻿{
+  "appId": "com.pixesistemas.pos",
+  "appName": "Pixe POS",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}

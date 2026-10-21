@@ -9,6 +9,7 @@ import { PdfViewerModal } from "../shared/PdfViewerModal";
 import { canSeeScreen } from "../../utils/screens";
 import { esErrorDeRed, cargarDatosPos, sincronizarColaPos, contarColaPos, descartarOperacionPos, iniciarMonitorConexion, avisoSonoro } from "../../offline/posSync";
 import { encolarOperacion, uuidOffline, fechaLocalAhora, guardarBorradorLocal, listarColaPos } from "../../offline/posDb";
+import { esAndroidNativo, imprimirEscPosRed } from "../../services/androidPrinter";
 
 export function AdvancedPosPage({ onSendToAssistant, pantallas = null, modulos = null }: { onSendToAssistant: (text: string) => void; pantallas?: string[] | null; modulos?: Record<string, boolean> | null }) {
   const canOperar=(key:string)=>canSeeScreen(pantallas,key);
@@ -220,6 +221,16 @@ setCajeroSesion(draftCashier||tabCashier||Number(cat.miCajeroId)||null);const mi
    */
   async function imprimirConAgente(op:any):Promise<boolean>{
     const pv=pvActualPos();
+    if(esAndroidNativo()&&pv?.impresora_host){
+      try{
+        const t=await erpApi.getTicketEscpos(Number(op.saleId));
+        await imprimirEscPosRed(pv.impresora_host,Number(pv.impresora_puerto||9100),t.base64);
+        return true;
+      }catch(e:any){
+        setNotice(`No se pudo imprimir en la impresora de red (${e.message}).`);
+        return false;
+      }
+    }
     if(!pv||String(pv.impresion_modo||'').toUpperCase()!=='AGENTE')return false;
     try{
       if(String(pv.agente_conexion||'LOCAL').toUpperCase()==='SERVIDOR'){

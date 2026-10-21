@@ -6,15 +6,24 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
+    "build:android": "cross-env VITE_API_URL=https://erp.pixesistemas.com.ar/api/v1 VITE_MODO_POS=true vite build --mode android",
+    "android:sync": "npm run build:android && cap sync android",
+    "android:apk": "npm run android:sync && cd android && gradlew.bat assembleDebug",
     "preview": "vite preview --host 0.0.0.0",
     "audit:no-local-storage": "node ../scripts/audit-browser-storage.js"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
     "@vitejs/plugin-react": "latest",
     "lucide-react": "latest",
     "react": "latest",
     "react-dom": "latest",
     "typescript": "latest",
     "vite": "latest"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.3",
+    "cross-env": "^10.1.0"
   }
 }
