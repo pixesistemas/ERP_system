@@ -1,0 +1,10 @@
+server/node_modules
+server/data
+server/.env
+server/.env.*
+server/tests
+agente
+**/*.log
+**/*.exe
+**/*.zip
+**/node_modules

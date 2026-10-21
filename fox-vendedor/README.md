@@ -66,6 +66,45 @@ Abrí `http://localhost:3100/api/salud` para comprobar que responde.
 
 Para producción se recomienda dejarlo detrás de HTTPS. La URL pública (por ejemplo `https://vendedor.tudominio.com`) es la que se usa en el celular y en el agente.
 
+### Subirlo con Portainer
+
+El stack está en `fox-vendedor/docker-compose.yml`. No modifica el stack del ERP.
+
+1. En Portainer: **Stacks → Add stack**.
+2. Build method: **Repository**.
+3. Repositorio: el mismo repo del ERP, rama `main`.
+4. Compose path: `fox-vendedor/docker-compose.yml`.
+5. En **Environment variables** definir:
+   - `SYNC_KEY`: una clave larga y única (la misma que uses en el agente).
+   - `FOX_PORT`: puerto del host, por defecto `3200` (el ERP ya usa 3100).
+   - `TOKEN_DIAS`: opcional, por defecto `365`.
+6. **Deploy the stack**. Portainer buildea la imagen y crea el volumen `fox_vendedor_data` para SQLite.
+
+La API queda escuchando dentro del contenedor en `3100` y publicada en el host en `3200` (o el `FOX_PORT` elegido). Para usar la app desde los celulares y poder instalarla como PWA, apuntá un dominio con HTTPS a `http://IP_DEL_SERVIDOR:3200` usando el proxy que ya tengas (Nginx, Traefik, Nginx Proxy Manager, Cloudflare Tunnel, etc.).
+
+Crear un código de acceso dentro del contenedor:
+
+```bash
+docker exec -it fox-vendedor node scripts/crear-codigo.js --nombre "Vendedor 1"
+```
+
+Comprobar salud y logs:
+
+```bash
+curl http://localhost:3200/api/salud
+docker logs -f fox-vendedor
+```
+
+Backup del volumen:
+
+```bash
+docker run --rm -v fox_vendedor_data:/data -v "$PWD":/backup alpine \
+  tar czf /backup/fox-vendedor-data.tgz -C /data .
+```
+
+El **agente** no hace falta subirlo a Portainer: va en la PC donde esté FoxPro/MariaDB, porque es el que tiene acceso a esa base. En `agente/config.json` poné como `app.url` la URL pública de la app (por ejemplo `https://vendedor.tudominio.com`) y la misma `SYNC_KEY`. Si el contenedor de Portainer tiene acceso directo a MariaDB y preferís ejecutarlo ahí, se puede agregar después como servicio aparte, pero no es necesario para el funcionamiento normal.
+
+
 ### Crear un código de acceso
 
 Con el servidor en marcha:

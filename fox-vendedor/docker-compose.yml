@@ -1,0 +1,39 @@
+services:
+  fox-vendedor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: fox-vendedor:latest
+    container_name: fox-vendedor
+    restart: unless-stopped
+    ports:
+      - "${FOX_PORT:-3200}:3100"
+    environment:
+      TZ: ${TZ:-America/Argentina/Buenos_Aires}
+      PORT: "3100"
+      DB_PATH: /app/data/fox-vendedor.db
+      SYNC_KEY: ${SYNC_KEY:?Definí SYNC_KEY en las variables del stack}
+      TOKEN_DIAS: ${TOKEN_DIAS:-365}
+    volumes:
+      - fox_vendedor_data:/app/data
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3100/api/salud').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    # Si usás Traefik en la misma red, descomentá y ajustá:
+    # labels:
+    #   - traefik.enable=true
+    #   - traefik.http.routers.fox-vendedor.rule=Host(`vendedor.tudominio.com`)
+    #   - traefik.http.routers.fox-vendedor.entrypoints=websecure
+    #   - traefik.http.routers.fox-vendedor.tls.certresolver=letsencrypt
+    #   - traefik.http.services.fox-vendedor.loadbalancer.server.port=3100
+
+volumes:
+  fox_vendedor_data:
+    name: fox_vendedor_data
