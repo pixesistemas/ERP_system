@@ -128,9 +128,24 @@ Servidor iniciado en puerto 3000
 
 ---
 
-## 7. Exponer la app a internet (reverso proxy + HTTPS)
+## App de vendedores (`/vendedor`)
 
-Para que los **webhooks de WhatsApp** y **MercadoPago** funcionen, el servidor tiene que ser alcanzable desde internet con HTTPS. Opciones:
+El ERP incluye una app móvil independiente para consultar precios y generar presupuestos. Se sirve desde el mismo contenedor:
+
+`https://erp.tudominio.com.ar/vendedor/`
+
+1. El usuario vendedor debe estar vinculado a un vendedor en **Vendedores y comisiones** y tener clientes asignados en su cartera.
+2. Generar un código de un solo uso dentro del contenedor:
+   ```bash
+   docker exec -it afip-conversacional-erp node scripts/crear-codigo-vendedor.js --usuario "vendedor1"
+   ```
+   Si el usuario tiene varias empresas, agregar `--empresa "Nombre o ID"`.
+3. El vendedor abre `/vendedor/`, ingresa el código una vez y queda logueado en ese celular.
+4. Los presupuestos se guardan como **PRESUPUESTO / BORRADOR** en el ERP, visibles desde **Presupuestos** y **Comprobantes**; desde ahí se puede generar el PDF.
+
+El token del celular dura 365 días por defecto (`VENDEDOR_TOKEN_DIAS`). Al cerrar sesión se borra la cookie y hace falta un código nuevo. No requiere activar PREVENTA_MOVIL.
+
+## 7. Exponer la app a internet (reverso proxy + HTTPS)Para que los **webhooks de WhatsApp** y **MercadoPago** funcionen, el servidor tiene que ser alcanzable desde internet con HTTPS. Opciones:
 
 - **NGINX (instalado en el server)** como reverse proxy de `localhost:3000`, con certificado (Let's Encrypt).
 - O un dominio + túnel (Cloudflare Tunnel / ngrok) para pruebas.

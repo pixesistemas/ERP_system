@@ -13,6 +13,7 @@ const authRoutes = require("./routes/auth.routes");
 const superadminRoutes = require("./routes/superadmin.routes");
 const billingRoutes = require("./routes/billing.routes");
 const documentoComercialRoutes = require("./routes/documentoComercial.routes");
+const vendedorMovilRoutes = require("./routes/vendedorMovil.routes");
 const facturaConsultaRoutes = require("./routes/facturaConsulta.routes");
 const facturasGuardadasRoutes = require("./routes/facturasGuardadas.routes");
 const padronRoutes = require("./routes/padron.routes");
@@ -150,6 +151,13 @@ app.post(
  * Si no hay dist (modo desarrollo), la raíz responde el health check.
  */
 const fs = require("fs");
+const vendedorPublic = path.join(__dirname, "..", "public-vendedor");
+if (fs.existsSync(vendedorPublic)) {
+  app.use("/vendedor", express.static(vendedorPublic, { maxAge: "1h" }));
+  app.get(/^\/vendedor(\/.*)?$/, (req, res) => {
+    res.sendFile(path.join(vendedorPublic, "index.html"));
+  });
+}
 const frontendDist = path.join(process.cwd(), "..", "frontend", "dist");
 if (fs.existsSync(frontendDist)) {
   app.use(express.static(frontendDist));
@@ -168,6 +176,7 @@ if (fs.existsSync(frontendDist)) {
 }
 
 app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/vendedor", apiRateLimit, vendedorMovilRoutes);
 
 app.use("/api/v1/superadmin", apiRateLimit, superadminRoutes);
 
