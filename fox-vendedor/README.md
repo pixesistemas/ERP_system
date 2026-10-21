@@ -102,7 +102,7 @@ docker run --rm -v fox_vendedor_data:/data -v "$PWD":/backup alpine \
   tar czf /backup/fox-vendedor-data.tgz -C /data .
 ```
 
-El **agente** no hace falta subirlo a Portainer: va en la PC donde esté FoxPro/MariaDB, porque es el que tiene acceso a esa base. En `agente/config.json` poné como `app.url` la URL pública de la app (por ejemplo `https://vendedor.tudominio.com`) y la misma `SYNC_KEY`. Si el contenedor de Portainer tiene acceso directo a MariaDB y preferís ejecutarlo ahí, se puede agregar después como servicio aparte, pero no es necesario para el funcionamiento normal.
+El **agente** no hace falta subirlo a Portainer: va en la PC donde esté FoxPro/MariaDB, porque es el que tiene acceso a esa base. Como tu MySQL es local, el agente debe correr en esa misma PC (`host: 127.0.0.1`). En `agente/config.json` poné como `app.url` la URL pública de la app (por ejemplo `https://vendedor.tudominio.com`) y la misma `SYNC_KEY`. Solo si el contenedor de Portainer tuviera acceso directo a MySQL se podría agregar como servicio aparte.
 
 
 ### Crear un código de acceso
@@ -152,7 +152,7 @@ Completar `config.json`:
     "sync_key": "la-misma-clave-que-SYNC_KEY-del-servidor"
   },
   "fox": {
-    "host": "149.50.142.131",
+    "host": "127.0.0.1",
     "port": 3306,
     "user": "USUARIO_MYSQL",
     "password": "CLAVE_MYSQL",
@@ -169,6 +169,10 @@ Completar `config.json`:
 ```
 
 `config.json` contiene la clave de la base: no se versiona y debe quedar solo en la PC del local.
+
+**Si MySQL/MariaDB está instalado en la misma PC que FoxPro (tu caso):** dejá `host` en `127.0.0.1` y el puerto real de MySQL (normalmente `3306`). El agente corre en esa PC y se conecta localmente; la app que está en Portainer no necesita acceder a MySQL. Usá el usuario/clave de MySQL que tenga permiso sobre `base5`.
+
+El agente debe ejecutarse en la PC local. Si además Portainer está en esa misma PC, podés usar `http://127.0.0.1:3200` como `app.url`; si Portainer está en un servidor, usá la URL pública HTTPS de la app.
 
 Primera prueba manual:
 

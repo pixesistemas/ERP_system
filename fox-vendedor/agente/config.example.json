@@ -4,7 +4,7 @@
     "sync_key": "LA-MISMA-CLAVE-QUE-SYNC_KEY-DEL-SERVIDOR"
   },
   "fox": {
-    "host": "149.50.142.131",
+    "host": "127.0.0.1",
     "port": 3306,
     "user": "USUARIO_MYSQL",
     "password": "CLAVE_MYSQL",
