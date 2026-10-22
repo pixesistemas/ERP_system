@@ -1,6 +1,7 @@
 const db = require("../db/database");
 const AuthService = require("../services/auth.service");
 const { saveDocumento } = require("../repositories/documentoComercial.repository");
+const { generarPDFDocumento } = require("../services/documentoPdf.service");
 const { COOKIE_VENDEDOR, leerRefreshToken } = require("../utils/vendedorCookie");
 
 const DIAS_SESION = Math.max(1, Number(process.env.VENDEDOR_SESION_DIAS || 3650));
@@ -323,6 +324,29 @@ function detallePresupuesto(req, res) {
   res.json({ ok: true, documento });
 }
 
+async function pdfPresupuesto(req, res, next) {
+  try {
+    const e = req.empresa.id;
+    const id = Number(req.params.id);
+    const documento = db
+      .prepare(
+        "SELECT id FROM documentos_comerciales WHERE id=? AND empresa_id=? AND vendedor_id=? AND tipo='PRESUPUESTO'",
+      )
+      .get(id, e, req.vendedor.id);
+    if (!documento) return res.status(404).json({ ok: false, error: "Presupuesto no encontrado." });
+
+    const resultado = await generarPDFDocumento({ empresa: req.empresa, documentoId: id });
+    res.json({
+      ok: true,
+      url: resultado.pdf.publicUrl || resultado.pdf.url,
+      filename: resultado.pdf.filename || resultado.pdf.fileName || `presupuesto-${id}.pdf`,
+      documento: resultado.documento,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   login,
   refresh,
@@ -331,4 +355,5 @@ module.exports = {
   crearPresupuesto,
   listarPresupuestos,
   detallePresupuesto,
+  pdfPresupuesto,
 };

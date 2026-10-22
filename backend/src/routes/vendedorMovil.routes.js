@@ -15,6 +15,7 @@ router.use(requireVendedor);
 router.get("/bootstrap", controller.bootstrap);
 router.get("/presupuestos", controller.listarPresupuestos);
 router.get("/presupuestos/:id", controller.detallePresupuesto);
+router.post("/presupuestos/:id/pdf", controller.pdfPresupuesto);
 router.post("/presupuestos", controller.crearPresupuesto);
 
 module.exports = router;

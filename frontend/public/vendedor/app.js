@@ -327,6 +327,7 @@ async function enviarPresupuesto() {
     renderCarrito();
     avisar(`Presupuesto ${String(documento.punto_venta || "").padStart(4, "0")}-${String(documento.numero || "").padStart(8, "0")} guardado`);
     cambiarVista("historial");
+    setTimeout(() => verDetalle(Number(documento.id)), 500);
   } catch (error) {
     avisar(error.message);
   } finally {
@@ -363,15 +364,98 @@ async function verDetalle(id) {
       <div class="detalle-linea"><span>Cliente</span><strong>${esc(p.cliente)}</strong></div>
       <div class="detalle-linea"><span>Estado</span><strong>${esc(p.estado)}</strong></div>
       <div class="detalle-linea"><span>Fecha</span><strong>${fecha(p.fecha)}</strong></div>
-      <div style="margin:14px 0 6px"><strong>Productos</strong></div>
-      ${(p.items || []).map((i) => `<div class="detalle-linea"><span>${esc(i.cantidad)} × ${esc(i.descripcion)}</span><strong>${moneda(i.total)}</strong></div>`).join("")}
-      <div class="detalle-linea"><span>Total</span><strong>${moneda(p.importe_total)}</strong></div>
-      ${p.observaciones ? `<div class="detalle-linea"><span>Observaciones</span><strong>${esc(p.observaciones)}</strong></div>` : ""}`;
-    $("#dialogo-detalle").showModal();
-  } catch (error) {
-    avisar(error.message);
+        <div style="margin:14px 0 6px"><strong>Artículos</strong></div>
+        ${(p.items || []).map((i) => `<div class="detalle-linea"><span>${esc(i.cantidad)} × ${esc(i.descripcion)}</span><strong>${moneda(i.total)}</strong></div>`).join("")}
+        <div class="detalle-linea"><span>Total</span><strong>${moneda(p.importe_total)}</strong></div>
+        ${p.observaciones ? `<div class="detalle-linea"><span>Observaciones</span><strong>${esc(p.observaciones)}</strong></div>` : ""}
+        <div class="detalle-acciones">
+          <button type="button" class="principal" id="btn-compartir-pdf">Compartir PDF</button>
+          <button type="button" class="boton-secundario" id="btn-whatsapp-pdf">WhatsApp</button>
+        </div>`;
+      $("#btn-compartir-pdf").onclick = () => compartirPdf(p);
+      $("#btn-whatsapp-pdf").onclick = () => whatsappPdf(p);
+      $("#dialogo-detalle").showModal();
+    } catch (error) {
+      avisar(error.message);
+    }
   }
-}
+
+  async function generarPdfPresupuesto(id) {
+    const datos = await api(`/api/v1/vendedor/presupuestos/${id}/pdf`, { method: "POST" });
+    return {
+      url: new URL(datos.url, window.location.origin).href,
+      filename: datos.filename || `presupuesto-${id}.pdf`,
+    };
+  }
+
+  async function compartirPdf(p) {
+    const boton = $("#btn-compartir-pdf");
+    const textoOriginal = boton?.textContent || "Compartir PDF";
+    if (boton) { boton.disabled = true; boton.textContent = "Generando PDF..."; }
+    try {
+      const pdf = await generarPdfPresupuesto(p.id);
+      try {
+        const respuesta = await fetch(pdf.url);
+        if (!respuesta.ok) throw new Error("No se pudo descargar el PDF.");
+        const blob = await respuesta.blob();
+        if (typeof File === "function" && navigator.canShare) {
+          const archivo = new File([blob], pdf.filename, { type: "application/pdf" });
+          if (navigator.canShare({ files: [archivo] })) {
+            await navigator.share({
+              files: [archivo],
+              title: `Presupuesto ${String(p.punto_venta || "").padStart(4, "0")}-${String(p.numero || "").padStart(8, "0")}`,
+              text: `Presupuesto de ${p.cliente || "CONSUMIDOR FINAL"}`,
+            });
+            return;
+          }
+        }
+      } catch (error) {
+        if (error?.name === "AbortError") return;
+      }
+
+      const enlace = document.createElement("a");
+      enlace.href = pdf.url;
+      enlace.target = "_blank";
+      enlace.rel = "noopener";
+      enlace.click();
+      try {
+        await navigator.clipboard.writeText(pdf.url);
+        avisar("PDF generado y link copiado. Compartilo desde el visor o pegá el link.");
+      } catch {
+        avisar("PDF generado. Compartilo desde el visor.");
+      }
+    } catch (error) {
+      avisar(error.message || "No se pudo generar el PDF.");
+    } finally {
+      if (boton) { boton.disabled = false; boton.textContent = textoOriginal; }
+    }
+  }
+
+  async function whatsappPdf(p) {
+    const boton = $("#btn-whatsapp-pdf");
+    const textoOriginal = boton?.textContent || "WhatsApp";
+    if (boton) { boton.disabled = true; boton.textContent = "Generando PDF..."; }
+    const ventana = window.open("", "_blank");
+    try {
+      const pdf = await generarPdfPresupuesto(p.id);
+      const numero = `${String(p.punto_venta || "").padStart(4, "0")}-${String(p.numero || "").padStart(8, "0")}`;
+      const mensaje = `Presupuesto ${numero} - ${p.cliente || "CONSUMIDOR FINAL"} - Total ${moneda(p.importe_total)}\n${pdf.url}`;
+      const urlWhatsapp = `https://wa.me/?text=${encodeURIComponent(mensaje)}`;
+      if (ventana) ventana.location.href = urlWhatsapp;
+      else {
+        const enlace = document.createElement("a");
+        enlace.href = urlWhatsapp;
+        enlace.target = "_blank";
+        enlace.rel = "noopener";
+        enlace.click();
+      }
+    } catch (error) {
+      if (ventana) ventana.close();
+      avisar(error.message || "No se pudo generar el PDF.");
+    } finally {
+      if (boton) { boton.disabled = false; boton.textContent = textoOriginal; }
+    }
+  }
 
 let timerBusqueda = null;
 

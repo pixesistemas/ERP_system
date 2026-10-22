@@ -149,3 +149,8 @@ main { flex: 1; padding: 16px; max-width: 760px; width: 100%; margin: 0 auto; }
 
 .dialogo{overflow:auto}
 
+
+.detalle-acciones{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;position:sticky;bottom:0;background:#fff;padding-top:12px}
+.detalle-acciones .principal{flex:1;width:auto}
+.detalle-acciones .boton-secundario{flex:0 0 auto}
+
