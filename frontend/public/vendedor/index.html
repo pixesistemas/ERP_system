@@ -61,17 +61,20 @@
       </section>
 
       <section id="vista-presupuesto" class="vista" hidden>
-        <h2>Nuevo presupuesto</h2>
+        <div class="titulo-presupuesto">
+          <h2>Nuevo presupuesto</h2>
+          <button type="button" class="boton-secundario" id="btn-manual">+ Artículo manual</button>
+        </div>
         <div id="carrito" class="carrito"></div>
         <div class="total-caja">
           <span>Total</span>
           <strong id="total-carrito">$ 0,00</strong>
         </div>
-        <label>Cliente de la cartera
-          <select id="cliente">
-            <option value="">Seleccionar cliente...</option>
-          </select>
+        <label>Cliente
+          <input id="cliente" list="clientes-lista" autocomplete="off" maxlength="150" placeholder="Buscar en cartera o escribir el nombre...">
+          <datalist id="clientes-lista"></datalist>
         </label>
+        <p class="ayuda">Si el cliente no está en tu cartera, escribí el nombre: se crea en el ERP al guardar.</p>
         <label>Observaciones
           <textarea id="observaciones" maxlength="500" rows="2" placeholder="Opcional"></textarea>
         </label>
@@ -90,6 +93,26 @@
       <button data-vista="historial">Historial</button>
     </nav>
   </div>
+
+  <dialog id="dialogo-manual" class="dialogo">
+    <form id="form-manual">
+      <div class="dialogo-cabecera">
+        <strong>Artículo o servicio manual</strong>
+        <button class="icono" id="cerrar-manual" type="button">Cerrar</button>
+      </div>
+      <div class="form-manual">
+        <label>Descripción<input id="manual-descripcion" maxlength="200" required placeholder="Ej.: Mano de obra, flete, servicio..."></label>
+        <label>Código (opcional)<input id="manual-codigo" maxlength="100" placeholder="MANUAL"></label>
+        <label>Cantidad<input id="manual-cantidad" type="text" inputmode="decimal" value="1" required></label>
+        <label>Precio final (IVA incluido)<input id="manual-precio" type="text" inputmode="decimal" required placeholder="0,00"></label>
+        <label>IVA<select id="manual-iva"><option value="0">0%</option><option value="10.5">10,5%</option><option value="21" selected>21%</option><option value="27">27%</option></select></label>
+      </div>
+      <div class="modal-acciones">
+        <button type="button" class="boton-secundario" id="cancelar-manual">Cancelar</button>
+        <button type="submit" class="principal">Agregar</button>
+      </div>
+    </form>
+  </dialog>
 
   <dialog id="dialogo-detalle" class="dialogo">
     <div class="dialogo-cabecera">

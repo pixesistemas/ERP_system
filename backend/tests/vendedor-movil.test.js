@@ -99,6 +99,28 @@ assert(lista.status === 200 && lista.payload.presupuestos.length === 1, "El pres
 const detalle = ejecutar(controller.detallePresupuesto, { ...reqBase, params: { id: String(documento.id) } });
 assert(detalle.status === 200 && detalle.payload.documento.items.length === 1, "El detalle del presupuesto no trae ítems.");
 
+const ocasional = ejecutar(controller.crearPresupuesto, {
+  ...reqBase,
+  body: {
+    cliente_nombre: "Cliente fuera de cartera",
+    items: [
+      { manual: true, descripcion: "Servicio de instalación", cantidad: 1, precio: 1000, iva: 21 },
+    ],
+  },
+});
+assert(ocasional.status === 201 && ocasional.payload?.documento?.id, `No se creó el presupuesto manual: ${JSON.stringify(ocasional.payload)}`);
+const clienteCreado = db
+  .prepare("SELECT id FROM clientes WHERE empresa_id=? AND razon_social=?")
+  .get(empresa.id, "Cliente fuera de cartera");
+assert(clienteCreado, "No se creó el cliente fuera de cartera.");
+assert(Number(ocasional.payload.documento.cliente_id) === Number(clienteCreado.id), "El presupuesto manual no quedó asociado al cliente nuevo.");
+assert(Math.abs(Number(ocasional.payload.documento.importe_total) - 1000) < 0.02, "El total del artículo manual es incorrecto.");
+const detalleOcasional = ejecutar(controller.detallePresupuesto, { ...reqBase, params: { id: String(ocasional.payload.documento.id) } });
+assert(
+  detalleOcasional.payload.documento.items.some((i) => i.descripcion === "Servicio de instalación" && i.producto_id == null),
+  "El presupuesto manual no guardó el artículo de servicio.",
+);
+
 const refresco = ejecutar(controller.refresh, { headers: { cookie: cookieHeader } });
 assert(refresco.status === 200 && refresco.payload?.token, "No se pudo refrescar la sesión.");
 
@@ -109,4 +131,4 @@ let rechazado = false;
 requireVendedor(reqBase, { status() { return this; }, json() { return this; } }, () => { rechazado = true; });
 assert(!rechazado, "El middleware aceptó una sesión revocada.");
 
-console.log("OK vendedor ERP: login, refresh token persistente, revocación por administrador, bootstrap, presupuesto e historial.");
+console.log("OK vendedor ERP: login, refresh token persistente, revocación por administrador, precios, cliente fuera de cartera, artículo manual e historial.");

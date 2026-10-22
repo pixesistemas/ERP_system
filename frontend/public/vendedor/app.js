@@ -188,11 +188,10 @@ function cambiarVista(vista) {
 }
 
 function renderClientes() {
-  const select = $("#cliente");
-  const actual = select.value;
-  select.innerHTML = `<option value="">${estado.clientes.length ? "Seleccionar cliente..." : "No tenés clientes asignados en tu cartera"}</option>` +
-    estado.clientes.map((c) => `<option value="${c.id}">${esc(c.razon_social)}${c.cuit ? " · " + esc(c.cuit) : c.dni ? " · " + esc(c.dni) : ""}</option>`).join("");
-  if (actual) select.value = actual;
+  const lista = $("#clientes-lista");
+  lista.innerHTML = estado.clientes
+    .map((c) => `<option value="${esc(c.razon_social)}">${esc(c.cuit || c.dni || "")}</option>`)
+    .join("");
 }
 
 function renderResultados() {
@@ -232,11 +231,37 @@ function buscar() {
 function agregar(id) {
   const producto = estado.productos.find((p) => Number(p.id) === Number(id));
   if (!producto) return;
-  const existente = estado.carrito.find((i) => Number(i.id) === Number(id));
+  const existente = estado.carrito.find((i) => !i.manual && Number(i.id) === Number(id));
   if (existente) existente.cantidad += 1;
-  else estado.carrito.push({ id: Number(producto.id), codigo: producto.codigo, descripcion: producto.descripcion, precio: Number(producto.precio || 0), iva: Number(producto.iva || 0), cantidad: 1 });
+  else estado.carrito.push({ key: `prod-${producto.id}`, id: Number(producto.id), codigo: producto.codigo, descripcion: producto.descripcion, precio: Number(producto.precio || 0), iva: Number(producto.iva || 0), cantidad: 1 });
   renderCarrito();
   avisar("Agregado al presupuesto");
+}
+
+function agregarManual(evento) {
+  evento.preventDefault();
+  const descripcion = $("#manual-descripcion").value.trim();
+  const codigo = $("#manual-codigo").value.trim() || "MANUAL";
+  const cantidad = Number(String($("#manual-cantidad").value).replace(",", "."));
+  const precio = Number(String($("#manual-precio").value).replace(",", "."));
+  const iva = Number($("#manual-iva").value);
+  if (!descripcion) return avisar("Escribí la descripción del artículo manual.");
+  if (!Number.isFinite(cantidad) || cantidad <= 0) return avisar("Ingresá una cantidad válida.");
+  if (!Number.isFinite(precio) || precio <= 0) return avisar("Ingresá un precio válido.");
+  estado.carrito.push({
+    key: `manual-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    manual: true,
+    codigo,
+    descripcion,
+    precio: Math.round((precio + Number.EPSILON) * 100) / 100,
+    iva,
+    cantidad,
+  });
+  $("#form-manual").reset();
+  $("#manual-iva").value = "21";
+  $("#dialogo-manual").close();
+  renderCarrito();
+  avisar("Artículo manual agregado");
 }
 
 function renderCarrito() {
@@ -251,12 +276,12 @@ function renderCarrito() {
   $("#total-carrito").textContent = moneda(total);
   $("#btn-enviar").disabled = !estado.carrito.length;
   if (!estado.carrito.length) {
-    caja.innerHTML = `<div class="vacio">Agregá productos desde la pestaña Precios.</div>`;
+    caja.innerHTML = `<div class="vacio">Agregá productos desde Precios o un artículo manual para servicios.</div>`;
     return;
   }
   caja.innerHTML = estado.carrito.map((item, indice) => `<div class="item-carrito">
     <div class="linea1"><strong>${esc(item.descripcion)}</strong><span class="subtotal">${moneda(item.precio * item.cantidad)}</span></div>
-    <small>${esc(item.codigo || "")}</small>
+    <small>${esc(item.codigo || "")}${item.manual ? " · Manual" : ""}</small>
     <div class="controles">
       <button type="button" data-cantidad="-1" data-indice="${indice}">−</button>
       <span>${item.cantidad}</span>
@@ -276,9 +301,10 @@ function cambiarCantidad(indice, delta) {
 }
 
 async function enviarPresupuesto() {
-  if (!estado.carrito.length) return avisar("Agregá al menos un producto.");
-  const clienteId = Number($("#cliente").value);
-  if (!clienteId) return avisar("Seleccioná un cliente de tu cartera.");
+  if (!estado.carrito.length) return avisar("Agregá al menos un producto o artículo manual.");
+  const nombreCliente = $("#cliente").value.trim();
+  if (!nombreCliente) return avisar("Seleccioná un cliente o escribí su nombre.");
+  const clienteCartera = estado.clientes.find((c) => String(c.razon_social).trim().toLowerCase() === nombreCliente.toLowerCase());
   const boton = $("#btn-enviar");
   boton.disabled = true;
   boton.textContent = "Enviando...";
@@ -286,9 +312,12 @@ async function enviarPresupuesto() {
     const datos = await api("/api/v1/vendedor/presupuestos", {
       method: "POST",
       body: JSON.stringify({
-        cliente_id: clienteId,
+        cliente_id: clienteCartera ? clienteCartera.id : null,
+        cliente_nombre: clienteCartera ? "" : nombreCliente,
         observaciones: $("#observaciones").value.trim(),
-        items: estado.carrito.map((item) => ({ producto_id: item.id, cantidad: item.cantidad })),
+        items: estado.carrito.map((item) => item.manual
+          ? { manual: true, codigo: item.codigo, descripcion: item.descripcion, cantidad: item.cantidad, precio: item.precio, iva: item.iva }
+          : { producto_id: item.id, cantidad: item.cantidad }),
       }),
     });
     const documento = datos.documento || {};
@@ -349,7 +378,7 @@ let timerBusqueda = null;
 document.addEventListener("DOMContentLoaded", () => {
   $("#form-acceso").addEventListener("submit", ingresar);
   $("#btn-salir").addEventListener("click", () => {
-    if (confirm("¿Cerrar la sesión? Para volver a entrar necesitás un código nuevo.")) cerrarSesion();
+    if (confirm("¿Cerrar la sesión en este celular? Después podés volver a entrar con tu usuario y clave.")) cerrarSesion();
   });
   $("#btn-actualizar").addEventListener("click", async () => {
     try {
@@ -382,6 +411,16 @@ document.addEventListener("DOMContentLoaded", () => {
     if (quitar) cambiarCantidad(Number(quitar.dataset.quitar), -9999);
   });
   $("#btn-enviar").addEventListener("click", enviarPresupuesto);
+  $("#btn-manual").addEventListener("click", () => {
+    $("#form-manual").reset();
+    $("#manual-iva").value = "21";
+    $("#manual-cantidad").value = "1";
+    $("#dialogo-manual").showModal();
+    setTimeout(() => $("#manual-descripcion").focus(), 80);
+  });
+  $("#form-manual").addEventListener("submit", agregarManual);
+  $("#cerrar-manual").addEventListener("click", () => $("#dialogo-manual").close());
+  $("#cancelar-manual").addEventListener("click", () => $("#dialogo-manual").close());
   $$(".barra-inferior button").forEach((boton) => boton.addEventListener("click", () => cambiarVista(boton.dataset.vista)));
   $("#historial").addEventListener("click", (evento) => {
     const tarjeta = evento.target.closest("[data-presupuesto]");

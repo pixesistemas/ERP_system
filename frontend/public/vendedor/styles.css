@@ -137,3 +137,15 @@ main { flex: 1; padding: 16px; max-width: 760px; width: 100%; margin: 0 auto; }
 
 .cabecera-acciones{display:flex;gap:8px;align-items:center}
 
+
+.titulo-presupuesto{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
+.titulo-presupuesto h2{margin:0}
+.boton-secundario{border:1px solid var(--linea);background:#fff;color:var(--tinta);border-radius:10px;padding:9px 12px;font-weight:700}
+.form-manual{padding:14px 16px;display:grid;gap:10px}
+.form-manual label{margin:0}
+.modal-acciones{display:flex;gap:10px;justify-content:flex-end;padding:0 16px 16px}
+.modal-acciones .principal{width:auto;padding:10px 16px}
+
+
+.dialogo{overflow:auto}
+

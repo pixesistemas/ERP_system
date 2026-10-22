@@ -177,34 +177,72 @@ function puntoVentaDe(empresaId, usuarioId) {
 function crearPresupuesto(req, res) {
   const e = req.empresa.id;
   const vendedor = req.vendedor;
-  const clienteId = Number(req.body?.cliente_id);
   const observaciones = String(req.body?.observaciones || "").trim().slice(0, 500);
   const items = Array.isArray(req.body?.items) ? req.body.items : [];
 
-  if (!Number.isInteger(clienteId) || clienteId <= 0) {
-    return res.status(400).json({ ok: false, error: "Seleccioná un cliente de tu cartera." });
+  let clienteId = Number(req.body?.cliente_id) || null;
+  const clienteNombre = String(req.body?.cliente_nombre || "").trim().slice(0, 150);
+
+  if (clienteId) {
+    const clienteEmpresa = db.prepare("SELECT id FROM clientes WHERE id=? AND empresa_id=?").get(clienteId, e);
+    if (!clienteEmpresa) {
+      return res.status(404).json({ ok: false, error: "El cliente no pertenece a la empresa." });
+    }
+  } else if (clienteNombre) {
+    const existente = db
+      .prepare("SELECT id FROM clientes WHERE empresa_id=? AND LOWER(TRIM(razon_social))=LOWER(?) ORDER BY id LIMIT 1")
+      .get(e, clienteNombre);
+    if (existente) {
+      clienteId = Number(existente.id);
+    } else {
+      const info = db
+        .prepare(
+          `INSERT INTO clientes(empresa_id,razon_social,condicion_iva,cliente_pedidos,descuento_porcentaje)
+           VALUES(?,?,'CONSUMIDOR FINAL',1,0)`,
+        )
+        .run(e, clienteNombre);
+      clienteId = Number(info.lastInsertRowid);
+    }
+  } else {
+    return res.status(400).json({ ok: false, error: "Seleccioná un cliente o escribí su nombre." });
   }
-  const cliente = db
-    .prepare(
-      `SELECT c.id FROM vendedor_clientes vc JOIN clientes c ON c.id=vc.cliente_id
-       WHERE vc.empresa_id=? AND vc.vendedor_id=? AND vc.cliente_id=? AND vc.activo=1`,
-    )
-    .get(e, vendedor.id, clienteId);
-  if (!cliente) {
-    return res.status(403).json({ ok: false, error: "Ese cliente no está en tu cartera." });
-  }
-  if (!items.length) return res.status(400).json({ ok: false, error: "Agregá al menos un producto." });
-  if (items.length > 100) return res.status(400).json({ ok: false, error: "Máximo 100 productos por presupuesto." });
+
+  if (!items.length) return res.status(400).json({ ok: false, error: "Agregá al menos un producto o artículo manual." });
+  if (items.length > 100) return res.status(400).json({ ok: false, error: "Máximo 100 artículos por presupuesto." });
 
   const agrupados = new Map();
+  const manuales = [];
   for (const item of items) {
-    const productoId = Number(item?.producto_id || item?.id);
     const cantidad = Number(item?.cantidad);
-    if (!Number.isInteger(productoId) || productoId <= 0) {
-      return res.status(400).json({ ok: false, error: "Producto inválido." });
-    }
     if (!Number.isFinite(cantidad) || cantidad <= 0 || cantidad > 9999) {
       return res.status(400).json({ ok: false, error: "Cantidad inválida." });
+    }
+    if (item?.manual) {
+      const descripcion = String(item.descripcion || "").trim().slice(0, 200);
+      const precio = Number(item.precio || item.precio_unitario || 0);
+      const iva = Number(item.iva || 0);
+      if (!descripcion) return res.status(400).json({ ok: false, error: "La descripción del artículo manual es obligatoria." });
+      if (!Number.isFinite(precio) || precio <= 0) {
+        return res.status(400).json({ ok: false, error: `Ingresá un precio para "${descripcion}".` });
+      }
+      if (![0, 2.5, 5, 10.5, 21, 27].includes(iva)) {
+        return res.status(400).json({ ok: false, error: "IVA inválido en el artículo manual." });
+      }
+      manuales.push({
+        producto_id: null,
+        codigo: String(item.codigo || "MANUAL").trim().slice(0, 100) || "MANUAL",
+        descripcion,
+        unidad: "UN",
+        cantidad,
+        precioUnitario: precio / (1 + iva / 100),
+        descuento: 0,
+        iva,
+      });
+      continue;
+    }
+    const productoId = Number(item?.producto_id || item?.id);
+    if (!Number.isInteger(productoId) || productoId <= 0) {
+      return res.status(400).json({ ok: false, error: "Producto inválido." });
     }
     agrupados.set(productoId, Math.round(((agrupados.get(productoId) || 0) + cantidad) * 1000) / 1000);
   }
@@ -219,18 +257,18 @@ function crearPresupuesto(req, res) {
     const precioFinal = Number(producto.precio || 0);
     if (precioFinal <= 0) return res.status(400).json({ ok: false, error: `El producto ${producto.descripcion} no tiene precio.` });
     const iva = Number(producto.iva || 0);
-    const precioNeto = precioFinal / (1 + iva / 100);
     lineas.push({
       producto_id: producto.id,
       codigo: producto.codigo,
       descripcion: producto.descripcion,
       unidad: producto.unidad || "UN",
       cantidad,
-      precioUnitario: precioNeto,
+      precioUnitario: precioFinal / (1 + iva / 100),
       descuento: 0,
       iva,
     });
   }
+  lineas.push(...manuales);
 
   try {
     const documento = saveDocumento({
