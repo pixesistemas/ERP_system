@@ -190,7 +190,7 @@ function cambiarVista(vista) {
 function renderClientes() {
   const lista = $("#clientes-lista");
   lista.innerHTML = estado.clientes
-    .map((c) => `<option value="${esc(c.razon_social)}">${esc(c.cuit || c.dni || "")}</option>`)
+    .map((c) => `<option value="${esc(c.razon_social)}">${esc(c.cuit || c.dni || "")}${c.enCartera ? " · cartera" : ""}</option>`)
     .join("");
 }
 

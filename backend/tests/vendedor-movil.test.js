@@ -78,6 +78,23 @@ const bootstrapResp = ejecutar(controller.bootstrap, reqBase);
 assert(bootstrapResp.status === 200, "No se pudo obtener el bootstrap.");
 assert(bootstrapResp.payload.productos.length > 0, "El bootstrap no trae productos.");
 assert(bootstrapResp.payload.clientes.some((c) => Number(c.id) === Number(cliente.id)), "La cartera no trae el cliente asignado.");
+const clienteFueraCartera = db
+  .prepare("SELECT id FROM clientes WHERE empresa_id=? AND id<>? ORDER BY id LIMIT 1")
+  .get(empresa.id, cliente.id);
+assert(clienteFueraCartera, "El seed no tiene otro cliente para probar.");
+assert(
+  bootstrapResp.payload.clientes.some((c) => Number(c.id) === Number(clienteFueraCartera.id) && !Number(c.enCartera)),
+  "El bootstrap no incluye a los clientes fuera de la cartera.",
+);
+
+const fueraCartera = ejecutar(controller.crearPresupuesto, {
+  ...reqBase,
+  body: {
+    cliente_id: clienteFueraCartera.id,
+    items: [{ producto_id: producto.id, cantidad: 1 }],
+  },
+});
+assert(fueraCartera.status === 201, `No se pudo presupuestar a un cliente fuera de cartera: ${JSON.stringify(fueraCartera.payload)}`);
 
 const crear = ejecutar(controller.crearPresupuesto, {
   ...reqBase,
@@ -95,7 +112,7 @@ const esperado = Number(producto.precio) * 2;
 assert(Math.abs(Number(documento.importe_total) - esperado) < 0.06, `Total inesperado: ${documento.importe_total} vs ${esperado}`);
 
 const lista = ejecutar(controller.listarPresupuestos, reqBase);
-assert(lista.status === 200 && lista.payload.presupuestos.length === 1, "El presupuesto no aparece en el historial.");
+assert(lista.status === 200 && lista.payload.presupuestos.length === 2, "Los presupuestos no aparecen en el historial.");
 const detalle = ejecutar(controller.detallePresupuesto, { ...reqBase, params: { id: String(documento.id) } });
 assert(detalle.status === 200 && detalle.payload.documento.items.length === 1, "El detalle del presupuesto no trae ítems.");
 

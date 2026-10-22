@@ -137,8 +137,10 @@ El ERP incluye una app móvil independiente para consultar precios y generar pre
 1. El usuario vendedor debe estar vinculado a un vendedor en **Vendedores y comisiones** y tener clientes asignados en su cartera.
 2. El vendedor abre `/vendedor/` e ingresa con el **mismo usuario/email y clave del ERP**. Si tiene varias empresas, la app le pide elegir una.
 3. La sesión queda recordada en ese celular mediante el refresh token del ERP. No se cierra al cerrar la app; el administrador la puede revocar desde **Usuarios → Dispositivos**, o desactivando el usuario.
-4. Los presupuestos se guardan como **PRESUPUESTO / BORRADOR** en el ERP, visibles desde **Presupuestos** y **Comprobantes**; desde ahí se puede generar el PDF. Se puede cotizar a un cliente que no esté en la cartera escribiendo su nombre (se reutiliza o crea en el ERP) y agregar artículos manuales para servicios, fletes, mano de obra, etc.
+4. Los presupuestos se guardan como **PRESUPUESTO / BORRADOR** en el ERP, visibles desde **Presupuestos** y **Comprobantes**; desde ahí se puede generar el PDF. La app muestra **todos los clientes de la empresa**, no solo los de la cartera; si el cliente no existe, se puede escribir el nombre y se crea en el ERP. También se pueden agregar artículos manuales para servicios, fletes, mano de obra, etc.
 5. Desde el detalle del presupuesto en la app se puede **generar el PDF y compartirlo** con el menú del celular o enviarlo por WhatsApp (se comparte el archivo o el link público del PDF).
+
+En **Superadmin → Temas** está disponible el tema **"Vendedor (verde)"**, con el mismo estilo verde/pizarra de la app de presupuestos.
 
 La sesión se renueva sola mientras se usa. No requiere activar PREVENTA_MOVIL. El tiempo de recordado se puede ajustar con `VENDEDOR_SESION_DIAS` (3650 días por defecto).
 

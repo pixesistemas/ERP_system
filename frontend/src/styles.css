@@ -139,6 +139,26 @@
   --line-soft: #FAF6EC;
   --soft: #F8F2E6;
 }
+[data-theme="vendedor"] {
+  --bg: #F1F5F9;
+  --sidebar-bg: #0F172A;
+  --sidebar-active: #134E4A;
+  --sidebar-badge: #115E59;
+  --brand-rgb: 15,118,110;
+  --brand: #0F766E;
+  --brand-strong: #115E59;
+  --brand-ink: #0F766E;
+  --ink-rgb: 15,23,42;
+  --ink: #0F172A;
+  --ink-2: #020617;
+  --muted: #64748B;
+  --muted-2: #94A3B8;
+  --line: #DBE3EE;
+  --line-2: #D3DCE8;
+  --line-3: #CBD5E1;
+  --line-soft: #F1F5F9;
+  --soft: #E6F7F5;
+}
 * {
   box-sizing:border-box;
 }

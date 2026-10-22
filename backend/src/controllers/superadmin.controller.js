@@ -318,7 +318,7 @@ function getTemaEmpresa(req, res, next) {
   }
 }
 
-const TEMAS_VALIDOS = ["lavanda", "rosa", "menta", "celeste", "durazno", "arena"];
+const TEMAS_VALIDOS = ["lavanda", "rosa", "menta", "celeste", "durazno", "arena", "vendedor"];
 
 function setTemaEmpresa(req, res, next) {
   try {

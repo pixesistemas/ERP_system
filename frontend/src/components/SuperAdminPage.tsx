@@ -37,6 +37,7 @@ const TEMAS: Record<string, { label: string; swatches: string[] }> = {
   celeste: { label: "Celeste", swatches: ["#93BFE0", "#DCEAF5", "#34546E"] },
   durazno: { label: "Durazno", swatches: ["#F2B18C", "#FBE6D8", "#6E4529"] },
   arena: { label: "Arena", swatches: ["#D9B98A", "#F2E9D8", "#5F4A26"] },
+  vendedor: { label: "Vendedor (verde)", swatches: ["#0F766E", "#CCFBF1", "#0F172A"] },
 };
 
 export function SuperAdminPage() {

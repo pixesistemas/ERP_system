@@ -120,13 +120,16 @@ function bootstrap(req, res) {
 
   const clientes = db
     .prepare(
-      `SELECT c.id,c.razon_social,c.cuit,c.dni,c.domicilio,c.localidad,c.provincia,c.telefono,c.email
-       FROM vendedor_clientes vc
-       JOIN clientes c ON c.id=vc.cliente_id
-       WHERE vc.empresa_id=? AND vc.vendedor_id=? AND vc.activo=1
+      `SELECT c.id,c.razon_social,c.cuit,c.dni,c.domicilio,c.localidad,c.provincia,c.telefono,c.email,
+              CASE WHEN EXISTS (
+                SELECT 1 FROM vendedor_clientes vc
+                WHERE vc.empresa_id=c.empresa_id AND vc.vendedor_id=? AND vc.cliente_id=c.id AND vc.activo=1
+              ) THEN 1 ELSE 0 END enCartera
+       FROM clientes c
+       WHERE c.empresa_id=?
        ORDER BY c.razon_social`,
     )
-    .all(e, vendedor.id);
+    .all(vendedor.id, e);
 
   const saldos = db
     .prepare(
