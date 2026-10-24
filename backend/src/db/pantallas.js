@@ -2,6 +2,8 @@ const db = require("./database");
 const { PANTALLAS } = require("../constants/pantallas");
 const { sincronizarPermisosRol } = require("../repositories/rol.repository");
 
+const PANTALLAS_SOLO_ADMIN = new Set(["reception"]);
+
 /*
  * Registra las pantallas nuevas y las suma automáticamente a los roles que
  * ya tienen una lista explícita de pantallas.
@@ -20,7 +22,7 @@ function reconciliarPantallas() {
   for (const pantalla of PANTALLAS) registrar.run(pantalla);
 
   const roles = db
-    .prepare("SELECT id, pantallas_actualizado_en FROM roles")
+    .prepare("SELECT id, nombre, pantallas_actualizado_en FROM roles")
     .all();
 
   let totalAgregadas = 0;
@@ -48,6 +50,7 @@ function reconciliarPantallas() {
       "INSERT OR IGNORE INTO rol_pantallas(rol_id, pantalla) VALUES(?, ?)",
     );
     for (const n of nuevas) {
+      if (PANTALLAS_SOLO_ADMIN.has(n.pantalla) && String(rol.nombre || "").toUpperCase() !== "ADMIN") continue;
       const res = insertar.run(rol.id, n.pantalla);
       if (res.changes) {
         totalAgregadas++;

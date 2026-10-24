@@ -46,6 +46,7 @@ export const SCREEN_SECTIONS: { section: string; screens: { key: string; label: 
       { key: "suppliers", label: "Proveedores" },
       { key: "product-suppliers", label: "Proveedores por producto" },
       { key: "purchases", label: "Compras" },
+      { key: "reception", label: "Recibir productos" },
       { key: "mobile-purchases", label: "App compras" },
       { key: "vat-books", label: "Libro IVA" },
       { key: "borrador-iva", label: "Borrador IVA" },

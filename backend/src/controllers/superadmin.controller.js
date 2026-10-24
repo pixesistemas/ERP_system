@@ -243,6 +243,11 @@ function borrarDatosEmpresa(req, res, next) {
         borrar("VISITAS_RUTAS", "DELETE FROM ruta_pedidos WHERE empresa_id=?", empresaId);
         borrar("VISITAS_RUTAS", "DELETE FROM rutas_reparto WHERE empresa_id=?", empresaId);
       }
+      if (seleccion.includes("COMPRAS") || seleccion.includes("PRODUCTOS") || seleccion.includes("STOCK")) {
+        borrar("COMPRAS", "DELETE FROM recepcion_eventos WHERE empresa_id=?", empresaId);
+        borrar("COMPRAS", "DELETE FROM recepcion_items WHERE recepcion_id IN (SELECT id FROM recepciones_mercaderia WHERE empresa_id=?)", empresaId);
+        borrar("COMPRAS", "DELETE FROM recepciones_mercaderia WHERE empresa_id=?", empresaId);
+      }
       if (seleccion.includes("STOCK")) {
         borrar("STOCK", "DELETE FROM stock_movimientos WHERE empresa_id=?", empresaId);
         borrar("STOCK", "DELETE FROM stock_reservas WHERE empresa_id=?", empresaId);

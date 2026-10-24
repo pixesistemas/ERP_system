@@ -11,7 +11,7 @@ const required = [
   'ordenes_pago', 'orden_pago_cheques', 'caja_sesiones', 'caja_movimientos',
   'promociones_regalo', 'descuentos_cantidad', 'combos',
   'comprobante_plantillas', 'puntos_venta', 'pos_borradores',
-  'reservas_monto', 'reserva_monto_consumos'
+  'reservas_monto', 'reserva_monto_consumos', 'recepciones_mercaderia', 'recepcion_items', 'recepcion_eventos'
 ];
 
 const tables = new Set(

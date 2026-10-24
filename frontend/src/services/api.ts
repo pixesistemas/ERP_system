@@ -35,7 +35,9 @@ function getToken() {
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers || {});
-  headers.set("Content-Type", "application/json");
+  if (!(options.body instanceof FormData)) {
+    headers.set("Content-Type", "application/json");
+  }
   const token = getToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
@@ -99,6 +101,37 @@ export const api = {
   updateClient(id: number, data: any) { return request<any>(`/clientes/${id}`, { method: "PUT", body: JSON.stringify(data) }); },
   deleteClient(id: number) { return request<any>(`/clientes/${id}`, { method: "DELETE" }); },
   consultarPadron(cuit: string) { return request<any>(`/padron/${cuit}`); },
+  listReceptions(estado = "", limit = 50) {
+    const qs = new URLSearchParams();
+    if (estado) qs.set("estado", estado);
+    qs.set("limit", String(limit));
+    return request<any>(`/recepcion?${qs.toString()}`);
+  },
+  getReception(id: number) { return request<any>(`/recepcion/${id}`); },
+  createReception(data: any) {
+    return request<any>("/recepcion", { method: "POST", body: JSON.stringify(data) });
+  },
+  saveReception(id: number, data: any) {
+    return request<any>(`/recepcion/${id}`, { method: "PUT", body: JSON.stringify(data) });
+  },
+  confirmReception(id: number) {
+    return request<any>(`/recepcion/${id}/confirmar`, { method: "POST" });
+  },
+  cancelReception(id: number) {
+    return request<any>(`/recepcion/${id}/anular`, { method: "POST" });
+  },
+  receptionDeposits() { return request<any>("/recepcion/depositos"); },
+  receptionSuppliers(q = "") {
+    return request<any>(`/recepcion/proveedores?q=${encodeURIComponent(q)}`);
+  },
+  receptionOcr(file: File, data: Record<string, any> = {}) {
+    const form = new FormData();
+    form.append("file", file);
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined && value !== null) form.append(key, String(value));
+    }
+    return request<any>("/recepcion/ocr", { method: "POST", body: form });
+  },
   listStock() { return request<any>("/stock"); },
   stockEntry(data: any) { return request<any>("/stock/entrada", { method: "POST", body: JSON.stringify(data) }); },
   stockExit(data: any) { return request<any>("/stock/salida", { method: "POST", body: JSON.stringify(data) }); },

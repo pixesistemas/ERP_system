@@ -47,6 +47,7 @@ const PANTALLAS = [
   "suppliers",
   "product-suppliers",
   "purchases",
+  "reception",
   "mobile-purchases",
   "vat-books",
   "borrador-iva",
